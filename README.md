@@ -9,7 +9,7 @@ OLED information display control program for [piCorePlayer](https://sites.google
 - Select a `User commands` field and set `/etc/sysconfig/tcedir/startDisp.sh`
 - Reboot
 
-# Tested on:
+### Tested on:
 - Raspberry Pi B+
 - IQaudIO Pi-DAC+
 - 1.3'' 128 x 64 White Color OLED Display Module w/ I2C Interface
