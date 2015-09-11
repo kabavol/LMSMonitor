@@ -3,6 +3,12 @@ OLED information display control program for [piCorePlayer](https://sites.google
 
  ![image](https://raw.githubusercontent.com/kabavol/LMSMonitor/master/doc/LMSMonitorV02_owmr.jpg)
 
+### Options
+-n PlayerName
+-o Soundcard (eg. hw:CARD=IQaudIODAC)
+-t enable print info to stdout
+-v increment verbose level
+
 ### Installation
 You can find the precompiled binaries on the [bin folder](https://github.com/kabavol/LMSMonitor/tree/master/bin)
 
