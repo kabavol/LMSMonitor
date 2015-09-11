@@ -4,6 +4,8 @@ OLED information display control program for [piCorePlayer](https://sites.google
  ![image](https://raw.githubusercontent.com/kabavol/LMSMonitor/master/doc/LMSMonitorV02_owmr.jpg)
 
 ### Installation
+You can found the precomplied binaries on the [bin folder](https://github.com/kabavol/LMSMonitor/tree/master/bin)
+
 - Copy the `lmsmonitor` and `startDisp.sh` files to the `/etc/sysconfig/tcedir/` directory.
 - Go to your devices web page, select the `normal` or `advanced` mode and go to the `Tweaks` tab.
 - Select a `User commands` field and set `/etc/sysconfig/tcedir/startDisp.sh`
