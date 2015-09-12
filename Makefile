@@ -1,4 +1,5 @@
-ifeq ($(HOSTTYPE),arm)
+HOSTTYPE:=$(shell uname -m)
+ifeq ($(HOSTTYPE),armv6l)
     LIBS = -lasound -lpthread -L./lib -lwiringPi_static -lArduiPi_OLED_static
     CFLAGS = -g -Wall -Ofast -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s -I.
 else
