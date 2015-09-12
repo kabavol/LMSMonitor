@@ -22,7 +22,7 @@
 #ifndef MIMO_CALLBACK_H
 #define MIMO_CALLBACK_H 1
 
-long getActVolume(void);
+long getALSAVolume(void);
 int  startMimo(char *cName, char *dName);
 
 #endif

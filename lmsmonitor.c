@@ -3,9 +3,11 @@
  *
  *	(c) 2015 László TÓTH
  *
- *	Todo:	Done - Automatic server discovery
- *			Done - Get playerID automatically
- *			Reconect to server
+ *  V 0.3
+ *
+ *	Todo:	Auto reconect to server
+			Compute "virtual" volume from LMS and soundcard volumes.
+			Get LMS server IP from -s option
  *
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -54,8 +56,10 @@ char stbl[BSIZE];
 tag *tags;
 
 int main(int argc, char *argv[]) {
-	long lastVolume = 0;
-	long actVolume  = 0;
+	long lastALSAVolume = 0;
+	long  actALSAVolume = 0;
+	long lastLMSVolume  = 0;
+	long  actLMSVolume  = 0;
 	long pTime, dTime;
 	char buff[255];
 	char *sndCard = NULL;
@@ -90,7 +94,7 @@ int main(int argc, char *argv[]) {
 				break;
 
 			case 'h':
-				printf("LMSMonitor Ver. 0.2\nUsage [options] -n Player name\noptions:\n -o Soundcard (eg. hw:CARD=IQaudIODAC)\n -t enable print info to stdout\n -v increment verbose level\n\n");
+				printf("LMSMonitor Ver. 0.3\nUsage [options] -n Player name\noptions:\n -o Soundcard (eg. hw:CARD=IQaudIODAC)\n -t enable print info to stdout\n -v increment verbose level\n\n");
 				exit(1);
 				break;
 		}
@@ -110,20 +114,29 @@ int main(int argc, char *argv[]) {
 
 	while (true) {
 
-		actVolume = getActVolume();
-		if (actVolume != lastVolume) {
-			sprintf(buff, "Vol:             %3ld%%", actVolume);
+		if (tags[LMSVOLUME].valid) {
+			actLMSVolume = strtol(tags[LMSVOLUME].tagData,(char **)NULL, 10);
+		}
+		actALSAVolume = getALSAVolume();
+
+		if ((actALSAVolume != lastALSAVolume) || (actLMSVolume != lastLMSVolume)) {
+			long virtVolume = (actALSAVolume * actLMSVolume) / 100;
+			sprintf(buff, "Vol:             %3ld%%", virtVolume);
 #ifdef __arm__
 			putText(0, 0, buff);
-			drawHorizontalBargraph(24, 2, 75, 4, actVolume);
+			drawHorizontalBargraph(24, 2, 75, 2, actALSAVolume);
+			drawHorizontalBargraph(24, 4, 75, 2, actLMSVolume);
 			refreshDisplay();
 #endif
 			tOut(buff);
-			lastVolume = actVolume;
+			lastALSAVolume = actALSAVolume;
+			lastLMSVolume  = actLMSVolume;
 		}
 
 		if (isRefreshed()) {
 			tOut("_____________________\n");
+
+printf ("LMS mixer volume: %s\n", tags[LMSVOLUME].valid ? tags[LMSVOLUME].tagData : "");
 
 			for (int line = 0; line < LINE_NUM; line++) {
 #ifdef __arm__

@@ -183,8 +183,6 @@ int connectServer(void) {
 
 	memset(&serv_addr, 0, sizeof(serv_addr));
 
-//	memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, server->h_length);
-
 	serv_addr.sin_family	  = AF_INET;
 	serv_addr.sin_addr.s_addr = getServerAddress();
 	serv_addr.sin_port 		  = htons(LMSPort);
@@ -228,6 +226,7 @@ tag *initTagStore(void) {
 	tagStore[COMPOSER].name	   = "composer";
 	tagStore[CONDUCTOR].name   = "conductor";
 	tagStore[MODE].name 	   = "mode";
+	tagStore[LMSVOLUME].name   = "mixer\%20volume";
 
 	for(int i = 0; i < MAXTAG_TYPES; i++) {
 		if ((tagStore[i].tagData = (char *)malloc(MAXTAG_DATA * sizeof(char))) == NULL) {
@@ -265,12 +264,6 @@ void *serverPolling(void *x_voidptr){
 				}
 			}
 
-//		pTime	= getMinute("time", buffer);
-//		duration = getMinute("duration", buffer);
-
-//		printf("%3ld:%02ld %s %ld:%02ld\n", pTime/60, pTime%60, isPlaying(buffer) ? ">" : "II",  duration/60, duration%60);
-
-//		printf("\n");
 			refreshed();
 			sleep(1);
 		}
@@ -284,7 +277,7 @@ tag *initSliminfo(char *playerName) {
 	if ((sockFD = connectServer()) < 0)	{ return NULL; }
 	if (discoverPlayer(playerName) < 0)	{ return NULL; }
 
-	sprintf(query, "%s status - 1 tags:aAlCIT\n", playerID); // alrTy
+	sprintf(query, "%s status - 1 tags:aAlCIT\n", playerID);
 	int x = 0;
 
 	if (initTagStore() != NULL) {

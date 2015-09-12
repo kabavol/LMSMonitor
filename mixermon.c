@@ -34,9 +34,9 @@ char        card[CNLENGTH];
 snd_mixer_t *handle;
 pthread_t   seventsThread;
 char        stbm[BSIZE];
-long actVolume  = 0;
+long        actVolume  = 0;
 
-long getActVolume(void) {
+long getALSAVolume(void) {
     return actVolume;
 }
 
@@ -52,7 +52,6 @@ static void sevents_value(snd_mixer_selem_id_t *sid) {
 	snd_mixer_elem_t* elem = snd_mixer_find_selem(handle, sid);
 
 	snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
-//	printf("Returned card VOLUME range - min: %ld, max: %ld\n", min, max);
 
 	// Minimum given is mute, we need the first real value
 	min++;
@@ -65,30 +64,13 @@ static void sevents_value(snd_mixer_selem_id_t *sid) {
 //		printf("actVolume = %ld (currentVolume = %ld)\n", actVolume, currentVolume);
    	}
 }
-/*
-static void sevents_info(snd_mixer_selem_id_t *sid) {
-	printf("event info: '%s',%i\n", snd_mixer_selem_id_get_name(sid), snd_mixer_selem_id_get_index(sid));
-}
 
-static void sevents_remove(snd_mixer_selem_id_t *sid) {
-	printf("event remove: '%s',%i\n", snd_mixer_selem_id_get_name(sid), snd_mixer_selem_id_get_index(sid));
-}
-*/
 static int melem_event(snd_mixer_elem_t *elem, unsigned int mask) {
 	snd_mixer_selem_id_t *sid;
 
 	snd_mixer_selem_id_alloca(&sid);
 	snd_mixer_selem_get_id(elem, sid);
-/*
-	if (mask == SND_CTL_EVENT_MASK_REMOVE) {
-		sevents_remove(sid);
-		return 0;
-	}
 
-	if (mask & SND_CTL_EVENT_MASK_INFO) {
-		sevents_info(sid);
-	}
-*/
 	if (mask & SND_CTL_EVENT_MASK_VALUE) {
 		sevents_value(sid);
 	}
@@ -96,16 +78,6 @@ static int melem_event(snd_mixer_elem_t *elem, unsigned int mask) {
 	return 0;
 }
 
-/*
-static void sevents_add(snd_mixer_elem_t *elem) {
-	snd_mixer_selem_id_t *sid;
-
-	snd_mixer_selem_id_alloca(&sid);
-	snd_mixer_selem_get_id(elem, sid);
-//	printf("event add: '%s',%i\n", snd_mixer_selem_id_get_name(sid), snd_mixer_selem_id_get_index(sid));
-	snd_mixer_elem_set_callback(elem, melem_event);
-}
-*/
 static int mixer_event(snd_mixer_t *mixer, unsigned int mask, snd_mixer_elem_t *elem) {
 	snd_mixer_selem_id_t *sid;
 
