@@ -133,7 +133,6 @@ int main(int argc, char *argv[]) {
 		}
 
 		if (isRefreshed()) {
-printf ("Mixer volume LMS: %ld, ALSA: %ld, Virtual: %ld\n", actLMSVolume, actALSAVolume, (actALSAVolume * actLMSVolume) / 100);
 			tOut("_____________________\n");
 
 			for (int line = 0; line < LINE_NUM; line++) {
