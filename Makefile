@@ -1,7 +1,13 @@
+ifeq ($(HOSTTYPE),arm)
+    LIBS = -lasound -lpthread -L./lib -lwiringPi_static -lArduiPi_OLED_static
+    CFLAGS = -g -Wall -Ofast -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s -I.
+else
+    LIBS = -lasound -lpthread
+    CFLAGS = -g -Wall -I.
+endif
+
 TARGET = ./bin/lmsmonitor
-LIBS = -lasound -lpthread -L./lib -lwiringPi_static -lArduiPi_OLED_static
 CC = g++
-CFLAGS = -g -Wall -Ofast -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s -I.
 
 .PHONY: default all clean
 
