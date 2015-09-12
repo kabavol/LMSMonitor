@@ -120,11 +120,11 @@ int main(int argc, char *argv[]) {
 		actALSAVolume = getALSAVolume();
 
 		if ((actALSAVolume != lastALSAVolume) || (actLMSVolume != lastLMSVolume)) {
-			long virtVolume = (actALSAVolume * actLMSVolume) / 100;
-			sprintf(buff, "Vol:             %3ld%%", virtVolume);
+			sprintf(buff, "Vol:             %3ld%%", (actALSAVolume * actLMSVolume) / 100);
 #ifdef __arm__
 			putText(0, 0, buff);
-			drawHorizontalBargraph(24, 2, 75, 2, actALSAVolume);
+//			drawHorizontalBargraph( x, y,  w, h, percent)
+//			drawHorizontalBargraph(24, 2, 75, 2, actALSAVolume);
 			drawHorizontalBargraph(24, 4, 75, 2, actLMSVolume);
 			refreshDisplay();
 #endif
@@ -134,9 +134,8 @@ int main(int argc, char *argv[]) {
 		}
 
 		if (isRefreshed()) {
+printf ("Mixer volume LMS: %ld, ALSA: %ld, Virtual: %ld\n", actLMSVolume, actALSAVolume, (actALSAVolume * actLMSVolume) / 100);
 			tOut("_____________________\n");
-
-printf ("LMS mixer volume: %s\n", tags[LMSVOLUME].valid ? tags[LMSVOLUME].tagData : "");
 
 			for (int line = 0; line < LINE_NUM; line++) {
 #ifdef __arm__
