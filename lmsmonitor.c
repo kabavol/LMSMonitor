@@ -120,12 +120,11 @@ int main(int argc, char *argv[]) {
 		actALSAVolume = getALSAVolume();
 
 		if ((actALSAVolume != lastALSAVolume) || (actLMSVolume != lastLMSVolume)) {
-			sprintf(buff, "Vol:             %3ld%%", (actALSAVolume * actLMSVolume) / 100);
+			long virtVolume = (actALSAVolume * actLMSVolume) / 100;
+			sprintf(buff, "Vol:             %3ld%%", virtVolume);
 #ifdef __arm__
 			putText(0, 0, buff);
-//			drawHorizontalBargraph( x, y,  w, h, percent)
-//			drawHorizontalBargraph(24, 2, 75, 2, actALSAVolume);
-			drawHorizontalBargraph(24, 4, 75, 2, actLMSVolume);
+			drawHorizontalBargraph(24, 2, 75, 4, virtVolume);
 			refreshDisplay();
 #endif
 			tOut(buff);
