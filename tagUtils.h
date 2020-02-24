@@ -1,5 +1,6 @@
 /*
  *	(c) 2015 László TÓTH
+ *	(c) 2020 Stuart Hunter
  *
  *	Todo:
  *
@@ -23,11 +24,11 @@
 
 #include "sliminfo.h"
 
-char *getTag(const char *tag, char *input, char*output, int outSize);
-char *getQuality(char *input, char*output, int outSize);
-int   isPlaying(char *input);
-long  getMinute(tag *timeTag);
-void  encode(const char *s, char *enc);
-int   decode(const char *s, char *dec);
+char *getTag(const char *tag, char *input, char *output, int outSize);
+char *getQuality(char *input, char *output, int outSize);
+int isPlaying(char *input);
+long getMinute(tag *timeTag);
+void encode(const char *s, char *enc);
+int decode(const char *s, char *dec);
 
 #endif

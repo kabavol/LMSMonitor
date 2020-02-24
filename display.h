@@ -1,5 +1,6 @@
 /*
  *	(c) 2015 László TÓTH
+ *	(c) 2020 Stuart Hunter
  *
  *	Todo:
  *
@@ -21,19 +22,19 @@
 #ifndef DISPLAY_H
 #define DISPLAY_H 1
 
-#define CHAR_WIDTH  6
+#define CHAR_WIDTH 6
 #define CHAR_HEIGHT 8
 
-int  initDisplay(void);
+int initDisplay(void);
 void closeDisplay(void);
 void drawHorizontalBargraph(int x, int y, int w, int h, int percent);
 void putText(int x, int y, char *buff);
 void putTextToCenter(int y, char *buff);
 void clearLine(int y);
 void refreshDisplay(void);
-int  maxCharacter(void);
-int  maxLine(void);
-int  maxXPixel(void);
-int  maxYPixel(void);
+int maxCharacter(void);
+int maxLine(void);
+int maxXPixel(void);
+int maxYPixel(void);
 
 #endif

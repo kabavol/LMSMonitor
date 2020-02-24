@@ -1,5 +1,6 @@
 /*
  *	(c) 2015 László TÓTH
+ *	(c) 2020 Stuart Hunter
  *
  *	Todo:
  *
@@ -21,24 +22,39 @@
 #ifndef SLIMINFO_H
 #define SLIMINFO_H
 
-#define MAXTAG_DN	16
-#define MAXTAG_DATA	255
+#define MAXTAG_DN 16
+#define MAXTAG_DATA 255
 
 typedef struct Tag {
-	const char *name;
-	const char *displayName;
-	char *tagData;
-	int  valid;
-	int  changed;
+  const char *name;
+  const char *displayName;
+  char *tagData;
+  int valid;
+  int changed;
 } tag;
 
-typedef enum {SAMPLESIZE, SAMPLERATE, TIME, DURATION, TITLE, ALBUM, ARTIST, ALBUMARTIST, COMPOSER, CONDUCTOR, MODE, REMAINING, VOLUME, MAXTAG_TYPES} tagtypes_t;
+typedef enum {
+  SAMPLESIZE,
+  SAMPLERATE,
+  TIME,
+  DURATION,
+  TITLE,
+  ALBUM,
+  ARTIST,
+  ALBUMARTIST,
+  COMPOSER,
+  CONDUCTOR,
+  MODE,
+  REMAINING,
+  VOLUME,
+  MAXTAG_TYPES
+} tagtypes_t;
 
-void  closeSliminfo(void);
-tag  *initSliminfo(char *playerName);
+void closeSliminfo(void);
+tag *initSliminfo(char *playerName);
 char *player_mac(void);
-void  error(const char *msg);
-void  askRefresh(void);
-int   isRefreshed(void);
+void error(const char *msg);
+void askRefresh(void);
+int isRefreshed(void);
 
 #endif

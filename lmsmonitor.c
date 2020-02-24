@@ -2,6 +2,7 @@
  *	lmsmonitor.c
  *
  *	(c) 2015 László TÓTH
+ *	(c) 2020 Stuart Hunter
  *
  *	Todo:	Done - Automatic server discovery
  *			Done - Get playerID automatically
@@ -22,24 +23,24 @@
  *
  */
 
+#include <errno.h>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <errno.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <fcntl.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
 
-#include "tagUtils.h"
-#include "sliminfo.h"
-#include "display.h"
 #include "common.h"
+#include "display.h"
+#include "sliminfo.h"
+#include "tagUtils.h"
 
 #ifdef __arm__
 
@@ -51,7 +52,7 @@
 #endif
 
 #define VERSION "0.4"
-#define SLEEP_TIME	(25000/25)
+#define SLEEP_TIME (25000 / 25)
 #define CHRPIXEL 8
 
 char stbl[BSIZE];
@@ -92,198 +93,213 @@ static char *get_mac_address() {
 
   close(sd);
 
-  char *macaddr = (char *) malloc(18);
+  char *macaddr = (char *)malloc(18);
 
-  snprintf(macaddr, 18, "%02x:%02x:%02x:%02x:%02x:%02x",
-          mac[0], mac[1], mac[2],
-          mac[3], mac[4], mac[5]);
+  snprintf(macaddr, 18, "%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2],
+           mac[3], mac[4], mac[5]);
 
   return macaddr;
-
 }
 
 void print_help(void) {
-	printf("LMSMonitor Ver. %s\n"
-"Usage [options] -n Player name\n"
-"options:\n"
-" -t enable print info to stdout\n"
-" -v increment verbose level\n\n",VERSION);
+  printf("LMSMonitor Ver. %s\n"
+         "Usage [options] -n Player name\n"
+         "options:\n"
+         " -t enable print info to stdout\n"
+         " -v increment verbose level\n\n",
+         VERSION);
 }
 
 int main(int argc, char *argv[]) {
 
-	bool extended = false;
-	bool remaining = false;
-	long lastVolume = 0;
-	long actVolume  = 0;
-	long pTime, dTime, rTime;
-	char buff[255];
-	char *playerName = NULL;
-	int  aName;
-	char *thatMAC = NULL;
-	char *thisMAC = get_mac_address();
+  bool visualize = false;
+  bool extended = false;
+  bool remaining = false;
+  long lastVolume = 0;
+  long actVolume = 0;
+  long pTime, dTime, rTime;
+  char buff[255];
+  char *playerName = NULL;
+  int aName;
+  char *thatMAC = NULL;
+  char *thisMAC = get_mac_address();
 
-	#define LINE_NUM 4
-	tagtypes_t layout[LINE_NUM][3] = {
-		{COMPOSER,    ARTIST,       MAXTAG_TYPES},
-		{ALBUM,       MAXTAG_TYPES, MAXTAG_TYPES},
-		{TITLE,       MAXTAG_TYPES, MAXTAG_TYPES},
-		{ALBUMARTIST, CONDUCTOR,    MAXTAG_TYPES},
-	};
+#define LINE_NUM 4
+  tagtypes_t layout[LINE_NUM][3] = {
+      {COMPOSER, ARTIST, MAXTAG_TYPES},
+      {ALBUM, MAXTAG_TYPES, MAXTAG_TYPES},
+      {TITLE, MAXTAG_TYPES, MAXTAG_TYPES},
+      {ALBUMARTIST, CONDUCTOR, MAXTAG_TYPES},
+  };
 
-	opterr = 0;
-	while ((aName = getopt (argc, argv, "o:n:tvhrx")) != -1) {
-		switch (aName) {
-			case 't':
-				enableTOut();
-				break;
+  opterr = 0;
+  while ((aName = getopt(argc, argv, "o:n:tvhri")) != -1) {
+    switch (aName) {
+    case 't':
+      enableTOut();
+      break;
 
-			case 'v':
-				incVerbose();
-				break;
+    case 'i':
+      incVerbose();
+      break;
 
-			case 'n':
-				playerName = optarg;
-				break;
+    case 'v':
+      visualize = true;
+      break;
 
-			case 'r':
-				remaining = true;
-				break;
+    case 'n':
+      playerName = optarg;
+      break;
 
-			case 'h':
-				print_help();
-				exit(1);
-				break;
-		}
-	}
+    case 'r':
+      remaining = true;
+      break;
 
-	if((tags = initSliminfo(playerName)) == NULL)	{ exit(1); }
+    case 'h':
+      print_help();
+      exit(1);
+      break;
+    }
+  }
 
-	thatMAC = player_mac();
+  if ((tags = initSliminfo(playerName)) == NULL) {
+    exit(1);
+  }
 
-	if (thatMAC != thisMAC) {
-		extended = true;
-		printf("Extended attrs from LMS enabled, no mimo!\n");
-	}
+  thatMAC = player_mac();
+
+  if (thatMAC != thisMAC) {
+    extended = true;
+    printf("Extended attrs from LMS enabled, no mimo!\n");
+  }
 
 #ifdef __arm__
-	// init OLED display
-	if (initDisplay() == EXIT_FAILURE) {
-		exit(EXIT_FAILURE);
-	}
+  // init OLED display
+  if (initDisplay() == EXIT_FAILURE) {
+    exit(EXIT_FAILURE);
+  }
 #endif
 
-	while (true) {
+  while (true) {
 
-		if (isRefreshed()) {
+    if (isRefreshed()) {
 
-			tOut("_____________________\n");
+      tOut("_____________________\n");
 
-			// if we're not the same device get attrs from LMS
-			// want this as the default behaviour
-			if (extended)
-			{
-				actVolume = tags[VOLUME].valid ? strtol(tags[VOLUME].tagData, NULL, 10) : 0;
-				if (actVolume != lastVolume) {
-					sprintf(buff, "Vol: %ld%%", actVolume);
+      // if we're not the same device get attrs from LMS
+      // want this as the default behaviour
+      if (extended) {
+        actVolume =
+            tags[VOLUME].valid ? strtol(tags[VOLUME].tagData, NULL, 10) : 0;
+        if (actVolume != lastVolume) {
+          sprintf(buff, "Vol: %ld%%", actVolume);
 #ifdef __arm__
-					putText(0, 0, buff);
+          putText(0, 0, buff);
 #endif
-					lastVolume = actVolume;
-				}
-				// output sample rate and bit depth too - need DSD impl. bd=1
+          lastVolume = actVolume;
+        }
+        // output sample rate and bit depth too - need DSD impl. bd=1
 
-				double samplerate = tags[SAMPLERATE].valid ? strtof(tags[SAMPLERATE].tagData, NULL)/1000 : 44.1;
-				int samplesize = tags[SAMPLESIZE].valid ? strtol(tags[SAMPLESIZE].tagData, NULL, 10) : 16;
-				if ( 1 == samplesize )
-					sprintf(buff, "DSD%.0f", (samplerate/44.1));
-				else
-					sprintf(buff, "%db/%.1fkHz", samplesize, samplerate);
+        double samplerate = tags[SAMPLERATE].valid
+                                ? strtof(tags[SAMPLERATE].tagData, NULL) / 1000
+                                : 44.1;
+        int samplesize = tags[SAMPLESIZE].valid
+                             ? strtol(tags[SAMPLESIZE].tagData, NULL, 10)
+                             : 16;
+        if (1 == samplesize)
+          sprintf(buff, "DSD%.0f", (samplerate / 44.1));
+        else
+          sprintf(buff, "%db/%.1fkHz", samplesize, samplerate);
 
-				if (strstr(buff, ".0") != NULL) {
-					char *foo = NULL;
-					foo = replaceStr(buff, ".0", ""); // cleanup a little
-					sprintf(buff, "%s", foo);
-				}
-				int bdlen = strlen(buff);
+        if (strstr(buff, ".0") != NULL) {
+          char *foo = NULL;
+          foo = replaceStr(buff, ".0", ""); // cleanup a little
+          sprintf(buff, "%s", foo);
+        }
+        int bdlen = strlen(buff);
 #ifdef __arm__
-				putText(maxXPixel() - (bdlen * CHAR_WIDTH)-1, 0, buff);
+        putText(maxXPixel() - (bdlen * CHAR_WIDTH) - 1, 0, buff);
 #endif
+      }
 
-			}
-
-			for (int line = 0; line < LINE_NUM; line++) {
+      for (int line = 0; line < LINE_NUM; line++) {
 #ifdef __arm__
-				int filled = false;
+        int filled = false;
 #endif
-				for (tagtypes_t *t = layout[line]; *t != MAXTAG_TYPES; t++) {
-					if (tags[*t].valid) {
+        for (tagtypes_t *t = layout[line]; *t != MAXTAG_TYPES; t++) {
+          if (tags[*t].valid) {
 #ifdef __arm__
-						filled = true;
+            filled = true;
 #endif
-						if (tags[*t].changed) {
-								strncpy(buff, tags[*t].tagData, maxCharacter());
+            if (tags[*t].changed) {
+              strncpy(buff, tags[*t].tagData, maxCharacter());
 #ifdef __arm__
-								putTextToCenter((line + 1) * 10, buff);
+              putTextToCenter((line + 1) * 10, buff);
 #endif
-						}
-						sprintf(stbl, "%s\n", tags[*t].tagData);
-						tOut(stbl);
-						break;
-					}
-				}
+            }
+            sprintf(stbl, "%s\n", tags[*t].tagData);
+            tOut(stbl);
+            break;
+          }
+        }
 #ifdef __arm__
-				if(!filled) {
-					clearLine((line + 1) * 10);
-				}
+        if (!filled) {
+          clearLine((line + 1) * 10);
+        }
 #endif
-			}
+      }
 
-			pTime = tags[TIME].valid     ? strtol(tags[TIME].tagData,     NULL, 10) : 0;
-			dTime = tags[DURATION].valid ? strtol(tags[DURATION].tagData, NULL, 10) : 0;
-			rTime = tags[REMAINING].valid ? strtol(tags[REMAINING].tagData, NULL, 10) : 0;
+      pTime = tags[TIME].valid ? strtol(tags[TIME].tagData, NULL, 10) : 0;
+      dTime =
+          tags[DURATION].valid ? strtol(tags[DURATION].tagData, NULL, 10) : 0;
+      rTime =
+          tags[REMAINING].valid ? strtol(tags[REMAINING].tagData, NULL, 10) : 0;
 
 #ifdef __arm__
-			sprintf(buff, "%02ld:%02ld", pTime/60, pTime%60);
-			int tlen = strlen(buff);
-			clearLine(56);
-			putText(1, 56, buff);
+      sprintf(buff, "%02ld:%02ld", pTime / 60, pTime % 60);
+      int tlen = strlen(buff);
+      clearLine(56);
+      putText(1, 56, buff);
 
-			if (remaining)
-				sprintf(buff, "-%02ld:%02ld", rTime/60, rTime%60);
-			else
-				sprintf(buff, "%02ld:%02ld", dTime/60, dTime%60);
+      if (remaining)
+        sprintf(buff, "-%02ld:%02ld", rTime / 60, rTime % 60);
+      else
+        sprintf(buff, "%02ld:%02ld", dTime / 60, dTime % 60);
 
-			int dlen = strlen(buff);
-			putText(maxXPixel() - (dlen * CHAR_WIDTH)-1, 56, buff);
+      int dlen = strlen(buff);
+      putText(maxXPixel() - (dlen * CHAR_WIDTH) - 1, 56, buff);
 
-			sprintf(buff, "%s", tags[MODE].valid ? tags[MODE].tagData : "");
-			int mlen = strlen(buff);
-			putText(((maxXPixel() - ((tlen + mlen + dlen) * CHAR_WIDTH)) / 2) + (tlen * CHAR_WIDTH), 56, buff);
+      sprintf(buff, "%s", tags[MODE].valid ? tags[MODE].tagData : "");
+      int mlen = strlen(buff);
+      putText(((maxXPixel() - ((tlen + mlen + dlen) * CHAR_WIDTH)) / 2) +
+                  (tlen * CHAR_WIDTH),
+              56, buff);
 
-			drawHorizontalBargraph(-1, 51, 0, 4, (pTime*100) / (dTime == 0 ? 1 : dTime));
+      drawHorizontalBargraph(-1, 51, 0, 4,
+                             (pTime * 100) / (dTime == 0 ? 1 : dTime));
 #else
-			sprintf(buff, "%3ld:%02ld  %5s  %3ld:%02ld", pTime/60, pTime%60, tags[MODE].valid ? tags[MODE].tagData : "",  dTime/60, dTime%60);
-			sprintf(stbl, "%s\n\n", buff);
-			tOut(stbl);
+      sprintf(buff, "%3ld:%02ld  %5s  %3ld:%02ld", pTime / 60, pTime % 60,
+              tags[MODE].valid ? tags[MODE].tagData : "", dTime / 60,
+              dTime % 60);
+      sprintf(stbl, "%s\n\n", buff);
+      tOut(stbl);
 #endif
-			for(int i = 0; i < MAXTAG_TYPES; i++) {
-				tags[i].changed = false;
-			}
+      for (int i = 0; i < MAXTAG_TYPES; i++) {
+        tags[i].changed = false;
+      }
 
 #ifdef __arm__
-			refreshDisplay();
+      refreshDisplay();
 #endif
-			askRefresh();
-		}
-
-		usleep(SLEEP_TIME);
+      askRefresh();
     }
 
-#ifdef __arm__
-	closeDisplay();
-#endif
-	closeSliminfo();
-	return 0;
-}
+    usleep(SLEEP_TIME);
+  }
 
+#ifdef __arm__
+  closeDisplay();
+#endif
+  closeSliminfo();
+  return 0;
+}

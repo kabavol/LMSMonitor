@@ -1,5 +1,6 @@
 /*
  *	(c) 2015 László TÓTH
+ *	(c) 2020 Stuart Hunter
  *
  *	Todo:
  *
@@ -23,18 +24,16 @@
 
 #define BSIZE 4096
 
-#define LL_QUIET	0
-#define LL_INFO		1
-#define LL_DEBUG	2
+#define LL_QUIET 0
+#define LL_INFO 1
+#define LL_DEBUG 2
 
-int  incVerbose(void);
-int  getVerbose(void);
-int  putMSG (const char *msg, int loglevel);
+int incVerbose(void);
+int getVerbose(void);
+int putMSG(const char *msg, int loglevel);
 void enableTOut(void);
-int  tOut(const char *msg);
+int tOut(const char *msg);
 void abort(const char *msg);
-char *replaceStr(const char *s,
-                 const char *find,
-                 const char *replace);
+char *replaceStr(const char *s, const char *find, const char *replace);
 
 #endif

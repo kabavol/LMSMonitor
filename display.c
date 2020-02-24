@@ -1,5 +1,6 @@
 /*
  *	(c) 2015 László TÓTH
+ *	(c) 2020 Stuart Hunter
  *
  *	Todo:
  *
@@ -18,12 +19,12 @@
  *
  */
 
+#include <errno.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <pthread.h>
-#include <errno.h>
-#include <string.h>
-#include <stdio.h>
 
 #include "display.h"
 
@@ -33,86 +34,81 @@
 #include "Adafruit_GFX.h"
 #include "ArduiPi_OLED.h"
 
-#define SLEEP_TIME	(25000/25)
+#define SLEEP_TIME (25000 / 25)
 
-ArduiPi_OLED 		display;
-int sleep_divisor	= 1 ;
-int oledType		= OLED_SH1106_I2C_128x64;
+ArduiPi_OLED display;
+int sleep_divisor = 1;
+int oledType = OLED_SH1106_I2C_128x64;
 
 #endif
 
-int  maxCharacter(void) { return  21; }
+int maxCharacter(void) { return 21; }
 
-int  maxLine(void)		{ return   8; }
+int maxLine(void) { return 8; }
 
-int  maxXPixel(void)	{ return 128; }
+int maxXPixel(void) { return 128; }
 
-int  maxYPixel(void)	{ return  64; }
+int maxYPixel(void) { return 64; }
 
 #ifdef __arm__
 
 int initDisplay(void) {
-	if ( !display.init(OLED_I2C_RESET,oledType) ) {
-		return EXIT_FAILURE;
-	}
+  if (!display.init(OLED_I2C_RESET, oledType)) {
+    return EXIT_FAILURE;
+  }
 
-	display.begin();
+  display.begin();
 
-	display.clearDisplay();			// clears the screen  buffer
-	display.setTextSize(1);
-	display.setTextColor(WHITE);
-	display.display();				// display it (clear display)
+  display.clearDisplay(); // clears the screen  buffer
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.display(); // display it (clear display)
 
-	return 0;
+  return 0;
 }
 
 void closeDisplay(void) {
-	display.clearDisplay();
+  display.clearDisplay();
 
-	// Free PI GPIO ports
-	display.close();
+  // Free PI GPIO ports
+  display.close();
 
-	return;
+  return;
 }
 
 void drawHorizontalBargraph(int x, int y, int w, int h, int percent) {
 
-	if (x == -1) {
-		x = 0;
-		w = display.width()-2; // ???
-	}
+  if (x == -1) {
+    x = 0;
+    w = display.width() - 2; // ???
+  }
 
-	if (y == -1) {
-		y = display.height() - h;
-	}
+  if (y == -1) {
+    y = display.height() - h;
+  }
 
-	display.fillRect(				x, y, (int16_t) w, h, 0);
-	display.drawHorizontalBargraph(	x, y, (int16_t) w, h, 1, (uint16_t) percent);
+  display.fillRect(x, y, (int16_t)w, h, 0);
+  display.drawHorizontalBargraph(x, y, (int16_t)w, h, 1, (uint16_t)percent);
 
-	return;
+  return;
 }
 
-void refreshDisplay(void) {
-	display.display();
-}
-
+void refreshDisplay(void) { display.display(); }
 
 void putText(int x, int y, char *buff) {
-	display.setTextSize(1);
-	display.fillRect( x, y, (int16_t) strlen(buff) * CHAR_WIDTH, CHAR_HEIGHT, 0);
-	display.setCursor(x, y);
-	display.print(buff);
+  display.setTextSize(1);
+  display.fillRect(x, y, (int16_t)strlen(buff) * CHAR_WIDTH, CHAR_HEIGHT, 0);
+  display.setCursor(x, y);
+  display.print(buff);
 }
 
-void clearLine(int y) {
-	display.fillRect( 0, y, maxXPixel(), CHAR_HEIGHT, 0);
-}
+void clearLine(int y) { display.fillRect(0, y, maxXPixel(), CHAR_HEIGHT, 0); }
 
 void putTextToCenter(int y, char *buff) {
-	int tlen = strlen(buff);
-	int px = maxCharacter() < tlen ? 0 : (maxXPixel() - (tlen * CHAR_WIDTH)) / 2;
-	clearLine(y);
-	putText(px, y, buff);
+  int tlen = strlen(buff);
+  int px = maxCharacter() < tlen ? 0 : (maxXPixel() - (tlen * CHAR_WIDTH)) / 2;
+  clearLine(y);
+  putText(px, y, buff);
 }
 
 #endif
