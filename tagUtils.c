@@ -167,6 +167,7 @@ char *getTag(const char *tag, char *input, char*output, int outSize) {
 	if ((tag == NULL) || (input == NULL) || (output == NULL))  {return NULL;}
 
 	sprintf(exactTag, " %s%%3A", tag);
+
 	if ((foundT = strstr(input, exactTag)) == NULL)            {return NULL;}
 
 	foundT = strstr(foundT, "%3A") + (3 * sizeof(char));

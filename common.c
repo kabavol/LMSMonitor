@@ -59,3 +59,44 @@ void abort(const char *msg) {
 	perror(msg);
 	exit(1);
 }
+
+char *replaceStr(const char *s,
+                 const char *find,
+                 const char *replace)
+{
+    char *result;
+    int i, cnt = 0;
+    int rlen = strlen(replace);
+    int flen = strlen(find);
+
+    // Counting the number of times substring
+    // occurs in the string
+    for (i = 0; s[i] != '\0'; i++)
+    {
+        if (strstr(&s[i], find) == &s[i])
+        {
+            cnt++;
+            i += flen - 1;
+        }
+    }
+    // Making new string of enough length
+    result = (char *)malloc(i + cnt * (rlen - flen) + 1);
+
+    i = 0;
+    while (*s)
+    {
+        // compare the substring with the result
+        if (strstr(s, find) == s)
+        {
+            strcpy(&result[i], replace);
+            i += rlen;
+            s += flen;
+        }
+        else
+            result[i++] = *s++;
+    }
+
+    result[i] = '\0';
+    return result;
+}
+

@@ -18,8 +18,6 @@
  *
  */
 
-#include "mixermon.h"
-
 #include <sys/types.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -52,9 +50,7 @@ int  maxXPixel(void)	{ return 128; }
 int  maxYPixel(void)	{ return  64; }
 
 #ifdef __arm__
-/**********************************************************************
-*
-**********************************************************************/
+
 int initDisplay(void) {
 	if ( !display.init(OLED_I2C_RESET,oledType) ) {
 		return EXIT_FAILURE;
@@ -70,7 +66,6 @@ int initDisplay(void) {
 	return 0;
 }
 
-//********************************************************************
 void closeDisplay(void) {
 	display.clearDisplay();
 
@@ -80,11 +75,11 @@ void closeDisplay(void) {
 	return;
 }
 
-//********************************************************************
 void drawHorizontalBargraph(int x, int y, int w, int h, int percent) {
+
 	if (x == -1) {
 		x = 0;
-		w = display.width();
+		w = display.width()-2; // ???
 	}
 
 	if (y == -1) {
@@ -102,7 +97,6 @@ void refreshDisplay(void) {
 }
 
 
-//********************************************************************
 void putText(int x, int y, char *buff) {
 	display.setTextSize(1);
 	display.fillRect( x, y, (int16_t) strlen(buff) * CHAR_WIDTH, CHAR_HEIGHT, 0);
@@ -110,12 +104,10 @@ void putText(int x, int y, char *buff) {
 	display.print(buff);
 }
 
-//********************************************************************
 void clearLine(int y) {
 	display.fillRect( 0, y, maxXPixel(), CHAR_HEIGHT, 0);
 }
 
-//********************************************************************
 void putTextToCenter(int y, char *buff) {
 	int tlen = strlen(buff);
 	int px = maxCharacter() < tlen ? 0 : (maxXPixel() - (tlen * CHAR_WIDTH)) / 2;

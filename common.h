@@ -33,5 +33,8 @@ int  putMSG (const char *msg, int loglevel);
 void enableTOut(void);
 int  tOut(const char *msg);
 void abort(const char *msg);
+char *replaceStr(const char *s,
+                 const char *find,
+                 const char *replace);
 
 #endif

@@ -5,7 +5,7 @@
  *
  *	Todo:	Done - Automatic server discovery
  *			Done - Get playerID automatically
- *			Reconect to server
+ *			Reconnect to server
  *
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -32,8 +32,11 @@
 #include <netdb.h>
 #include <errno.h>
 
+#include <fcntl.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+
 #include "tagUtils.h"
-#include "mixermon.h"
 #include "sliminfo.h"
 #include "display.h"
 #include "common.h"
@@ -47,20 +50,78 @@
 
 #endif
 
+#define VERSION "0.4"
 #define SLEEP_TIME	(25000/25)
 #define CHRPIXEL 8
 
 char stbl[BSIZE];
 tag *tags;
 
+static char *get_mac_address() {
+  struct ifconf ifc;
+  struct ifreq *ifr, *ifend;
+  struct ifreq ifreq;
+  struct ifreq ifs[3];
+
+  uint8_t mac[6] = {0, 0, 0, 0, 0, 0};
+
+  int sd = socket(AF_INET, SOCK_DGRAM, 0);
+  if (sd < 0)
+    return NULL;
+
+  ifc.ifc_len = sizeof(ifs);
+  ifc.ifc_req = ifs;
+
+  if (ioctl(sd, SIOCGIFCONF, &ifc) == 0) {
+    // Get last interface.
+    ifend = ifs + (ifc.ifc_len / sizeof(struct ifreq));
+
+    // Loop through interfaces.
+    for (ifr = ifc.ifc_req; ifr < ifend; ifr++) {
+      if (ifr->ifr_addr.sa_family == AF_INET) {
+        strncpy(ifreq.ifr_name, ifr->ifr_name, sizeof(ifreq.ifr_name));
+        if (ioctl(sd, SIOCGIFHWADDR, &ifreq) == 0) {
+          memcpy(mac, ifreq.ifr_hwaddr.sa_data, 6);
+          // Leave on first valid address.
+          if (mac[0] + mac[1] + mac[2] != 0)
+            ifr = ifend;
+        }
+      }
+    }
+  }
+
+  close(sd);
+
+  char *macaddr = (char *) malloc(18);
+
+  snprintf(macaddr, 18, "%02x:%02x:%02x:%02x:%02x:%02x",
+          mac[0], mac[1], mac[2],
+          mac[3], mac[4], mac[5]);
+
+  return macaddr;
+
+}
+
+void print_help(void) {
+	printf("LMSMonitor Ver. %s\n"
+"Usage [options] -n Player name\n"
+"options:\n"
+" -t enable print info to stdout\n"
+" -v increment verbose level\n\n",VERSION);
+}
+
 int main(int argc, char *argv[]) {
+
+	bool extended = false;
+	bool remaining = false;
 	long lastVolume = 0;
 	long actVolume  = 0;
-	long pTime, dTime;
+	long pTime, dTime, rTime;
 	char buff[255];
-	char *sndCard = NULL;
 	char *playerName = NULL;
 	int  aName;
+	char *thatMAC = NULL;
+	char *thisMAC = get_mac_address();
 
 	#define LINE_NUM 4
 	tagtypes_t layout[LINE_NUM][3] = {
@@ -71,7 +132,7 @@ int main(int argc, char *argv[]) {
 	};
 
 	opterr = 0;
-	while ((aName = getopt (argc, argv, "o:n:tvh")) != -1) {
+	while ((aName = getopt (argc, argv, "o:n:tvhrx")) != -1) {
 		switch (aName) {
 			case 't':
 				enableTOut();
@@ -81,16 +142,16 @@ int main(int argc, char *argv[]) {
 				incVerbose();
 				break;
 
-			case 'o':
-				sndCard = optarg;
-				break;
-
 			case 'n':
 				playerName = optarg;
 				break;
 
+			case 'r':
+				remaining = true;
+				break;
+
 			case 'h':
-				printf("LMSMonitor Ver. 0.2\nUsage [options] -n Player name\noptions:\n -o Soundcard (eg. hw:CARD=IQaudIODAC)\n -t enable print info to stdout\n -v increment verbose level\n\n");
+				print_help();
 				exit(1);
 				break;
 		}
@@ -98,8 +159,12 @@ int main(int argc, char *argv[]) {
 
 	if((tags = initSliminfo(playerName)) == NULL)	{ exit(1); }
 
-	// init ALSA mixer monitor
-	startMimo(sndCard, NULL);
+	thatMAC = player_mac();
+
+	if (thatMAC != thisMAC) {
+		extended = true;
+		printf("Extended attrs from LMS enabled, no mimo!\n");
+	}
 
 #ifdef __arm__
 	// init OLED display
@@ -110,20 +175,42 @@ int main(int argc, char *argv[]) {
 
 	while (true) {
 
-		actVolume = getActVolume();
-		if (actVolume != lastVolume) {
-			sprintf(buff, "Vol:             %3ld%%", actVolume);
-#ifdef __arm__
-			putText(0, 0, buff);
-			drawHorizontalBargraph(24, 2, 75, 4, actVolume);
-			refreshDisplay();
-#endif
-			tOut(buff);
-			lastVolume = actVolume;
-		}
-
 		if (isRefreshed()) {
+
 			tOut("_____________________\n");
+
+			// if we're not the same device get attrs from LMS
+			// want this as the default behaviour
+			if (extended)
+			{
+				actVolume = tags[VOLUME].valid ? strtol(tags[VOLUME].tagData, NULL, 10) : 0;
+				if (actVolume != lastVolume) {
+					sprintf(buff, "Vol: %ld%%", actVolume);
+#ifdef __arm__
+					putText(0, 0, buff);
+#endif
+					lastVolume = actVolume;
+				}
+				// output sample rate and bit depth too - need DSD impl. bd=1
+
+				double samplerate = tags[SAMPLERATE].valid ? strtof(tags[SAMPLERATE].tagData, NULL)/1000 : 44.1;
+				int samplesize = tags[SAMPLESIZE].valid ? strtol(tags[SAMPLESIZE].tagData, NULL, 10) : 16;
+				if ( 1 == samplesize )
+					sprintf(buff, "DSD%.0f", (samplerate/44.1));
+				else
+					sprintf(buff, "%db/%.1fkHz", samplesize, samplerate);
+
+				if (strstr(buff, ".0") != NULL) {
+					char *foo = NULL;
+					foo = replaceStr(buff, ".0", ""); // cleanup a little
+					sprintf(buff, "%s", foo);
+				}
+				int bdlen = strlen(buff);
+#ifdef __arm__
+				putText(maxXPixel() - (bdlen * CHAR_WIDTH)-1, 0, buff);
+#endif
+
+			}
 
 			for (int line = 0; line < LINE_NUM; line++) {
 #ifdef __arm__
@@ -154,16 +241,21 @@ int main(int argc, char *argv[]) {
 
 			pTime = tags[TIME].valid     ? strtol(tags[TIME].tagData,     NULL, 10) : 0;
 			dTime = tags[DURATION].valid ? strtol(tags[DURATION].tagData, NULL, 10) : 0;
+			rTime = tags[REMAINING].valid ? strtol(tags[REMAINING].tagData, NULL, 10) : 0;
 
 #ifdef __arm__
-			sprintf(buff, "%ld:%02ld", pTime/60, pTime%60);
+			sprintf(buff, "%02ld:%02ld", pTime/60, pTime%60);
 			int tlen = strlen(buff);
 			clearLine(56);
-			putText(0, 56, buff);
+			putText(1, 56, buff);
 
-			sprintf(buff, "%ld:%02ld", dTime/60, dTime%60);
+			if (remaining)
+				sprintf(buff, "-%02ld:%02ld", rTime/60, rTime%60);
+			else
+				sprintf(buff, "%02ld:%02ld", dTime/60, dTime%60);
+
 			int dlen = strlen(buff);
-			putText(maxXPixel() - (dlen * CHAR_WIDTH), 56, buff);
+			putText(maxXPixel() - (dlen * CHAR_WIDTH)-1, 56, buff);
 
 			sprintf(buff, "%s", tags[MODE].valid ? tags[MODE].tagData : "");
 			int mlen = strlen(buff);
@@ -194,3 +286,4 @@ int main(int argc, char *argv[]) {
 	closeSliminfo();
 	return 0;
 }
+

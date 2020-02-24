@@ -32,10 +32,11 @@ typedef struct Tag {
 	int  changed;
 } tag;
 
-typedef enum {SAMPLESIZE, SAMPLERATE, TIME, DURATION, TITLE, ALBUM, ARTIST, ALBUMARTIST, COMPOSER, CONDUCTOR, MODE, MAXTAG_TYPES} tagtypes_t;
+typedef enum {SAMPLESIZE, SAMPLERATE, TIME, DURATION, TITLE, ALBUM, ARTIST, ALBUMARTIST, COMPOSER, CONDUCTOR, MODE, REMAINING, VOLUME, MAXTAG_TYPES} tagtypes_t;
 
 void  closeSliminfo(void);
 tag  *initSliminfo(char *playerName);
+char *player_mac(void);
 void  error(const char *msg);
 void  askRefresh(void);
 int   isRefreshed(void);

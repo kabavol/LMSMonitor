@@ -3,7 +3,7 @@
  *
  *	(c) 2015 László TÓTH
  *
- *	Todo:	Reconect to server
+ *	TODO:	Reconnect to server
  *
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -83,10 +83,9 @@ int discoverPlayer(char *playerName) {
 int setStaticServer(void) {
 	LMSPort = 9090;
 	LMSHost = NULL;		// autodiscovery
-//	LMSHost = (char *)"127.0.0.1";
-//	LMSHost = (char *)"192.168.1.252";
 	return 0;
 }
+
 /*
  * LMS server discover
  *
@@ -146,30 +145,23 @@ in_addr_t getServerAddress(void) {
 	return s.sin_addr.s_addr;
 }
 
-/*******************************************************************************
- *
- ******************************************************************************/
+
+char *player_mac(void){
+	return playerID;
+}
+
 void askRefresh(void) {
 	refreshRequ = true;
-	}
+}
 
-/*******************************************************************************
- *
- ******************************************************************************/
 int isRefreshed(void) {
 	return !refreshRequ;
-	}
+}
 
-/*******************************************************************************
- *
- ******************************************************************************/
 void refreshed(void) {
 	refreshRequ = false;
-	}
+}
 
-/*******************************************************************************
- *
- ******************************************************************************/
 int connectServer(void) {
 	int sfd;
 
@@ -182,8 +174,6 @@ int connectServer(void) {
 	}
 
 	memset(&serv_addr, 0, sizeof(serv_addr));
-
-//	memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, server->h_length);
 
 	serv_addr.sin_family	  = AF_INET;
 	serv_addr.sin_addr.s_addr = getServerAddress();
@@ -198,9 +188,6 @@ int connectServer(void) {
 	return sfd;
 }
 
-/*******************************************************************************
- *
- ******************************************************************************/
 void closeSliminfo(void) {
 	if (sockFD > 0) {
 		close(sockFD);
@@ -213,14 +200,13 @@ void closeSliminfo(void) {
 	}
 }
 
-/*******************************************************************************
- *
- ******************************************************************************/
 tag *initTagStore(void) {
 	tagStore[SAMPLESIZE].name  = "samplesize";
 	tagStore[SAMPLERATE].name  = "samplerate";
 	tagStore[TIME].name 	   = "time";
 	tagStore[DURATION].name	   = "duration";
+	tagStore[REMAINING].name   = "remaining";
+	tagStore[VOLUME].name      = "mixer%20volume";
 	tagStore[TITLE].name 	   = "title";
 	tagStore[ALBUM].name 	   = "album";
 	tagStore[ARTIST].name 	   = "artist";
@@ -255,7 +241,7 @@ void *serverPolling(void *x_voidptr){
 
 			for(int i = 0; i < MAXTAG_TYPES; i++) {
 				if ((getTag((char *)tagStore[i].name, buffer, tagData, BSIZE)) != NULL) {
-					if (strcmp(tagData, tagStore[i].tagData) != 0) {
+					if ((i != REMAINING) && (strcmp(tagData, tagStore[i].tagData) != 0)) {
 						strncpy(tagStore[i].tagData, tagData, MAXTAG_DATA);
 						tagStore[i].changed = true;
 					}
@@ -265,14 +251,21 @@ void *serverPolling(void *x_voidptr){
 				}
 			}
 
-//		pTime	= getMinute("time", buffer);
-//		duration = getMinute("duration", buffer);
+			long pTime = tagStore[TIME].valid     ? strtol(tagStore[TIME].tagData,     NULL, 10) : 0;
+                        long dTime = tagStore[DURATION].valid ? strtol(tagStore[DURATION].tagData, NULL, 10) : 0;
 
-//		printf("%3ld:%02ld %s %ld:%02ld\n", pTime/60, pTime%60, isPlaying(buffer) ? ">" : "II",  duration/60, duration%60);
+			if (pTime && dTime) {
+				snprintf(tagData, MAXTAG_DATA, "%ld", (dTime - pTime));
+				if (strcmp(tagData, tagStore[REMAINING].tagData) != 0) {
+					strncpy(tagStore[REMAINING].tagData, tagData, MAXTAG_DATA);
+					tagStore[REMAINING].valid = true;
+					tagStore[REMAINING].changed = true;
+				}
+			}
 
-//		printf("\n");
 			refreshed();
 			sleep(1);
+
 		}
 	}
 	return NULL;
