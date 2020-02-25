@@ -126,15 +126,23 @@ int maxYPixel(void) { return 64; }
 
 #ifdef __arm__
 
-#define BIGCHAR_LEN 144
-
 void bigChar(uint8_t cc, int x) {
   
   // need fix for space, and minus sign
-  int start = (cc-48)*BIGCHAR_LEN;
-  uint8_t dest[BIGCHAR_LEN];
+  int start = (cc-48)*LCD23X48_LEN;
+  uint8_t dest[LCD23X48_LEN];
   memcpy(dest, lcd23x48+start, sizeof dest);
   display.drawBitmap(x, 1, dest, 23, 48, WHITE);
+
+}
+
+void bigChar2(uint8_t cc, int x, int len, int w, int h, const uint8_t font[]) {
+  
+  // need fix for space, and minus sign
+  int start = (cc-48)*len;
+  uint8_t dest[len];
+  memcpy(dest, font+start, sizeof dest);
+  display.drawBitmap(x, 1, dest, w, h, WHITE);
 
 }
 
@@ -158,10 +166,7 @@ int initDisplay(void) {
 
 void closeDisplay(void) {
   display.clearDisplay();
-
-  // Free PI GPIO ports
   display.close();
-
   return;
 }
 
@@ -179,7 +184,8 @@ void drawTimeBlink(uint8_t cc) {
   if (32 == cc)
     display.fillRect(58, 0, 10, display.height()-16, BLACK);
   else
-    bigChar(cc, x);
+    bigChar2(cc, x, LCD23X48_LEN, 23, 48, lcd23x48);
+
   display.display();
 }
 
@@ -189,7 +195,7 @@ void drawTimeText(char *buff) {
   // digit walk and "blit"
   int x = 2;
   for (size_t i = 0; i < strlen(buff); i++){
-    bigChar(buff[i], x);
+    bigChar2(buff[i], x, LCD23X48_LEN, 23, 48, lcd23x48);
     x += 25;
   }
 }

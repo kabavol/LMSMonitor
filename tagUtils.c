@@ -163,7 +163,6 @@ int decode(const char *s, char *dec) {
 
   return o - dec;
 }
-/***********************************************************************/
 
 char *getTag(const char *tag, char *input, char *output, int outSize) {
   char exactTag[MAXTAGLEN];
