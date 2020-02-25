@@ -25,10 +25,10 @@
 #include "sliminfo.h"
 
 char *getTag(const char *tag, char *input, char *output, int outSize);
-char *getQuality(char *input, char *output, int outSize);
 int isPlaying(char *input);
 long getMinute(tag *timeTag);
 void encode(const char *s, char *enc);
 int decode(const char *s, char *dec);
+bool getTagBool(tag *boolTag);
 
 #endif

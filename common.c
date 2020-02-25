@@ -57,9 +57,15 @@ int tOut(const char *msg) {
   return true;
 }
 
-void abort(const char *msg) {
+void abortMonitor(const char *msg) {
   perror(msg);
   exit(1);
+}
+
+bool isEmptyStr(const char *s) {
+  if ((s == NULL) || (s[0] == '\0'))
+    return true;
+  return false;
 }
 
 char *replaceStr(const char *s, const char *find, const char *replace) {

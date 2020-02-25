@@ -2,7 +2,7 @@
  *	(c) 2015 László TÓTH
  *	(c) 2020 Stuart Hunter
  *
- *	Todo:
+ *	TODO:
  *
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -22,14 +22,22 @@
 #ifndef DISPLAY_H
 #define DISPLAY_H 1
 
+#include <sys/types.h>
+#include <unistd.h>
+#include <stdint.h>
+
 #define CHAR_WIDTH 6
 #define CHAR_HEIGHT 8
 
+void resetDisplay(int fontSize);
 int initDisplay(void);
 void closeDisplay(void);
+void splashScreen(void);
 void drawHorizontalBargraph(int x, int y, int w, int h, int percent);
 void putText(int x, int y, char *buff);
 void putTextToCenter(int y, char *buff);
+void drawTimeBlink(uint8_t cc);
+void drawTimeText(char *buff);
 void clearLine(int y);
 void refreshDisplay(void);
 int maxCharacter(void);

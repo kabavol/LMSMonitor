@@ -33,7 +33,9 @@ int getVerbose(void);
 int putMSG(const char *msg, int loglevel);
 void enableTOut(void);
 int tOut(const char *msg);
-void abort(const char *msg);
+void abortMonitor(const char *msg);
 char *replaceStr(const char *s, const char *find, const char *replace);
+bool isEmptyStr(const char *s);
+
 
 #endif

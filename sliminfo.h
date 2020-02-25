@@ -22,31 +22,32 @@
 #ifndef SLIMINFO_H
 #define SLIMINFO_H
 
-#define MAXTAG_DN 16
 #define MAXTAG_DATA 255
 
+#include <stdbool.h>
 typedef struct Tag {
   const char *name;
   const char *displayName;
   char *tagData;
-  int valid;
-  int changed;
+  bool valid;
+  bool changed;
 } tag;
 
 typedef enum {
-  SAMPLESIZE,
-  SAMPLERATE,
-  TIME,
-  DURATION,
-  TITLE,
-  ALBUM,
   ARTIST,
   ALBUMARTIST,
   COMPOSER,
   CONDUCTOR,
-  MODE,
+  TITLE,
+  ALBUM,
+  SAMPLESIZE,
+  SAMPLERATE,
+  TIME,
+  DURATION,
   REMAINING,
   VOLUME,
+  COMPILATION,
+  MODE,
   MAXTAG_TYPES
 } tagtypes_t;
 
@@ -55,6 +56,6 @@ tag *initSliminfo(char *playerName);
 char *player_mac(void);
 void error(const char *msg);
 void askRefresh(void);
-int isRefreshed(void);
+bool isRefreshed(void);
 
 #endif

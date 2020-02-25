@@ -195,36 +195,6 @@ char *getTag(const char *tag, char *input, char *output, int outSize) {
   return output;
 }
 
-char *getQuality(char *input, char *output, int outSize) {
-  long sampleSize;
-  long sampleRate;
-  char tagData[MAXTAGLEN];
-
-  if ((input == NULL) || (output == NULL)) {
-    return NULL;
-  }
-
-  if (outSize < (7 * (int)sizeof(char))) {
-    return NULL;
-  }
-  if ((getTag("samplesize", input, tagData, MAXTAGLEN)) == NULL) {
-    return NULL;
-  }
-  if ((sampleSize = strtol(tagData, NULL, 10)) == 0) {
-    return NULL;
-  }
-  if ((getTag("samplerate", input, tagData, MAXTAGLEN)) == NULL) {
-    return NULL;
-  }
-  if ((sampleRate = strtol(tagData, NULL, 10)) == 0) {
-    return NULL;
-  }
-
-  sprintf(output, "%ld/%ld", sampleSize, sampleRate / 1000);
-
-  return output;
-}
-
 int isPlaying(char *input) {
   char tagData[MAXTAGLEN];
 
@@ -252,4 +222,16 @@ long getMinute(tag *timeTag) {
   }
 
   return strtol(timeTag->tagData, NULL, 10);
+}
+
+bool getTagBool(tag *boolTag) {
+
+  if (boolTag == NULL) {
+    return false;
+  }
+  if (!boolTag->valid) {
+    return false;
+  }
+  return ((strcmp("1", boolTag->tagData) == 0) ||
+          (strcmp("Y", boolTag->tagData) == 0));
 }
