@@ -45,6 +45,7 @@
 int LMSPort;
 char *LMSHost = NULL;
 
+char playerIP[BSIZE] = {0};
 char playerID[BSIZE] = {0};
 char query[BSIZE] = {0};
 char stb[BSIZE];
@@ -62,7 +63,8 @@ int discoverPlayer(char *playerName) {
   int bytes;
 
   // I've not found this feature in the CLI spec,
-  //	but if you send the player name, the server answer with the player ID.
+  //	but if you send the player name, the server
+  //  answers with the unique player ID (usually MAC address).
   if (playerName != NULL) {
     if (strlen(playerName) > (BSIZE / 3)) {
       abortMonitor("ERROR too long player name!");
@@ -81,13 +83,38 @@ int discoverPlayer(char *playerName) {
     if (strncmp(qBuffer, aBuffer, strlen(aBuffer)) == 0) {
       abortMonitor("Player not found!");
     }
+
     decode(aBuffer, playerID);
+
+    sprintf(qBuffer, "%s player ip ?\n", playerID);
+    if (write(sockFD, qBuffer, strlen(qBuffer)) < 0) {
+      abortMonitor("ERROR writing to socket");
+    }
+    if ((bytes = read(sockFD, aBuffer, BSIZE - 1)) < 0) {
+      abortMonitor("ERROR reading from socket");
+    }
+    aBuffer[bytes] = 0;
+
+    char *ip;
+    if ((ip = strstr(aBuffer, "%3F ")) != NULL) {
+      char *lc;
+      int tl;
+      ip = strstr(ip, "%3F ") + (4 * sizeof(char));
+      if ((lc = strstr(ip, "%3A")) != NULL) {
+        tl = lc - ip;
+      } else {
+        tl = strlen(ip);
+      }
+      strncpy(playerIP, ip, tl);
+    }
 
   } else {
     return -1;
   }
 
-  sprintf(stb, "PlayerName: %s, PlayerID: %s\n", playerName, playerID);
+  sprintf(stb, 
+    "Player Name ..: %s\nPlayer ID ....: %s\nPlayer IP ....: %s\n",
+    playerName, playerID, playerIP);
   putMSG(stb, LL_INFO);
 
   return 0;
@@ -148,8 +175,9 @@ in_addr_t getServerAddress(void) {
         char readbuf[10];
         socklen_t slen = sizeof(s);
         recvfrom(disc_sock, readbuf, 10, 0, (struct sockaddr *)&s, &slen);
-        sprintf(stb, "Got response from: %s:%d\n", inet_ntoa(s.sin_addr),
-                ntohs(s.sin_port));
+        sprintf(stb, "LMS (Server) responsed:\nServer IP ....: %s:%d\n",
+          inet_ntoa(s.sin_addr),
+          ntohs(s.sin_port));
         putMSG(stb, LL_INFO);
       }
     } while (s.sin_addr.s_addr == 0);
@@ -324,7 +352,50 @@ tag *initSliminfo(char *playerName) {
     return NULL;
   }
 
-  sprintf(query, "%s status - 1 tags:aAlCIT\n", playerID);
+/*
+    ARTIST = "a"
+    ARTIST_ROLE = "A"
+    BUTTONS = "B"
+    COVERID = "c"
+    COMPILATION = "C"
+    DURATION = "d"
+    ALBUM_ID = "e"
+    FILESIZE = "f"
+    GENRE = "g"
+    GENRE_LIST = "G"
+    DISC = "i"
+    SAMPLESIZE = "I"
+    COVERART = "j"
+    ARTWORK_TRACK_ID = "J"
+    COMMENT = "k"
+    ARTWORK_URL = "K"
+    ALBUM = "l"
+    INFO_LINK = "L"
+    BPM = "m"
+    MUSICMAGIC_MIXABLE = "M"
+    MODIFICATION_TIME = "n"
+    REMOTE_TITLE = "N"
+    CONTENT_TYPE = "o"
+    GENRE_ID = "p"
+    GENRE_ID_LIST = "P"
+    DISC_COUNT = "q"
+    BITRATE = "r"
+    RATING = "R"
+    ARTIST_ID = "s"
+    ARTIST_ROLE_IDS = "S"
+    TRACK_NUMBER = "t"
+    SAMPLERATE = "T"
+    URL = "u"
+    TAG_VERSION = "v"
+    LYRICS = "w"
+    REMOTE = "x"
+    ALBUM_REPLAY_GAIN = "X"
+    YEAR = "y"
+    REPLAY_GAIN = "Y"
+
+
+*/
+  sprintf(query, "%s status - 1 tags:aAlCITytrdx\n", playerID);
   int x = 0;
 
   if (initTagStore() != NULL) {
@@ -338,4 +409,5 @@ tag *initSliminfo(char *playerName) {
   }
 
   return tagStore;
+
 }

@@ -42,6 +42,7 @@
 #include "display.h"
 #include "sliminfo.h"
 #include "tagUtils.h"
+#include <sys/time.h>
 #include <time.h>
 
 #ifdef __arm__
@@ -346,7 +347,9 @@ int main(int argc, char *argv[]) {
           }
           refreshLMS = true;
 
-          time_t now = time(NULL);
+          struct timeval tv;
+          gettimeofday(&tv, NULL);
+          time_t now = tv.tv_sec;
           struct tm loctm = *localtime(&now);
 
 #ifdef __arm__
@@ -354,7 +357,8 @@ int main(int argc, char *argv[]) {
           // time
           sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
           if (strcmp(lastTime, buff) != 0) {
-            drawTimeText(buff);
+            // drawRectangle(0, 0, 128, 64, WHITE);
+            drawTimeText(buff); // pass last too so we can selectively update!
             strncpy(lastTime, buff, 32);
           }
 
@@ -365,8 +369,10 @@ int main(int argc, char *argv[]) {
             drawTimeBlink(58);
 
           // seconds
-          drawHorizontalBargraph(-1, 51, 0, 4,
-                                 (int)((100 * loctm.tm_sec) / 60));
+          drawHorizontalBargraph(
+              -1, 48, 0, 4,
+              (int)((100 * (loctm.tm_sec + ((double)tv.tv_usec / 1000000)) /
+                     60)));
           // date
           sprintf(buff, "  %d-%02d-%02d  ", loctm.tm_year + 1900,
                   loctm.tm_mon + 1, loctm.tm_mday);
