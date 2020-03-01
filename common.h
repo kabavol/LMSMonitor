@@ -37,5 +37,4 @@ void abortMonitor(const char *msg);
 char *replaceStr(const char *s, const char *find, const char *replace);
 bool isEmptyStr(const char *s);
 
-
 #endif

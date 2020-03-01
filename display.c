@@ -24,12 +24,13 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <stdint.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <stdint.h>
 
 #include "display.h"
 #include "oledimg.h"
+#include "libm6.h"
 
 #ifdef __arm__
 
@@ -46,7 +47,6 @@ ArduiPi_OLED display;
 int sleep_divisor = 1;
 int oledType = OLED_SH1106_I2C_128x64;
 
-
 #endif
 
 int maxCharacter(void) { return 21; } // review when we get scroll working
@@ -60,104 +60,139 @@ int maxYPixel(void) { return 64; }
 #ifdef __arm__
 
 void bigChar(uint8_t cc, int x, int len, int w, int h, const uint8_t font[]) {
-  
-  // need fix for space, and minus sign
-  int start = (cc-48)*len;
-  uint8_t dest[len];
-  memcpy(dest, font+start, sizeof dest);
-  display.drawBitmap(x, 1, dest, w, h, WHITE);
 
+    // need fix for space, and minus sign
+    int start = (cc - 48) * len;
+    uint8_t dest[len];
+    memcpy(dest, font + start, sizeof dest);
+    display.drawBitmap(x, 1, dest, w, h, WHITE);
 }
 
 void resetDisplay(int fontSize) {
-  display.clearDisplay(); // clears the screen  buffer
-  display.setTextSize(fontSize);
-  display.setTextColor(WHITE);
-  display.setTextWrap(false);
-  display.display(); // display it (clear display)
+    display.clearDisplay(); // clears the screen  buffer
+    display.setTextSize(fontSize);
+    display.setTextColor(WHITE);
+    display.setTextWrap(false);
+    display.display(); // display it (clear display)
 }
 
 int initDisplay(void) {
-  if (!display.init(OLED_I2C_RESET, oledType)) {
-    return EXIT_FAILURE;
-  }
+    if (!display.init(OLED_I2C_RESET, oledType)) {
+        return EXIT_FAILURE;
+    }
 
-  display.begin();
-  resetDisplay(1);
-  return 0;
-
+    display.begin();
+    resetDisplay(1);
+    return 0;
 }
 
 void closeDisplay(void) {
-  display.clearDisplay();
-  display.close();
-  return;
+    display.clearDisplay();
+    display.close();
+    return;
+}
+
+void vumeter2upl(void) {
+    //display.clearDisplay();
+    display.drawBitmap(0, 0, vu2up128x64, 128, 64, WHITE);
 }
 
 void splashScreen(void) {
-  display.clearDisplay();
-  display.drawBitmap(0, 0, splash, 128, 64, WHITE);
-  display.display();
-  delay(5000);
-  display.clearDisplay();
-  display.display();
+    display.clearDisplay();
+    display.drawBitmap(0, 0, splash, 128, 64, WHITE);
+    display.display();
+    delay(5000);
+    display.clearDisplay();
+    display.display();
 }
 
 void drawTimeBlink(uint8_t cc) {
-  int x = 2+(2*25);
-  if (32 == cc)
-    display.fillRect(58, 0, 12, display.height()-16, BLACK);
-  else
-    bigChar(cc, x, LCD25X44_LEN, 25, 44, lcd25x44);
+    int x = 2 + (2 * 25);
+    if (32 == cc)
+        display.fillRect(58, 0, 12, display.height() - 16, BLACK);
+    else
+        bigChar(cc, x, LCD25X44_LEN, 25, 44, lcd25x44);
+}
+
+void volume(bool v, char *buff) {
+    //display.fillRect(0, 0, (tlen+2) * CHAR_WIDTH, CHAR_HEIGHT, BLACK);
+    putText(0, 0, buff);
+    int w = 8;
+    int start = v * w;
+    uint8_t dest[w];
+    memcpy(dest, volume8x8 + start, sizeof dest);
+    display.drawBitmap(0, 0, dest, w, w, WHITE);
 }
 
 void drawTimeText(char *buff) {
-  display.fillRect(0, 0, display.width(), display.height()-16, BLACK);
-  // digit walk and "blit"
-  int x = 2;
-  for (size_t i = 0; i < strlen(buff); i++){
-    bigChar(buff[i], x, LCD25X44_LEN, 25, 44, lcd25x44);
-    x += 25;
-  }
+    display.fillRect(0, 0, display.width(), display.height() - 16, BLACK);
+    // digit walk and "blit"
+    int x = 2;
+    for (size_t i = 0; i < strlen(buff); i++) {
+        bigChar(buff[i], x, LCD25X44_LEN, 25, 44, lcd25x44);
+        x += 25;
+    }
+}
+
+void drawTimeText2(char *buff, char *last) {
+    // digit walk and "blit"
+    int x = 2;
+    for (size_t i = 0; i < strlen(buff); i++) {
+        // selective updates, less "blink"
+        if (buff[i] != last[i]) {
+            display.fillRect(x, 1, 25, display.height() - 15, BLACK);
+            bigChar(buff[i], x, LCD25X44_LEN, 25, 44, lcd25x44);
+        }
+        x += 25;
+    }
 }
 
 void drawHorizontalBargraph(int x, int y, int w, int h, int percent) {
 
-  if (x == -1) {
-    x = 0;
-    w = display.width() - 2; // is a box so -2 for sides!!!
-  }
+    if (x == -1) {
+        x = 0;
+        w = display.width() - 2; // is a box so -2 for sides!!!
+    }
 
-  if (y == -1) {
-    y = display.height() - h;
-  }
+    if (y == -1) {
+        y = display.height() - h;
+    }
 
-  display.fillRect(x, y, (int16_t)w, h, 0);
-  display.drawHorizontalBargraph(x, y, (int16_t)w, h, 1, (uint16_t)percent);
+    display.fillRect(x, y, (int16_t)w, h, 0);
+    display.drawHorizontalBargraph(x, y, (int16_t)w, h, 1, (uint16_t)percent);
 
-  return;
+    return;
 }
 
 void refreshDisplay(void) { display.display(); }
 
 void putText(int x, int y, char *buff) {
-  display.setTextSize(1);
-  display.fillRect(x, y, (int16_t)strlen(buff) * CHAR_WIDTH, CHAR_HEIGHT, 0);
-  display.setCursor(x, y);
-  display.print(buff);
+    display.setTextSize(1);
+    display.fillRect(x, y, (int16_t)strlen(buff) * CHAR_WIDTH, CHAR_HEIGHT, 0);
+    display.setCursor(x, y);
+    display.print(buff);
 }
 
 void clearLine(int y) { display.fillRect(0, y, maxXPixel(), CHAR_HEIGHT, 0); }
 
 void putTextToCenter(int y, char *buff) {
-  int tlen = strlen(buff);
-  int px = maxCharacter() < tlen ? 0 : (maxXPixel() - (tlen * CHAR_WIDTH)) / 2;
-  clearLine(y);
-  putText(px, y, buff);
+    int tlen = strlen(buff);
+    int px =
+        maxCharacter() < tlen ? 0 : (maxXPixel() - (tlen * CHAR_WIDTH)) / 2;
+    clearLine(y);
+    putText(px, y, buff);
+}
+
+void testFont(int x, int y, char *buff) {
+    //display.setTextFont(&LiberationMono_Regular6pt7bBitmaps);
+    display.setTextSize(1);
+    display.fillRect(x, y, (int16_t)strlen(buff) * CHAR_WIDTH, CHAR_HEIGHT, 0);
+    display.setCursor(x, y);
+    display.print(buff);
 }
 
 void drawRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
-  display.drawRect(x, y, w, h, color);
+    display.drawRect(x, y, w, h, color);
 }
 
 // need scroller - independant threaded

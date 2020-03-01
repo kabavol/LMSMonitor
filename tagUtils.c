@@ -20,8 +20,8 @@
  */
 
 #include <ctype.h>
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -39,28 +39,28 @@ char rfc3986[256] = {0};
 // char html5[256]   = {0};
 
 void buildChrTabs(void) {
-  for (int i = 0; i < 256; i++) {
-    rfc3986[i] =
-        isalnum(i) || i == '~' || i == '-' || i == '.' || i == '_' ? i : 0;
-    //		html5[i]   = isalnum(i)||i == '*'||i == '-'||i == '.'||i == '_' ? i :
-    //(i == ' ') ? '+' : 0;
-  }
+    for (int i = 0; i < 256; i++) {
+        rfc3986[i] =
+            isalnum(i) || i == '~' || i == '-' || i == '.' || i == '_' ? i : 0;
+        //		html5[i]   = isalnum(i)||i == '*'||i == '-'||i == '.'||i == '_' ? i :
+        //(i == ' ') ? '+' : 0;
+    }
 }
 
 void encode(const char *s, char *enc) {
-  if (rfc3986[0] == 0) {
-    buildChrTabs();
-  }
-
-  for (; *s; s++) {
-    if (rfc3986[(unsigned char)*s]) {
-      sprintf(enc, "%c", rfc3986[(unsigned char)*s]);
-    } else {
-      sprintf(enc, "%%%02X", *s);
+    if (rfc3986[0] == 0) {
+        buildChrTabs();
     }
-    while (*++enc)
-      ;
-  }
+
+    for (; *s; s++) {
+        if (rfc3986[(unsigned char)*s]) {
+            sprintf(enc, "%c", rfc3986[(unsigned char)*s]);
+        } else {
+            sprintf(enc, "%%%02X", *s);
+        }
+        while (*++enc)
+            ;
+    }
 }
 
 /*
@@ -72,165 +72,165 @@ void encode(const char *s, char *enc) {
  * characters
  */
 inline int ishex(int x) {
-  return (x >= '0' && x <= '9') || (x >= 'a' && x <= 'f') ||
-         (x >= 'A' && x <= 'F');
+    return (x >= '0' && x <= '9') || (x >= 'a' && x <= 'f') ||
+           (x >= 'A' && x <= 'F');
 }
 
 char getASCII(int utf8) {
-  char ascii = '.';
-  // 0x00C0
-  char mainMap[] = "AAAAAAACEEEEIIIIDNOOOOOx0UUUUY.B"
-                   "aaaaaaaceeeeiiiionooooo-ouuuuy.y"
-                   "AaAaAaCcCcCcCcDdDdEeEeEeEeEeGgGg"
-                   "GgGgHhHhIiIiIiIiIiIiJjKkkLlLlLlL"
-                   "lLlNnNnNnnnnOoOoOo..RrRrRrSsSsSs"
-                   "SsTtTtFfUuUuUuUuUuUuWwYyYZzZzZzf"
-                   "bB...............FfG...IKkl..N.0"
-                   "................................"
-                   "|..!.........AaIiOoUuUuUuUuUueAa"
-                   "AaAaGgGgKkQqQq33J...GgHpNnAaAa00"
-                   "AaAaEeEeIiIiOoOoRrRrUuUuSsTt33Hh"
-                   "nd..ZzAaEeOoOoOoOoYylnrj..ACcLTs"; // 0x022F
+    char ascii = '.';
+    // 0x00C0
+    char mainMap[] = "AAAAAAACEEEEIIIIDNOOOOOx0UUUUY.B"
+                     "aaaaaaaceeeeiiiionooooo-ouuuuy.y"
+                     "AaAaAaCcCcCcCcDdDdEeEeEeEeEeGgGg"
+                     "GgGgHhHhIiIiIiIiIiIiJjKkkLlLlLlL"
+                     "lLlNnNnNnnnnOoOoOo..RrRrRrSsSsSs"
+                     "SsTtTtFfUuUuUuUuUuUuWwYyYZzZzZzf"
+                     "bB...............FfG...IKkl..N.0"
+                     "................................"
+                     "|..!.........AaIiOoUuUuUuUuUueAa"
+                     "AaAaGgGgKkQqQq33J...GgHpNnAaAa00"
+                     "AaAaEeEeIiIiOoOoRrRrUuUuSsTt33Hh"
+                     "nd..ZzAaEeOoOoOoOoYylnrj..ACcLTs"; // 0x022F
 
-  int extraUtfMap[] = {225, 0};
-  char extraChrMap[] = {'a', '.'};
-  int i;
+    int extraUtfMap[] = {225, 0};
+    char extraChrMap[] = {'a', '.'};
+    int i;
 
-  if ((utf8 >= 0x00C0) && (utf8 <= 0x022F)) {
-    ascii = mainMap[utf8 - 0x00C0];
-  } else {
-    for (i = 0; (extraUtfMap[i] != utf8) && (extraUtfMap[i] != 0); i++) {
-      if (extraUtfMap[i] == 0) {
-        printf("Unhandled UTF-8 code! %d\n", utf8);
-      }
-      ascii = extraChrMap[i];
+    if ((utf8 >= 0x00C0) && (utf8 <= 0x022F)) {
+        ascii = mainMap[utf8 - 0x00C0];
+    } else {
+        for (i = 0; (extraUtfMap[i] != utf8) && (extraUtfMap[i] != 0); i++) {
+            if (extraUtfMap[i] == 0) {
+                printf("Unhandled UTF-8 code! %d\n", utf8);
+            }
+            ascii = extraChrMap[i];
+        }
     }
-  }
-  return ascii;
+    return ascii;
 }
 
 int decode(const char *s, char *dec) {
-  char *o;
-  const char *end;
-  int c;
-  int utfC = 0;
-  int mb = 0;
+    char *o;
+    const char *end;
+    int c;
+    int utfC = 0;
+    int mb = 0;
 
-  if ((s == NULL) && (dec == NULL)) {
-    return -1;
-  }
-
-  if ((end = strchr(s, ' ')) == NULL) {
-    if ((end = strchr(s, '\n')) == NULL) {
-      end = s + strlen(s);
+    if ((s == NULL) && (dec == NULL)) {
+        return -1;
     }
-  }
-  end--;
 
-  for (o = dec; s <= end;) {
-    c = *s++;
-    if (c == '+')
-      c = ' ';
-    else if (c == '%' &&
-             (!ishex(*s++) || !ishex(*s++) || !sscanf(s - 2, "%2x", &c)))
-      return -1;
-
-    if ((c & 0b10000000) != 0) {
-      // UTF-8 handling
-      if ((c & 0b01000000) != 0) {
-        // the first byte of UTF-8 character)
-        utfC = c & 0b00111111;
-        char mask = 0b00100000;
-        mb = 1;
-        while ((c & mask) != 0) {
-          utfC = utfC & (!mask);
-          mask = mask >> 1;
-          mb++;
+    if ((end = strchr(s, ' ')) == NULL) {
+        if ((end = strchr(s, '\n')) == NULL) {
+            end = s + strlen(s);
         }
-      } else {
-        // next bytes of UTF-8 character
-        utfC = (utfC << 6) | (c & 0b00111111);
-        if (--mb == 0) {
-          *(o++) = getASCII(utfC);
-        }
-      }
-    } else {
-      *(o++) = c;
     }
-  }
+    end--;
 
-  *o = 0;
+    for (o = dec; s <= end;) {
+        c = *s++;
+        if (c == '+')
+            c = ' ';
+        else if (c == '%' &&
+                 (!ishex(*s++) || !ishex(*s++) || !sscanf(s - 2, "%2x", &c)))
+            return -1;
 
-  return o - dec;
+        if ((c & 0b10000000) != 0) {
+            // UTF-8 handling
+            if ((c & 0b01000000) != 0) {
+                // the first byte of UTF-8 character)
+                utfC = c & 0b00111111;
+                char mask = 0b00100000;
+                mb = 1;
+                while ((c & mask) != 0) {
+                    utfC = utfC & (!mask);
+                    mask = mask >> 1;
+                    mb++;
+                }
+            } else {
+                // next bytes of UTF-8 character
+                utfC = (utfC << 6) | (c & 0b00111111);
+                if (--mb == 0) {
+                    *(o++) = getASCII(utfC);
+                }
+            }
+        } else {
+            *(o++) = c;
+        }
+    }
+
+    *o = 0;
+
+    return o - dec;
 }
 
 char *getTag(const char *tag, char *input, char *output, int outSize) {
-  char exactTag[MAXTAGLEN];
-  char *foundT;
-  char *lastCHR;
-  int tagLength;
+    char exactTag[MAXTAGLEN];
+    char *foundT;
+    char *lastCHR;
+    int tagLength;
 
-  if ((tag == NULL) || (input == NULL) || (output == NULL)) {
-    return NULL;
-  }
+    if ((tag == NULL) || (input == NULL) || (output == NULL)) {
+        return NULL;
+    }
 
-  sprintf(exactTag, " %s%%3A", tag);
+    sprintf(exactTag, " %s%%3A", tag);
 
-  if ((foundT = strstr(input, exactTag)) == NULL) {
-    return NULL;
-  }
+    if ((foundT = strstr(input, exactTag)) == NULL) {
+        return NULL;
+    }
 
-  foundT = strstr(foundT, "%3A") + (3 * sizeof(char));
-  if ((lastCHR = strchr(foundT, ' ')) != NULL) {
-    tagLength = lastCHR - foundT;
-  } else {
-    tagLength = strlen(foundT);
-  }
+    foundT = strstr(foundT, "%3A") + (3 * sizeof(char));
+    if ((lastCHR = strchr(foundT, ' ')) != NULL) {
+        tagLength = lastCHR - foundT;
+    } else {
+        tagLength = strlen(foundT);
+    }
 
-  if (tagLength < outSize) {
-    decode(foundT, output);
-  }
+    if (tagLength < outSize) {
+        decode(foundT, output);
+    }
 
-  return output;
+    return output;
 }
 
 int isPlaying(char *input) {
-  char tagData[MAXTAGLEN];
+    char tagData[MAXTAGLEN];
 
-  if (input == NULL) {
-    return true;
-  }
+    if (input == NULL) {
+        return true;
+    }
 
-  if ((getTag("mode", input, tagData, MAXTAGLEN)) == NULL) {
-    return true;
-  }
-  if (strstr("play", tagData) != NULL) {
-    return true;
-  }
+    if ((getTag("mode", input, tagData, MAXTAGLEN)) == NULL) {
+        return true;
+    }
+    if (strstr("play", tagData) != NULL) {
+        return true;
+    }
 
-  return false;
+    return false;
 }
 
 long getMinute(tag *timeTag) {
 
-  if (timeTag == NULL) {
-    return 0;
-  }
-  if (!timeTag->valid) {
-    return 0;
-  }
+    if (timeTag == NULL) {
+        return 0;
+    }
+    if (!timeTag->valid) {
+        return 0;
+    }
 
-  return strtol(timeTag->tagData, NULL, 10);
+    return strtol(timeTag->tagData, NULL, 10);
 }
 
 bool getTagBool(tag *boolTag) {
 
-  if (boolTag == NULL) {
-    return false;
-  }
-  if (!boolTag->valid) {
-    return false;
-  }
-  return ((strcmp("1", boolTag->tagData) == 0) ||
-          (strcmp("Y", boolTag->tagData) == 0));
+    if (boolTag == NULL) {
+        return false;
+    }
+    if (!boolTag->valid) {
+        return false;
+    }
+    return ((strcmp("1", boolTag->tagData) == 0) ||
+            (strcmp("Y", boolTag->tagData) == 0));
 }

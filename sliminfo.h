@@ -26,29 +26,30 @@
 
 #include <stdbool.h>
 typedef struct Tag {
-  const char *name;
-  const char *displayName;
-  char *tagData;
-  bool valid;
-  bool changed;
+    const char *name;
+    const char *displayName;
+    char *tagData;
+    bool valid;
+    bool changed;
 } tag;
 
 typedef enum {
-  ARTIST,
-  ALBUMARTIST,
-  COMPOSER,
-  CONDUCTOR,
-  TITLE,
-  ALBUM,
-  SAMPLESIZE,
-  SAMPLERATE,
-  TIME,
-  DURATION,
-  REMAINING,
-  VOLUME,
-  COMPILATION,
-  MODE,
-  MAXTAG_TYPES
+    ARTIST,
+    ALBUMARTIST,
+    COMPOSER,
+    CONDUCTOR,
+    ALBUM,
+    TITLE,
+    TIME,
+    DURATION,
+    REMAINING,
+    VOLUME,
+    COMPILATION,
+    YEAR,
+    SAMPLESIZE,
+    SAMPLERATE,
+    MODE,
+    MAXTAG_TYPES
 } tagtypes_t;
 
 void closeSliminfo(void);

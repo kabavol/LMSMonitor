@@ -30,9 +30,9 @@
 #include <netinet/in.h>
 #include <poll.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -58,72 +58,71 @@ bool refreshRequ;
 pthread_t sliminfoThread;
 
 int discoverPlayer(char *playerName) {
-  char qBuffer[BSIZE];
-  char aBuffer[BSIZE];
-  int bytes;
+    char qBuffer[BSIZE];
+    char aBuffer[BSIZE];
+    int bytes;
 
-  // I've not found this feature in the CLI spec,
-  //	but if you send the player name, the server
-  //  answers with the unique player ID (usually MAC address).
-  if (playerName != NULL) {
-    if (strlen(playerName) > (BSIZE / 3)) {
-      abortMonitor("ERROR too long player name!");
+    // I've not found this feature in the CLI spec,
+    //	but if you send the player name, the server
+    //  answers with the unique player ID (usually MAC address).
+    if (playerName != NULL) {
+        if (strlen(playerName) > (BSIZE / 3)) {
+            abortMonitor("ERROR too long player name!");
+        }
+
+        encode(playerName, aBuffer);
+        sprintf(qBuffer, "%s\n", aBuffer);
+        if (write(sockFD, qBuffer, strlen(qBuffer)) < 0) {
+            abortMonitor("ERROR writing to socket!");
+        }
+        if ((bytes = read(sockFD, aBuffer, BSIZE - 1)) < 0) {
+            abortMonitor("ERROR reading from socket!");
+        }
+        aBuffer[bytes] = 0;
+
+        if (strncmp(qBuffer, aBuffer, strlen(aBuffer)) == 0) {
+            abortMonitor("Player not found!");
+        }
+
+        decode(aBuffer, playerID);
+
+        sprintf(qBuffer, "%s player ip ?\n", playerID);
+        if (write(sockFD, qBuffer, strlen(qBuffer)) < 0) {
+            abortMonitor("ERROR writing to socket");
+        }
+        if ((bytes = read(sockFD, aBuffer, BSIZE - 1)) < 0) {
+            abortMonitor("ERROR reading from socket");
+        }
+        aBuffer[bytes] = 0;
+
+        char *ip;
+        if ((ip = strstr(aBuffer, "%3F ")) != NULL) {
+            char *lc;
+            int tl;
+            ip = strstr(ip, "%3F ") + (4 * sizeof(char));
+            if ((lc = strstr(ip, "%3A")) != NULL) {
+                tl = lc - ip;
+            } else {
+                tl = strlen(ip);
+            }
+            strncpy(playerIP, ip, tl);
+        }
+
+    } else {
+        return -1;
     }
 
-    encode(playerName, aBuffer);
-    sprintf(qBuffer, "%s\n", aBuffer);
-    if (write(sockFD, qBuffer, strlen(qBuffer)) < 0) {
-      abortMonitor("ERROR writing to socket!");
-    }
-    if ((bytes = read(sockFD, aBuffer, BSIZE - 1)) < 0) {
-      abortMonitor("ERROR reading from socket!");
-    }
-    aBuffer[bytes] = 0;
+    sprintf(stb, "Player Name ..: %s\nPlayer ID ....: %s\nPlayer IP ....: %s\n",
+            playerName, playerID, playerIP);
+    putMSG(stb, LL_INFO);
 
-    if (strncmp(qBuffer, aBuffer, strlen(aBuffer)) == 0) {
-      abortMonitor("Player not found!");
-    }
-
-    decode(aBuffer, playerID);
-
-    sprintf(qBuffer, "%s player ip ?\n", playerID);
-    if (write(sockFD, qBuffer, strlen(qBuffer)) < 0) {
-      abortMonitor("ERROR writing to socket");
-    }
-    if ((bytes = read(sockFD, aBuffer, BSIZE - 1)) < 0) {
-      abortMonitor("ERROR reading from socket");
-    }
-    aBuffer[bytes] = 0;
-
-    char *ip;
-    if ((ip = strstr(aBuffer, "%3F ")) != NULL) {
-      char *lc;
-      int tl;
-      ip = strstr(ip, "%3F ") + (4 * sizeof(char));
-      if ((lc = strstr(ip, "%3A")) != NULL) {
-        tl = lc - ip;
-      } else {
-        tl = strlen(ip);
-      }
-      strncpy(playerIP, ip, tl);
-    }
-
-  } else {
-    return -1;
-  }
-
-  sprintf(stb, 
-    "Player Name ..: %s\nPlayer ID ....: %s\nPlayer IP ....: %s\n",
-    playerName, playerID, playerIP);
-  putMSG(stb, LL_INFO);
-
-  return 0;
+    return 0;
 }
 
 int setStaticServer(void) {
-  LMSPort = 9090;
-  LMSHost = NULL; // autodiscovery
-  return 0;
+    LMSPort = 9090;
+    LMSHost = NULL; // autodiscovery
+    return 0;
 }
 
 /*
@@ -135,57 +134,58 @@ int setStaticServer(void) {
 in_addr_t getServerAddress(void) {
 #define PORT 3483
 
-  struct sockaddr_in d;
-  struct sockaddr_in s;
-  char *buf;
-  struct pollfd pollinfo;
+    struct sockaddr_in d;
+    struct sockaddr_in s;
+    char *buf;
+    struct pollfd pollinfo;
 
-  if (LMSHost != NULL) {
-    // Static server address
-    memset(&s, 0, sizeof(s));
-    inet_pton(AF_INET, LMSHost, &(s.sin_addr));
+    if (LMSHost != NULL) {
+        // Static server address
+        memset(&s, 0, sizeof(s));
+        inet_pton(AF_INET, LMSHost, &(s.sin_addr));
 
-  } else {
-    // Discover server address
-    int disc_sock = socket(AF_INET, SOCK_DGRAM, 0);
+    } else {
+        // Discover server address
+        int disc_sock = socket(AF_INET, SOCK_DGRAM, 0);
 
-    socklen_t enable = 1;
-    setsockopt(disc_sock, SOL_SOCKET, SO_BROADCAST, (const void *)&enable,
-               sizeof(enable));
+        socklen_t enable = 1;
+        setsockopt(disc_sock, SOL_SOCKET, SO_BROADCAST, (const void *)&enable,
+                   sizeof(enable));
 
-    buf = (char *)"e";
+        buf = (char *)"e";
 
-    memset(&d, 0, sizeof(d));
-    d.sin_family = AF_INET;
-    d.sin_port = htons(PORT);
-    d.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+        memset(&d, 0, sizeof(d));
+        d.sin_family = AF_INET;
+        d.sin_port = htons(PORT);
+        d.sin_addr.s_addr = htonl(INADDR_BROADCAST);
 
-    pollinfo.fd = disc_sock;
-    pollinfo.events = POLLIN;
+        pollinfo.fd = disc_sock;
+        pollinfo.events = POLLIN;
 
-    do {
-      putMSG("Sending discovery...\n", LL_INFO);
-      memset(&s, 0, sizeof(s));
+        do {
+            putMSG("Sending discovery...\n", LL_INFO);
+            memset(&s, 0, sizeof(s));
 
-      if (sendto(disc_sock, buf, 1, 0, (struct sockaddr *)&d, sizeof(d)) < 0) {
-        putMSG("Error sending disovery\n", LL_INFO);
-      }
+            if (sendto(disc_sock, buf, 1, 0, (struct sockaddr *)&d, sizeof(d)) <
+                0) {
+                putMSG("Error sending disovery\n", LL_INFO);
+            }
 
-      if (poll(&pollinfo, 1, 5000) == 1) {
-        char readbuf[10];
-        socklen_t slen = sizeof(s);
-        recvfrom(disc_sock, readbuf, 10, 0, (struct sockaddr *)&s, &slen);
-        sprintf(stb, "LMS (Server) responsed:\nServer IP ....: %s:%d\n",
-          inet_ntoa(s.sin_addr),
-          ntohs(s.sin_port));
-        putMSG(stb, LL_INFO);
-      }
-    } while (s.sin_addr.s_addr == 0);
+            if (poll(&pollinfo, 1, 5000) == 1) {
+                char readbuf[10];
+                socklen_t slen = sizeof(s);
+                recvfrom(disc_sock, readbuf, 10, 0, (struct sockaddr *)&s,
+                         &slen);
+                sprintf(stb, "LMS (Server) responsed:\nServer IP ....: %s:%d\n",
+                        inet_ntoa(s.sin_addr), ntohs(s.sin_port));
+                putMSG(stb, LL_INFO);
+            }
+        } while (s.sin_addr.s_addr == 0);
 
-    close(disc_sock);
-  }
+        close(disc_sock);
+    }
 
-  return s.sin_addr.s_addr;
+    return s.sin_addr.s_addr;
 }
 
 char *player_mac(void) { return playerID; }
@@ -197,162 +197,182 @@ bool isRefreshed(void) { return !refreshRequ; }
 void refreshed(void) { refreshRequ = false; }
 
 int connectServer(void) {
-  int sfd;
+    int sfd;
 
-  if (setStaticServer() < 0) {
-    abortMonitor("Failed to find LMS server!");
-  }
+    if (setStaticServer() < 0) {
+        abortMonitor("Failed to find LMS server!");
+    }
 
-  if ((sfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-    abortMonitor("Failed to opening socket!");
-  }
+    if ((sfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        abortMonitor("Failed to opening socket!");
+    }
 
-  memset(&serv_addr, 0, sizeof(serv_addr));
+    memset(&serv_addr, 0, sizeof(serv_addr));
 
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_addr.s_addr = getServerAddress();
-  serv_addr.sin_port = htons(LMSPort);
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = getServerAddress();
+    serv_addr.sin_port = htons(LMSPort);
 
-  if (connect(sfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-    fprintf(stderr, "No such host: %s\n", inet_ntoa(serv_addr.sin_addr));
-    close(sfd);
-    return -1;
-  }
+    if (connect(sfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        fprintf(stderr, "No such host: %s\n", inet_ntoa(serv_addr.sin_addr));
+        close(sfd);
+        return -1;
+    }
 
-  return sfd;
+    return sfd;
 }
 
 void closeSliminfo(void) {
-  if (sockFD > 0) {
-    close(sockFD);
-  }
-
-  for (int i = 0; i < MAXTAG_TYPES; i++) {
-    if (tagStore[i].tagData != NULL) {
-      free(tagStore[i].tagData);
+    if (sockFD > 0) {
+        close(sockFD);
     }
-  }
+
+    for (int i = 0; i < MAXTAG_TYPES; i++) {
+        if (tagStore[i].tagData != NULL) {
+            free(tagStore[i].tagData);
+        }
+    }
 }
 
 tag *initTagStore(void) {
 
-  tagStore[SAMPLESIZE].name = "samplesize";
-  tagStore[SAMPLERATE].name = "samplerate";
-  tagStore[TIME].name = "time";
-  tagStore[DURATION].name = "duration";
-  tagStore[REMAINING].name = "remaining";
-  tagStore[VOLUME].name = "mixer%20volume";
-  tagStore[TITLE].name = "title";
-  tagStore[ALBUM].name = "album";
-  tagStore[ARTIST].name = "artist";
-  tagStore[ALBUMARTIST].name = "albumartist";
-  tagStore[COMPOSER].name = "composer";
-  tagStore[CONDUCTOR].name = "conductor";
-  tagStore[MODE].name = "mode";
-  tagStore[COMPILATION].name = "compilation";
+    tagStore[SAMPLESIZE].name = "samplesize";
+    tagStore[SAMPLERATE].name = "samplerate";
+    tagStore[TIME].name = "time";
+    tagStore[DURATION].name = "duration";
+    tagStore[REMAINING].name = "remaining";
+    tagStore[VOLUME].name = "mixer%20volume";
+    tagStore[TITLE].name = "title";
+    tagStore[ALBUM].name = "album";
+    tagStore[YEAR].name = "year";
+    tagStore[ARTIST].name = "artist";
+    tagStore[ALBUMARTIST].name = "albumartist";
+    tagStore[COMPOSER].name = "composer";
+    tagStore[CONDUCTOR].name = "conductor";
+    tagStore[MODE].name = "mode";
+    tagStore[COMPILATION].name = "compilation";
 
-  for (int i = 0; i < MAXTAG_TYPES; i++) {
-    if ((tagStore[i].tagData = (char *)malloc(MAXTAG_DATA * sizeof(char))) ==
-        NULL) {
-      closeSliminfo();
-      return NULL;
-    } else {
-      strcpy(tagStore[i].tagData,"");
-      tagStore[i].displayName = "";
-      tagStore[i].valid = false;
-      tagStore[i].changed = false;
+    for (int i = 0; i < MAXTAG_TYPES; i++) {
+        if ((tagStore[i].tagData =
+                 (char *)malloc(MAXTAG_DATA * sizeof(char))) == NULL) {
+            closeSliminfo();
+            return NULL;
+        } else {
+            strcpy(tagStore[i].tagData, "");
+            tagStore[i].displayName = "";
+            tagStore[i].valid = false;
+            tagStore[i].changed = false;
+        }
     }
-  }
-  return tagStore;
+    return tagStore;
 }
 
 void *serverPolling(void *x_voidptr) {
 
-  char variousArtist[BSIZE] = "Various Artists";
-  char buffer[BSIZE];
-  char tagData[BSIZE];
-  int rbytes;
+    char variousArtist[BSIZE] = "Various Artists";
+    char buffer[BSIZE];
+    char tagData[BSIZE];
+    int rbytes;
 
-  while (true) {
+    while (true) {
 
-    if (!isRefreshed()) {
+        if (!isRefreshed()) {
 
-      if (write(sockFD, query, strlen(query)) < 0) {
-        abortMonitor("ERROR writing to socket");
-      }
-      if ((rbytes = read(sockFD, buffer, BSIZE - 1)) < 0) {
-        abortMonitor("ERROR reading from socket");
-      }
-      buffer[rbytes] = 0;
+            if (write(sockFD, query, strlen(query)) < 0) {
+                abortMonitor("ERROR writing to socket");
+            }
+            if ((rbytes = read(sockFD, buffer, BSIZE - 1)) < 0) {
+                abortMonitor("ERROR reading from socket");
+            }
+            buffer[rbytes] = 0;
 
-      for (int i = 0; i < MAXTAG_TYPES; i++) {
-        if ((getTag((char *)tagStore[i].name, buffer, tagData, BSIZE)) !=
-            NULL) {
-          if ((i != REMAINING) && (strcmp(tagData, tagStore[i].tagData) != 0)) {
-            strncpy(tagStore[i].tagData, tagData, MAXTAG_DATA);
-            tagStore[i].changed = true;
-          }
-          tagStore[i].valid = true;
-        } else {
-          tagStore[i].valid = false;
-        }
-      }
+            for (int i = 0; i < MAXTAG_TYPES; i++) {
 
-      long pTime = getMinute(&tagStore[TIME]);
-      long dTime = getMinute(&tagStore[DURATION]);
+                if (0 == 1) {
+                    if (ALBUM == i) {
+                        printf("> %d) %s: %s %d %d\n", i,
+                               tagStore[i].displayName, tagStore[i].tagData,
+                               tagStore[i].valid, tagStore[i].changed);
+                    }
+                }
+                if ((getTag((char *)tagStore[i].name, buffer, tagData,
+                            BSIZE)) != NULL) {
+                    if ((i != REMAINING) &&
+                        (strcmp(tagData, tagStore[i].tagData) != 0)) {
+                        strncpy(tagStore[i].tagData, tagData, MAXTAG_DATA);
+                        tagStore[i].changed = true;
+                    }
+                    tagStore[i].valid = true;
+                } else {
+                    tagStore[i].valid = false;
+                }
 
-      if (pTime && dTime) {
-        snprintf(tagData, MAXTAG_DATA, "%ld", (dTime - pTime));
-        if (strcmp(tagData, tagStore[REMAINING].tagData) != 0) {
-          strncpy(tagStore[REMAINING].tagData, tagData, MAXTAG_DATA);
-          tagStore[REMAINING].valid = true;
-          tagStore[REMAINING].changed = true;
-        }
-      }
+                if (0 == 1) {
+                    if (ALBUM == i) {
+                        printf("< %d) %s: %s %d %d\n", i,
+                               tagStore[i].displayName, tagStore[i].tagData,
+                               tagStore[i].valid, tagStore[i].changed);
+                    }
+                }
+            }
 
-      // Fix Various Artists
-			if ( getTagBool(&tagStore[COMPILATION]) )  {
-          if (strcmp(variousArtist, tagStore[ALBUMARTIST].tagData) != 0) {
-            strncpy(tagStore[ALBUMARTIST].tagData, variousArtist, MAXTAG_DATA);
-            tagStore[ALBUMARTIST].valid = true;
-            tagStore[ALBUMARTIST].changed = true;
-          }
-			}
+            long pTime = getMinute(&tagStore[TIME]);
+            long dTime = getMinute(&tagStore[DURATION]);
 
-      if (isEmptyStr(tagStore[ALBUMARTIST].tagData)) {
-        if (isEmptyStr(tagStore[CONDUCTOR].tagData)) { // override for conductor
-          strncpy(tagStore[ALBUMARTIST].tagData, tagStore[ARTIST].tagData, MAXTAG_DATA);
-          tagStore[ALBUMARTIST].valid = true;
-          tagStore[ALBUMARTIST].changed = true;
-        }
-      }
-      else if (strcmp(variousArtist, tagStore[ALBUMARTIST].tagData) == 0) {
-        tagStore[ALBUMARTIST].valid = true;
-      }
-      
-      refreshed();
-      sleep(1);
+            if (pTime && dTime) {
+                snprintf(tagData, MAXTAG_DATA, "%ld", (dTime - pTime));
+                if (strcmp(tagData, tagStore[REMAINING].tagData) != 0) {
+                    strncpy(tagStore[REMAINING].tagData, tagData, MAXTAG_DATA);
+                    tagStore[REMAINING].valid = true;
+                    tagStore[REMAINING].changed = true;
+                }
+            }
 
-    } // !isRefreshed
+            // Fix Various Artists
+            if (getTagBool(&tagStore[COMPILATION])) {
+                if (strcmp(variousArtist, tagStore[ALBUMARTIST].tagData) != 0) {
+                    strncpy(tagStore[ALBUMARTIST].tagData, variousArtist,
+                            MAXTAG_DATA);
+                    tagStore[ALBUMARTIST].valid = true;
+                    tagStore[ALBUMARTIST].changed = true;
+                }
+            }
 
-  } // while
+            if (isEmptyStr(tagStore[ALBUMARTIST].tagData)) {
+                if (isEmptyStr(tagStore[CONDUCTOR]
+                                   .tagData)) { // override for conductor
+                    strncpy(tagStore[ALBUMARTIST].tagData,
+                            tagStore[ARTIST].tagData, MAXTAG_DATA);
+                    tagStore[ALBUMARTIST].valid = true;
+                    tagStore[ALBUMARTIST].changed = true;
+                }
+            } else if (strcmp(variousArtist, tagStore[ALBUMARTIST].tagData) ==
+                       0) {
+                tagStore[ALBUMARTIST].valid = true;
+            }
 
-  return NULL;
+            refreshed();
+            sleep(1);
 
+        } // !isRefreshed
+
+    } // while
+
+    return NULL;
 }
 
 tag *initSliminfo(char *playerName) {
-  if (setStaticServer() < 0) {
-    return NULL;
-  }
-  if ((sockFD = connectServer()) < 0) {
-    return NULL;
-  }
-  if (discoverPlayer(playerName) < 0) {
-    return NULL;
-  }
+    if (setStaticServer() < 0) {
+        return NULL;
+    }
+    if ((sockFD = connectServer()) < 0) {
+        return NULL;
+    }
+    if (discoverPlayer(playerName) < 0) {
+        return NULL;
+    }
 
-/*
+    /*
     ARTIST = "a"
     ARTIST_ROLE = "A"
     BUTTONS = "B"
@@ -395,19 +415,19 @@ tag *initSliminfo(char *playerName) {
 
 
 */
-  sprintf(query, "%s status - 1 tags:aAlCITytrdx\n", playerID);
-  int x = 0;
 
-  if (initTagStore() != NULL) {
-    askRefresh();
-    if (pthread_create(&sliminfoThread, NULL, serverPolling, &x) != 0) {
-      closeSliminfo();
-      abortMonitor("Failed to create sliminfo thread!");
+    sprintf(query, "%s status - 1 tags:aAlCITytrdx\n", playerID);
+    int x = 0;
+
+    if (initTagStore() != NULL) {
+        askRefresh();
+        if (pthread_create(&sliminfoThread, NULL, serverPolling, &x) != 0) {
+            closeSliminfo();
+            abortMonitor("Failed to create sliminfo thread!");
+        }
+    } else {
+        return NULL;
     }
-  } else {
-    return NULL;
-  }
 
-  return tagStore;
-
+    return tagStore;
 }

@@ -22,9 +22,10 @@
 #ifndef DISPLAY_H
 #define DISPLAY_H 1
 
+#include <stdbool.h>
+#include <stdint.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <stdint.h>
 
 #define CHAR_WIDTH 6
 #define CHAR_HEIGHT 8
@@ -32,12 +33,16 @@
 void resetDisplay(int fontSize);
 int initDisplay(void);
 void closeDisplay(void);
+// we'll support 2up and dual displays
+void vumeter2upl(void);
 void splashScreen(void);
+void volume(bool v, char *buff);
 void drawHorizontalBargraph(int x, int y, int w, int h, int percent);
 void putText(int x, int y, char *buff);
 void putTextToCenter(int y, char *buff);
 void drawTimeBlink(uint8_t cc);
 void drawTimeText(char *buff);
+void drawTimeText2(char *buff, char *last);
 void clearLine(int y);
 void refreshDisplay(void);
 int maxCharacter(void);
@@ -45,5 +50,8 @@ int maxLine(void);
 int maxXPixel(void);
 int maxYPixel(void);
 void drawRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
+
+void testFont(int x, int y, char *buff);
+
 
 #endif
