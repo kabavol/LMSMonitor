@@ -141,6 +141,7 @@ void putScrollable(int line, char *buff) {
     bool goscroll = (maxCharacter() < tlen);
     if (!goscroll) {
         putTextToCenter(scroll[line].ypos, buff);
+        scroll[line].textPix = -1;
     }
     else
     {
@@ -159,12 +160,15 @@ void putScrollable(int line, char *buff) {
 
 void* scrollLineUgh(void *input)
 {
+    sme *s;
+    s = ((struct Scroller*)input);
     int timer = 100;
+
     while(true) {
         timer = 100;
-        if (((struct Scroller*)input)->active) {
-            ((struct Scroller*)input)->xpos--;
-            if (((struct Scroller*)input)->xpos + ((struct Scroller*)input)->textPix <= maxXPixel())
+        if (s->active) {
+            s->xpos--;
+            if (s->xpos + ((struct Scroller*)input)->textPix <= maxXPixel())
                 ((struct Scroller*)input)->xpos += ((struct Scroller*)input)->textPix;
             display.setTextWrap(false);
             clearLine(((struct Scroller*)input)->ypos);
@@ -278,6 +282,15 @@ void drawHorizontalBargraph(int x, int y, int w, int h, int percent) {
 }
 
 void refreshDisplay(void) { display.display(); }
+
+void refreshDisplayScroller(void) {
+    for (int line = 0; line < MAX_LINES; line++) {
+        if (scroll[line].active) {
+            display.display(); 
+            break;
+        }
+    }
+}
 
 void putText(int x, int y, char *buff) {
     display.setTextSize(1);

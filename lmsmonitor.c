@@ -58,7 +58,7 @@
 #endif
 
 #define VERSION "0.4.3"
-#define SLEEP_TIME 100 //(25000 / 25)
+#define SLEEP_TIME 100
 #define CHRPIXEL 8
 
 char stbl[BSIZE];
@@ -279,7 +279,6 @@ int main(int argc, char *argv[]) {
                             if (tags[*t].changed) {
                                 strncpy(buff, tags[*t].tagData, 255); //maxCharacter());
 #ifdef __arm__
-                                //putTextToCenter(line * 10, buff);
                                 putScrollable(line, buff);
 #endif
                             }
@@ -414,6 +413,7 @@ int main(int argc, char *argv[]) {
         } // isRefreshed
 
         usleep(SLEEP_TIME);
+        refreshDisplayScroller();
 
     } // main loop
 
