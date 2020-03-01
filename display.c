@@ -41,17 +41,16 @@
 #include "ArduiPi_OLED.h"
 // clang-format on
 
-#define SLEEP_TIME (25000 / 25)
-
 ArduiPi_OLED display;
-int sleep_divisor = 1;
 int oledType = OLED_SH1106_I2C_128x64;
 
 #endif
 
+sme scroll[MAX_LINES];
+
 int maxCharacter(void) { return 21; } // review when we get scroll working
 
-int maxLine(void) { return 8; }
+int maxLine(void) { return MAX_LINES; }
 
 int maxXPixel(void) { return 128; }
 
@@ -83,6 +82,7 @@ int initDisplay(void) {
 
     display.begin();
     resetDisplay(1);
+    scrollerInit();
     return 0;
 }
 
@@ -131,6 +131,119 @@ void drawTimeText(char *buff) {
     for (size_t i = 0; i < strlen(buff); i++) {
         bigChar(buff[i], x, LCD25X44_LEN, 25, 44, lcd25x44);
         x += 25;
+    }
+}
+
+void putScrollable(int line, char *buff) {
+    //scroll[line].scrollThread.active = false;
+    scroll[line].active = false;
+    int tlen = strlen(buff);
+    bool goscroll = (maxCharacter() < tlen);
+    if (!goscroll) {
+        putTextToCenter(scroll[line].ypos, buff);
+    }
+    else
+    {
+        sprintf(scroll[line].text, " %s ", buff); 
+        scroll[line].xpos = maxXPixel();
+        scroll[line].pause = false;
+        scroll[line].forward = false;
+        scroll[line].textPix = tlen * CHAR_WIDTH;
+        scroll[line].active = true;
+        // activate the scroller thread
+        //scroll[line].scrollThread.active = true;
+    }
+    
+}
+
+
+void* scrollLineUgh(void *input)
+{
+    int timer = 100;
+    while(true) {
+        timer = 100;
+        if (((struct Scroller*)input)->active) {
+            ((struct Scroller*)input)->xpos--;
+            if (((struct Scroller*)input)->xpos + ((struct Scroller*)input)->textPix <= maxXPixel())
+                ((struct Scroller*)input)->xpos += ((struct Scroller*)input)->textPix;
+            display.setTextWrap(false);
+            clearLine(((struct Scroller*)input)->ypos);
+
+            // should appear to marquee
+            if (((struct Scroller*)input)->xpos > 0)
+                display.setCursor(((struct Scroller*)input)->xpos - ((struct Scroller*)input)->textPix, ((struct Scroller*)input)->ypos);
+            else
+                display.setCursor(((struct Scroller*)input)->xpos + ((struct Scroller*)input)->textPix, ((struct Scroller*)input)->ypos);
+
+            display.print(((struct Scroller*)input)->text);
+
+            if (0 == ((struct Scroller*)input)->xpos) {
+                ((struct Scroller*)input)->forward = false;
+                timer = 5000;
+            }
+        }
+        usleep(timer);
+    }   
+}
+
+void* scrollLine(void *input)
+{
+    int timer = 100;
+    while(true) {
+        timer = 100;
+        if (((struct Scroller*)input)->active) {
+            // cylon sweep
+            if (((struct Scroller*)input)->forward)
+                ((struct Scroller*)input)->xpos++;
+            else
+                ((struct Scroller*)input)->xpos--;
+            display.setTextWrap(false);
+            clearLine(((struct Scroller*)input)->ypos);
+            display.setCursor(((struct Scroller*)input)->xpos,((struct Scroller*)input)->ypos);
+            display.print(((struct Scroller*)input)->text);
+
+            if (-3 == ((struct Scroller*)input)->xpos) {
+                if (!((struct Scroller*)input)->forward)
+                    timer = 5000;
+                ((struct Scroller*)input)->forward = false;
+            }
+
+            if (maxXPixel()+3 == ((((struct Scroller*)input)->textPix)+((struct Scroller*)input)->xpos))
+                ((struct Scroller*)input)->forward = true;
+
+            // lovely clean scroll but flicker is fugly!!!
+            ///display.display();
+        }
+        delay(timer);
+    }   
+}
+
+void scrollerPause(void) {
+    for (int line = 0; line < MAX_LINES; line++) {
+        scroll[line].active = false;
+    }
+}
+
+void scrollerInit(void) {
+    for (int line = 0; line < MAX_LINES; line++) {
+        if ((scroll[line].text =
+                 (char *)malloc(MAXSCROLL_DATA * sizeof(char))) == NULL) {
+            closeDisplay();
+            return;
+        } else {
+            strcpy(scroll[line].text, "");
+            scroll[line].active = false;
+            scroll[line].ypos = line * (2+CHAR_HEIGHT);
+            scroll[line].xpos = maxXPixel();
+            scroll[line].forward = false;
+            scroll[line].pause = false;
+            scroll[line].scrollMe = scrollLine;
+            scroll[line].textPix = 0;
+            pthread_create(&scroll[line].scrollThread, NULL, scroll[line].scrollMe, (void *)&scroll[line]);
+            //if (err != 0)
+            //    printf("scrolle[%d] can't create thread :[%s]", line, strerror(err));
+            //scroll[line].scrollThread.active = false;
+        }
     }
 }
 
@@ -194,26 +307,5 @@ void testFont(int x, int y, char *buff) {
 void drawRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
     display.drawRect(x, y, w, h, color);
 }
-
-// need scroller - independant threaded
-
-/*
-
-char message[] = "The quick Brown fox jumped Over the Lazy Dog";
-int x, minX;
-
-x = display.width();
-minX = -CHAR_WIDTH * 2 * strlen(message); 
-
-...
-
-display.setCursor(x,line);
-display.print(message);
-if (x < minX)
-  x = display.width();
-
-
-
-*/
 
 #endif

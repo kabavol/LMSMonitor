@@ -58,7 +58,7 @@
 #endif
 
 #define VERSION "0.4.3"
-#define SLEEP_TIME 500 //(25000 / 25)
+#define SLEEP_TIME 100 //(25000 / 25)
 #define CHRPIXEL 8
 
 char stbl[BSIZE];
@@ -107,7 +107,11 @@ static char *get_mac_address() {
     return macaddr;
 }
 
-void print_help(void) {
+void signature(char *executable) {
+    printf("\nThis is %s, compiled %s %s.\n\n", executable, __DATE__, __TIME__);
+}
+
+void print_help(char *executable) {
     printf("LMSMonitor Ver. %s\n"
            "Usage [options] -n Player name\n"
            "options:\n"
@@ -117,6 +121,7 @@ void print_help(void) {
            " -t enable print info to stdout\n"
            " -i increment verbose level\n\n",
            VERSION);
+    signature(executable);
 }
 
 int main(int argc, char *argv[]) {
@@ -167,12 +172,13 @@ int main(int argc, char *argv[]) {
             case 'r': remaining = true; break;
 
             case 'h':
-                print_help();
+                print_help(argv[0]);
                 exit(1);
                 break;
         }
     }
 
+    signature(argv[0]);
     thatMAC = player_mac();
 
     if (thatMAC != thisMAC) {
@@ -271,9 +277,10 @@ int main(int argc, char *argv[]) {
                             filled = true;
 #endif
                             if (tags[*t].changed) {
-                                strncpy(buff, tags[*t].tagData, maxCharacter());
+                                strncpy(buff, tags[*t].tagData, 255); //maxCharacter());
 #ifdef __arm__
-                                putTextToCenter(line * 10, buff);
+                                //putTextToCenter(line * 10, buff);
+                                putScrollable(line, buff);
 #endif
                             }
                             sprintf(stbl, "%s\n", tags[*t].tagData);
@@ -340,12 +347,15 @@ int main(int argc, char *argv[]) {
                 refreshDisplay();
 #endif
             } else {
+
+                scrollerPause(); // we need to re-activate too - save state!!!
+
                 if (clock) {
 
                     if (refreshClock) {
 #ifdef __arm__
                         resetDisplay(1);
-                        strncpy(lastTime, "XX:XX", 32); // force, just in case
+                        strncpy(lastTime, "XX:XX", 6); // force, just in case
 #endif
                         refreshClock = false;
                     }

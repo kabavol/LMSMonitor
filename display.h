@@ -26,9 +26,31 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <stdbool.h>
 
 #define CHAR_WIDTH 6
 #define CHAR_HEIGHT 8
+
+#define MAX_LINES 8
+#define MAXSCROLL_DATA 255
+
+ typedef struct Scroller {
+    char *text;
+    pthread_t scrollThread;
+    int textPix;
+    int line;
+    int xpos;
+    int ypos;
+    bool forward;
+    bool active;
+    bool pause;
+    void* (*scrollMe)(void *input);
+} sme;
+ 
+void scrollerPause(void);
+void* scrollLine(void *input);
+void scrollerInit(void); 
 
 void resetDisplay(int fontSize);
 int initDisplay(void);
@@ -49,9 +71,9 @@ int maxCharacter(void);
 int maxLine(void);
 int maxXPixel(void);
 int maxYPixel(void);
+void putScrollable(int y, char *buff);
 void drawRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
 
 void testFont(int x, int y, char *buff);
-
 
 #endif
