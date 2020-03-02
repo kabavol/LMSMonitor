@@ -58,7 +58,7 @@
 #endif
 
 #define VERSION "0.4.3"
-#define SLEEP_TIME 100
+#define SLEEP_TIME 200
 #define CHRPIXEL 8
 
 char stbl[BSIZE];

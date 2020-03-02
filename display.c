@@ -163,26 +163,24 @@ void* scrollLineUgh(void *input)
     sme *s;
     s = ((struct Scroller*)input);
     int timer = 100;
-
     while(true) {
         timer = 100;
         if (s->active) {
             s->xpos--;
-            if (s->xpos + ((struct Scroller*)input)->textPix <= maxXPixel())
-                ((struct Scroller*)input)->xpos += ((struct Scroller*)input)->textPix;
+            if (s->xpos + s->textPix <= maxXPixel())
+                s->xpos += s->textPix;
             display.setTextWrap(false);
-            clearLine(((struct Scroller*)input)->ypos);
-
-            // should appear to marquee
-            if (((struct Scroller*)input)->xpos > 0)
-                display.setCursor(((struct Scroller*)input)->xpos - ((struct Scroller*)input)->textPix, ((struct Scroller*)input)->ypos);
+            clearLine(s->ypos);
+            // should appear to marquee - sadly it does not???
+            if (s->xpos > 0)
+                display.setCursor(s->xpos - s->textPix, s->ypos);
             else
-                display.setCursor(((struct Scroller*)input)->xpos + ((struct Scroller*)input)->textPix, ((struct Scroller*)input)->ypos);
+                display.setCursor(s->xpos + s->textPix, s->ypos);
 
-            display.print(((struct Scroller*)input)->text);
+            display.print(s->text);
 
-            if (0 == ((struct Scroller*)input)->xpos) {
-                ((struct Scroller*)input)->forward = false;
+            if (0 == s->xpos) {
+                s->forward = false;
                 timer = 5000;
             }
         }
@@ -192,31 +190,39 @@ void* scrollLineUgh(void *input)
 
 void* scrollLine(void *input)
 {
+    sme *s;
+    s = ((struct Scroller*)input);
     int timer = 100;
+    //int testmin = 10000;
+    //int testmax = -10000;
     while(true) {
         timer = 100;
-        if (((struct Scroller*)input)->active) {
+        if (s->active) {
             // cylon sweep
-            if (((struct Scroller*)input)->forward)
-                ((struct Scroller*)input)->xpos++;
+            if (s->forward)
+                s->xpos++;
             else
-                ((struct Scroller*)input)->xpos--;
+                s->xpos--;
             display.setTextWrap(false);
-            clearLine(((struct Scroller*)input)->ypos);
-            display.setCursor(((struct Scroller*)input)->xpos,((struct Scroller*)input)->ypos);
-            display.print(((struct Scroller*)input)->text);
+            clearLine(s->ypos);
+            display.setCursor(s->xpos, s->ypos);
+            display.print(s->text);
 
-            if (-3 == ((struct Scroller*)input)->xpos) {
-                if (!((struct Scroller*)input)->forward)
+            if (-3 == s->xpos) {
+                if (!s->forward)
                     timer = 5000;
-                ((struct Scroller*)input)->forward = false;
+                s->forward = false;
             }
 
-            if (maxXPixel()+3 == ((((struct Scroller*)input)->textPix)+((struct Scroller*)input)->xpos))
-                ((struct Scroller*)input)->forward = true;
+            if (maxXPixel() == ((s->textPix)+s->xpos))
+                s->forward = true;
 
-            // lovely clean scroll but flicker is fugly!!!
-            ///display.display();
+            // need to test for "nystagma" - where text is just shy
+            // of being with static limits and gets to a point
+            // where it rapidly bounces left to right and back again
+            // more than annoying and needs to pin to xpos=0 and 
+            // deactivate - implement test - check length limits
+            // and travel test 
         }
         delay(timer);
     }   
@@ -244,9 +250,6 @@ void scrollerInit(void) {
             scroll[line].scrollMe = scrollLine;
             scroll[line].textPix = 0;
             pthread_create(&scroll[line].scrollThread, NULL, scroll[line].scrollMe, (void *)&scroll[line]);
-            //if (err != 0)
-            //    printf("scrolle[%d] can't create thread :[%s]", line, strerror(err));
-            //scroll[line].scrollThread.active = false;
         }
     }
 }

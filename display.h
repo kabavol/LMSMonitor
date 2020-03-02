@@ -42,6 +42,7 @@
     int line;
     int xpos;
     int ypos;
+    bool nystagma;
     bool forward;
     bool active;
     bool pause;
