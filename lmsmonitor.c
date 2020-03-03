@@ -206,7 +206,7 @@ int main(int argc, char *argv[]) {
     // clang-format on
 
     opterr = 0;
-    while ((aName = getopt(argc, argv, "o:n:tvhric")) != -1) {
+    while ((aName = getopt(argc, argv, "o:n:tvhricz")) != -1) {
         switch (aName) {
             case 't': enableTOut(); break;
 
