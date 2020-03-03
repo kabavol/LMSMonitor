@@ -43,39 +43,52 @@
     int xpos;
     int ypos;
     bool nystagma;
+    int lolimit;
+    int hilimit;
     bool forward;
     bool active;
     bool pause;
     void* (*scrollMe)(void *input);
 } sme;
+
+void splashScreen(void);
  
 void scrollerPause(void);
-void* scrollLine(void *input);
+void* scrollLine(void *input); // threadable
 void scrollerInit(void); 
+void putScrollable(int y, char *buff);
+void scrollerFinalize(void);
 
 void resetDisplay(int fontSize);
 int initDisplay(void);
 void closeDisplay(void);
+
 // we'll support 2up and dual displays
 void vumeter2upl(void);
-void splashScreen(void);
-void volume(bool v, char *buff);
-void drawHorizontalBargraph(int x, int y, int w, int h, int percent);
+
+// audio attributes
+void putVolume(bool v, char *buff);
+void putAudio(int a, char *buff);
+
 void putText(int x, int y, char *buff);
 void putTextToCenter(int y, char *buff);
 void drawTimeBlink(uint8_t cc);
 void drawTimeText(char *buff);
 void drawTimeText2(char *buff, char *last);
 void clearLine(int y);
+
 void refreshDisplay(void);
 void refreshDisplayScroller(void);
+
 int maxCharacter(void);
 int maxLine(void);
 int maxXPixel(void);
 int maxYPixel(void);
-void putScrollable(int y, char *buff);
+
+void drawHorizontalBargraph(int x, int y, int w, int h, int percent);
 void drawRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
 
+// experimental
 void testFont(int x, int y, char *buff);
 
 #endif

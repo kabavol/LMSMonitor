@@ -87,6 +87,7 @@ int initDisplay(void) {
 }
 
 void closeDisplay(void) {
+    scrollerFinalize();
     display.clearDisplay();
     display.close();
     return;
@@ -114,14 +115,25 @@ void drawTimeBlink(uint8_t cc) {
         bigChar(cc, x, LCD25X44_LEN, 25, 44, lcd25x44);
 }
 
-void volume(bool v, char *buff) {
-    //display.fillRect(0, 0, (tlen+2) * CHAR_WIDTH, CHAR_HEIGHT, BLACK);
+void putVolume(bool v, char *buff) {
     putText(0, 0, buff);
     int w = 8;
     int start = v * w;
     uint8_t dest[w];
     memcpy(dest, volume8x8 + start, sizeof dest);
     display.drawBitmap(0, 0, dest, w, w, WHITE);
+}
+
+void putAudio(int a, char *buff) {
+    char pad[32];
+    sprintf(pad, "   %s  ", buff); // ensue we cleanup
+    int x = maxXPixel()-(strlen(pad)*CHAR_WIDTH);
+    putText(x, 0, pad);
+    int w = 8;
+    int start = a * w;
+    uint8_t dest[w];
+    memcpy(dest, volume8x8 + start, sizeof dest);
+    display.drawBitmap(maxXPixel()-(w+2), 0, dest, w, w, WHITE);
 }
 
 void drawTimeText(char *buff) {
@@ -134,8 +146,28 @@ void drawTimeText(char *buff) {
     }
 }
 
+void scrollerFinalize(void) {
+    for (int line = 0; line < MAX_LINES; line++) {
+        scroll[line].active = false;
+        pthread_cancel(scroll[line].scrollThread);
+        pthread_join(scroll[line].scrollThread, NULL);
+        free(scroll[line].text);
+    }
+}
+
+void baselineScroller(Scroller *s) {
+    s->active = false;
+    s->nystagma = true;
+    s->lolimit = 1000;
+    s->hilimit = -1000;
+    strcpy(s->text, "");
+    s->xpos = maxXPixel();
+    s->forward = false;
+    s->pause = false;
+    s->textPix = 0;
+}
+
 void putScrollable(int line, char *buff) {
-    //scroll[line].scrollThread.active = false;
     scroll[line].active = false;
     int tlen = strlen(buff);
     bool goscroll = (maxCharacter() < tlen);
@@ -145,58 +177,26 @@ void putScrollable(int line, char *buff) {
     }
     else
     {
-        sprintf(scroll[line].text, " %s ", buff); 
-        scroll[line].xpos = maxXPixel();
-        scroll[line].pause = false;
-        scroll[line].forward = false;
+        baselineScroller(&scroll[line]);
+        sprintf(scroll[line].text, " %s ", buff); // pad ends
         scroll[line].textPix = tlen * CHAR_WIDTH;
         scroll[line].active = true;
-        // activate the scroller thread
-        //scroll[line].scrollThread.active = true;
     }
     
 }
 
-
-void* scrollLineUgh(void *input)
-{
-    sme *s;
-    s = ((struct Scroller*)input);
-    int timer = 100;
-    while(true) {
-        timer = 100;
-        if (s->active) {
-            s->xpos--;
-            if (s->xpos + s->textPix <= maxXPixel())
-                s->xpos += s->textPix;
-            display.setTextWrap(false);
-            clearLine(s->ypos);
-            // should appear to marquee - sadly it does not???
-            if (s->xpos > 0)
-                display.setCursor(s->xpos - s->textPix, s->ypos);
-            else
-                display.setCursor(s->xpos + s->textPix, s->ypos);
-
-            display.print(s->text);
-
-            if (0 == s->xpos) {
-                s->forward = false;
-                timer = 5000;
-            }
-        }
-        usleep(timer);
-    }   
-}
+#define SCAN_TIME 100
+#define PAUSE_TIME 5000
 
 void* scrollLine(void *input)
 {
     sme *s;
     s = ((struct Scroller*)input);
-    int timer = 100;
+    int timer = SCAN_TIME;
     //int testmin = 10000;
     //int testmax = -10000;
     while(true) {
-        timer = 100;
+        timer = SCAN_TIME;
         if (s->active) {
             // cylon sweep
             if (s->forward)
@@ -208,14 +208,19 @@ void* scrollLine(void *input)
             display.setCursor(s->xpos, s->ypos);
             display.print(s->text);
 
-            if (-3 == s->xpos) {
+            if (-(CHAR_WIDTH/2) == s->xpos) {
+            //if (0 == s->xpos) {
                 if (!s->forward)
-                    timer = 5000;
+                    timer = PAUSE_TIME;
                 s->forward = false;
             }
 
-            if (maxXPixel() == ((s->textPix)+s->xpos))
+            if ((maxXPixel()-(int)(1.5*CHAR_WIDTH)) == ((s->textPix)+s->xpos))
                 s->forward = true;
+
+            // address annoying pixels
+            display.fillRect(0, s->ypos, 2, CHAR_HEIGHT+2, BLACK);
+            display.fillRect(maxXPixel()-2, s->ypos, 2, CHAR_HEIGHT+2, BLACK);
 
             // need to test for "nystagma" - where text is just shy
             // of being with static limits and gets to a point
@@ -241,14 +246,9 @@ void scrollerInit(void) {
             closeDisplay();
             return;
         } else {
-            strcpy(scroll[line].text, "");
-            scroll[line].active = false;
+            baselineScroller(&scroll[line]);
             scroll[line].ypos = line * (2+CHAR_HEIGHT);
-            scroll[line].xpos = maxXPixel();
-            scroll[line].forward = false;
-            scroll[line].pause = false;
             scroll[line].scrollMe = scrollLine;
-            scroll[line].textPix = 0;
             pthread_create(&scroll[line].scrollThread, NULL, scroll[line].scrollMe, (void *)&scroll[line]);
         }
     }
@@ -322,6 +322,43 @@ void testFont(int x, int y, char *buff) {
 
 void drawRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
     display.drawRect(x, y, w, h, color);
+}
+
+// parked
+void* scrollLineUgh(void *input)
+{
+    sme *s;
+    s = ((struct Scroller*)input);
+    int timer = SCAN_TIME;
+
+    while(true) {
+        timer = SCAN_TIME;
+
+        if (s->active) {
+            s->xpos--;
+            if (s->xpos + s->textPix <= maxXPixel())
+                s->xpos += s->textPix;
+            display.setTextWrap(false);
+            clearLine(s->ypos);
+            // should appear to marquee - but sadly it does not???
+            if (s->xpos > 0)
+                display.setCursor(s->xpos - s->textPix, s->ypos);
+            else
+                display.setCursor(s->xpos + s->textPix, s->ypos);
+
+            display.print(s->text);
+
+            // address annoying pixels
+            display.fillRect(0, s->ypos, 2, CHAR_HEIGHT+2, BLACK);
+            display.fillRect(maxXPixel()-2, s->ypos, 2, CHAR_HEIGHT+2, BLACK);
+
+            if (-3 == s->xpos) {
+                s->forward = false; // what resets?
+                timer = 5000;
+            }
+        }
+        usleep(timer);
+    }   
 }
 
 #endif

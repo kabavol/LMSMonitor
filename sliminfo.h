@@ -59,4 +59,6 @@ void error(const char *msg);
 void askRefresh(void);
 bool isRefreshed(void);
 
+void sliminfoFinalize(void);
+
 #endif

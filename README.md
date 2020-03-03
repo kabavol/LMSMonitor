@@ -10,7 +10,20 @@ OLED information display control program for [piCorePlayer](https://www.picorepl
 -t enable print info to stdout
 -l increment verbose level
 -v activate visualization
+-m VU meters and spectrum analysis
 -r display remaining time rather than track time
 ```
 
+### Features
+- Removed static library usage, smaller size, upgrade hardened
+- Removed use of ALSA MIMO, audio attributes provided by LMS used
+- Track details are displayed only when playing
+- Display features independant scrolling of track details.
+- A retro clock is displayed when audio paused/stopped.
+- Remaining time can now be displayed
+- Audio attributes, volume, sample depth, and sample rate are displayed
 
+### Coming soon
+- Audio visualizer support: stereo VU meters
+- Audio visualizer support: spectrum analyzer
+- Weather: TBD

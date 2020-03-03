@@ -226,12 +226,13 @@ void closeSliminfo(void) {
     if (sockFD > 0) {
         close(sockFD);
     }
-
     for (int i = 0; i < MAXTAG_TYPES; i++) {
         if (tagStore[i].tagData != NULL) {
             free(tagStore[i].tagData);
         }
     }
+    pthread_cancel(sliminfoThread);
+    pthread_join(sliminfoThread, NULL);
 }
 
 tag *initTagStore(void) {
@@ -430,4 +431,8 @@ tag *initSliminfo(char *playerName) {
     }
 
     return tagStore;
+}
+
+void sliminfoFinalize(void) {
+    closeSliminfo();
 }

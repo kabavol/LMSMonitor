@@ -23,6 +23,7 @@
  *
  */
 
+#include <signal.h>
 #include <errno.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -39,7 +40,6 @@
 #include <sys/ioctl.h>
 
 #include "common.h"
-#include "display.h"
 #include "sliminfo.h"
 #include "tagUtils.h"
 #include <sys/time.h>
@@ -63,6 +63,50 @@
 
 char stbl[BSIZE];
 tag *tags;
+
+// free and cleanup here
+void before_exit(void) {
+    printf("\nCleanup and shutdown\n");
+    closeSliminfo();
+#ifdef __arm__
+    closeDisplay();
+#endif
+    printf("Done.\n");
+}
+
+void sigint_handler(int sig) {
+  before_exit();
+  exit(0);
+}
+
+void attach_signal_handler(void) {
+
+  struct sigaction new_action, old_action;
+
+  new_action.sa_handler = sigint_handler;
+  sigemptyset (&new_action.sa_mask);
+  new_action.sa_flags = 0;
+
+  sigaction (SIGINT, NULL, &old_action);
+  if (old_action.sa_handler != SIG_IGN)
+    sigaction (SIGINT, &new_action, NULL);
+  sigaction (SIGHUP, NULL, &old_action);
+  if (old_action.sa_handler != SIG_IGN)
+    sigaction (SIGHUP, &new_action, NULL);
+  sigaction (SIGTERM, NULL, &old_action);
+  if (old_action.sa_handler != SIG_IGN)
+    sigaction (SIGTERM, &new_action, NULL);
+  sigaction (SIGQUIT, NULL, &old_action);
+  if (old_action.sa_handler != SIG_IGN)
+    sigaction (SIGQUIT, &new_action, NULL);
+  sigaction (SIGSTOP, NULL, &old_action);
+  if (old_action.sa_handler != SIG_IGN)
+    sigaction (SIGSTOP, &new_action, NULL);
+
+  new_action.sa_flags = SA_NODEFER;
+  sigaction(SIGSEGV, &new_action, NULL); /* catch seg fault - and hopefully backtrace */
+
+}
 
 static char *get_mac_address() {
     struct ifconf ifc;
@@ -108,7 +152,7 @@ static char *get_mac_address() {
 }
 
 void signature(char *executable) {
-    printf("\nThis is %s, compiled %s %s.\n\n", executable, __DATE__, __TIME__);
+    printf("This is %s, compiled %s %s.\n", executable, __DATE__, __TIME__);
 }
 
 void print_help(char *executable) {
@@ -119,6 +163,7 @@ void print_help(char *executable) {
            " -c display clock when not playing (Pi only)\n"
            " -v display visualization sequence when playing (Pi only)\n"
            " -t enable print info to stdout\n"
+           " -z no splash screen\n"
            " -i increment verbose level\n\n",
            VERSION);
     signature(executable);
@@ -126,12 +171,16 @@ void print_help(char *executable) {
 
 int main(int argc, char *argv[]) {
 
+    attach_signal_handler();
+
     bool visualize = false;
     bool clock = false;
     bool extended = false;
     bool remaining = false;
+    bool splash = true;
     long lastVolume = -100;
     long actVolume = 0;
+    int audio = 3; // 2 HD 3 SD 4 DSD
     long pTime, dTime, rTime;
     char buff[255];
     char *playerName = NULL;
@@ -171,6 +220,8 @@ int main(int argc, char *argv[]) {
 
             case 'r': remaining = true; break;
 
+            case 'z': splash = false; break;
+
             case 'h':
                 print_help(argv[0]);
                 exit(1);
@@ -192,8 +243,9 @@ int main(int argc, char *argv[]) {
     if (initDisplay() == EXIT_FAILURE) {
         exit(EXIT_FAILURE);
     }
-
-    splashScreen();
+    // throw up splash if not nixed by caller
+    if (splash)
+        splashScreen();
 
 #endif
 
@@ -202,6 +254,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    // re-work this so as to "pages" metaphor
     while (true) {
 
         if (isRefreshed()) {
@@ -229,7 +282,7 @@ int main(int argc, char *argv[]) {
                     else
                         sprintf(buff, "  %ld%% ", actVolume);
 #ifdef __arm__
-                    volume((0 != actVolume), buff);
+                    putVolume((0 != actVolume), buff);
 #endif
                     lastVolume = actVolume;
                 }
@@ -243,10 +296,17 @@ int main(int argc, char *argv[]) {
                     tags[SAMPLESIZE].valid
                         ? strtol(tags[SAMPLESIZE].tagData, NULL, 10)
                         : 16;
-                if (1 == samplesize)
+                audio = 3;
+                if (1 == samplesize) {
                     sprintf(buff, "DSD%.0f", (samplerate / 44.1));
+                    audio++;
+                }
                 else
+                {
                     sprintf(buff, "%db/%.1fkHz", samplesize, samplerate);
+                    if (16 != samplesize)
+                        audio--;
+                }
 
                 if (strstr(buff, ".0") != NULL) {
                     char *foo = NULL;
@@ -255,14 +315,12 @@ int main(int argc, char *argv[]) {
                     sprintf(buff, "%s", foo);
                 }
 
-#ifdef __arm__
                 if (strcmp(lastBits, buff) != 0) {
-                    int bdlen = strlen(buff);
-                    putText(60, 0, "       "); // prep
-                    putText(maxXPixel() - (bdlen * CHAR_WIDTH) - 1, 0, buff);
+#ifdef __arm__
+                    putAudio(audio, buff);
+#endif
                     strncpy(lastBits, buff, 32);
                 }
-#endif
 
                 for (int line = 1; line < LINE_NUM; line++) {
 #ifdef __arm__
@@ -413,13 +471,12 @@ int main(int argc, char *argv[]) {
         } // isRefreshed
 
         usleep(SLEEP_TIME);
+#ifdef __arm__
         refreshDisplayScroller();
+#endif
 
     } // main loop
 
-#ifdef __arm__
-    closeDisplay();
-#endif
-    closeSliminfo();
+    before_exit();
     return 0;
 }
