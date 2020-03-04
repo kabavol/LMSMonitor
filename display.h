@@ -76,6 +76,7 @@ void drawTimeBlink(uint8_t cc);
 void drawTimeText(char *buff);
 void drawTimeText2(char *buff, char *last);
 void clearLine(int y);
+void clearDisplay();
 
 void refreshDisplay(void);
 void refreshDisplayScroller(void);

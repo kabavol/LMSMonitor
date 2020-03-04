@@ -87,6 +87,6 @@ struct vissy_meter_t {
   int sample_bin_chan[METER_CHANNELS][MAX_SUBBANDS];
   float avg_power[2 * MAX_SUBBANDS];
   kiss_fft_cfg cfg;
-} VMT;
+};
 
 #endif

@@ -90,7 +90,11 @@ void closeDisplay(void) {
     scrollerFinalize();
     display.clearDisplay();
     display.close();
-    return;
+}
+
+void clearDisplay() {
+    display.clearDisplay();
+    display.display();
 }
 
 void vumeter2upl(void) {
@@ -102,9 +106,7 @@ void splashScreen(void) {
     display.clearDisplay();
     display.drawBitmap(0, 0, splash, 128, 64, WHITE);
     display.display();
-    delay(5000);
-    display.clearDisplay();
-    display.display();
+    delay(2000);
 }
 
 void drawTimeBlink(uint8_t cc) {

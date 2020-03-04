@@ -53,13 +53,18 @@
 #include "Adafruit_GFX.h"
 #include "ArduiPi_OLED.h"
 #include "display.h"
+#include "vizsse.h"
+#include "vizshmem.h"
 // clang-format on
 
 #endif
 
-#define VERSION "0.4.3"
 #define SLEEP_TIME 200
 #define CHRPIXEL 8
+
+#ifdef __arm__
+DEFINE_OBJECT(Options, options);
+#endif
 
 char stbl[BSIZE];
 tag *tags;
@@ -69,9 +74,12 @@ void before_exit(void) {
     printf("\nCleanup and shutdown\n");
     closeSliminfo();
 #ifdef __arm__
+    clearDisplay();
     closeDisplay();
+    vissySSEFinalize();
+    vissySHMEMFinalize();
 #endif
-    printf("Done.\n");
+    printf("All Done\nBye Bye.\n");
 }
 
 void sigint_handler(int sig) {
@@ -206,8 +214,10 @@ int main(int argc, char *argv[]) {
     // clang-format on
 
     opterr = 0;
-    while ((aName = getopt(argc, argv, "o:n:tvhricz")) != -1) {
+    while ((aName = getopt(argc, argv, "n:tivcrzh")) != -1) {
         switch (aName) {
+            case 'n': playerName = optarg; break;
+
             case 't': enableTOut(); break;
 
             case 'i': incVerbose(); break;
@@ -215,8 +225,6 @@ int main(int argc, char *argv[]) {
             case 'v': visualize = true; break;
 
             case 'c': clock = true; break;
-
-            case 'n': playerName = optarg; break;
 
             case 'r': remaining = true; break;
 
@@ -227,14 +235,6 @@ int main(int argc, char *argv[]) {
                 exit(1);
                 break;
         }
-    }
-
-    signature(argv[0]);
-    thatMAC = player_mac();
-
-    if (thatMAC != thisMAC) {
-        extended = true;
-        printf("Extended attrs from LMS enabled, no mimo!\n");
     }
 
 #ifdef __arm__
@@ -249,10 +249,40 @@ int main(int argc, char *argv[]) {
 
 #endif
 
+    signature(argv[0]);
+    thatMAC = player_mac();
+
+    if (thatMAC != thisMAC) {
+        extended = true;
+        printf("Extended attrs from LMS enabled, no mimo!\n");
+#ifdef __arm__
+        if (visualize) {
+            // go SSE for visualizer
+            visualize = setupSSE(argc, argv);
+        }
+#endif
+    }
+#ifdef __arm__
+    else
+    {
+        if (visualize) {
+            // go SHMEM for visualizer
+            visualize = setupSHMEM(argc, argv);
+        }
+    }
+#endif
+    
+
     // init here - splash delay mucks the refresh flagging
     if ((tags = initSliminfo(playerName)) == NULL) {
         exit(1);
     }
+
+    // init for visualize mechanism here
+
+#ifdef __arm__
+    clearDisplay(); // clear splash if shown
+#endif
 
     // re-work this so as to "pages" metaphor
     while (true) {
@@ -405,7 +435,9 @@ int main(int argc, char *argv[]) {
 #endif
             } else {
 
+#ifdef __arm__
                 scrollerPause(); // we need to re-activate too - save state!!!
+#endif
 
                 if (clock) {
 
