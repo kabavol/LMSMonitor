@@ -146,18 +146,7 @@ void stereoVU(struct vissy_meter_t *vissy_meter)
 
 	    int16_t ax = (xpivot[channel] + (sin(mv/rad) * rMeter));
 	    int16_t ay = (wMeter - (cos(mv/rad) * rMeter));
-/*
-printf("%2s rms:%d value:%f ax:%3d ay:%3d xp:%3d yp:%3d r:%3d\n",
-vissy_meter->channel_name[channel],
-vissy_meter->rms_scale[channel],
-mv,
-ax,
-ay,
-xpivot[channel],
-wMeter,
-rMeter
-);
-*/
+
         // thick needle with definition
 		display.drawLine(xpivot[channel]-2, wMeter, ax, ay, BLACK);
 		display.drawLine(xpivot[channel]-1, wMeter, ax, ay, WHITE);
@@ -167,6 +156,13 @@ rMeter
 
     }
 
+    // finesse
+    display.fillRect(xpivot[0]-3, maxYPixel()-6, maxXPixel()/2, 6, BLACK);
+    uint16_t r = 7;
+    for (int channel = 0; channel < 2; channel++) {
+        display.fillCircle(xpivot[channel], wMeter, r, WHITE);
+        display.drawCircle(xpivot[channel], wMeter, r-2, BLACK);
+    }
 }
 
 void drawTimeBlink(uint8_t cc) {
