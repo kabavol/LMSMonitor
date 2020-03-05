@@ -53,7 +53,8 @@ void visualize(struct vissy_meter_t *vissy_meter) {
         stereoVU(vissy_meter);
     }
 
-    // stream too fast for display - 1:40 ration plays happy with display
+    // stream too fast for display - 1:40 ratio plays happy with display
+    // routine does check for change so we may be Ok, parameterize and push limits
     visgood++;
     if (visgood > 39)
         visgood = 0;
