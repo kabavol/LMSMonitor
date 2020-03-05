@@ -29,6 +29,8 @@
 #include <pthread.h>
 #include <stdbool.h>
 
+#include "visdata.h"
+
 #define CHAR_WIDTH 6
 #define CHAR_HEIGHT 8
 
@@ -65,6 +67,7 @@ void closeDisplay(void);
 
 // we'll support 2up and dual displays
 void vumeter2upl(void);
+void stereoVU(struct vissy_meter_t *vissy_meter);
 
 // audio attributes
 void putVolume(bool v, char *buff);

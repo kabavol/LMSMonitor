@@ -36,18 +36,17 @@
 
 #include "http.h"
 
-#include "visdata.h"
+#include "log.h"
+#include "jsmn.h"
+
 #include "visualize.h"
 #include "vizsse.h"
-#include "log.h"
 
 pthread_t vizSSEThread;
 
-static void parse_arguments(int argc, char** argv);
-
 static size_t on_data(char *ptr, size_t size, size_t nmemb, void *userdata)
 {  
-  parse_payload((const char*)userdata);
+  parse_payload(ptr, size * nmemb);
   return size * nmemb;
 } 
 
@@ -66,17 +65,40 @@ static const char* verify_sse_response(CURL* curl) {
   return "Invalid content_type, should be '" EXPECTED_CONTENT_TYPE "'.";
 }
 
-void parse_payload(const char* data)
-{
-  printf("the data >>>>>>>>>>>>>>>>>>>\n%s\n",data);
-  // TODO: implementation details
-}
-
 void on_sse_event(char** headers, const char* data)
 {
-    // parse mesage payload - simple JSON - keep it light-weight
-    parse_payload(data);
-    visualize(); // go visualize (if screen active)
+    char* result = 0;
+    // parse mesage payload - it is simple JSON - keep it light-weight
+
+    struct vissy_meter_t vissy_meter = {
+        .channel_name = {"L", "R"},
+        .is_mono = 0,
+        .sample_accum = {0, 0},
+        .floor = -96,
+        .reference = 32768,
+        .dBfs = {-1000,-1000},
+        .dB = {-1000,-1000},
+        .linear = {0,0},
+        .rms_bar = {0,0},
+        .channel_width = {192, 192},
+        .bar_size = {6, 6},
+        .channel_flipped = {0, 0},
+        .clip_subbands = {0, 0},
+        .sample_bin_chan = {
+          {0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        },
+          {0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        }},
+    };
+
+    parse_visualize((char*)data, &vissy_meter);
+    visualize(&vissy_meter); // go visualize (if screen active)
+
+    free(result);
 
 }
 
@@ -89,6 +111,8 @@ void *vizSSEPolling(void *x_voidptr) {
   };
   // calls libcurl
   http(HTTP_GET, options.uri, headers, 0, 0, on_data, verify_sse_response);
+  return 0;
+
 }
 
 static void parseSSEArguments(int argc, char** argv)
@@ -125,4 +149,91 @@ void vissySSEFinalize(void)
 {
     pthread_cancel(vizSSEThread);
     pthread_join(vizSSEThread, NULL);  
+}
+
+static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
+  if (tok->type == JSMN_STRING && (int)strlen(s) == tok->end - tok->start &&
+      strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
+    return 0;
+  }
+  return -1;
+}
+
+void parse_visualize(char *data, struct vissy_meter_t *vissy_meter)
+{
+
+  int i;
+  int r;
+  jsmn_parser p;
+  jsmntok_t t[128]; /* We expect no more than 128 tokens */
+
+    uint8_t channel = 0;
+    bool is_vu = true;
+    char test[1024];
+    int numFFT = 0;
+
+  jsmn_init(&p);
+  r = jsmn_parse(&p, data, strlen(data), t,
+                 sizeof(t) / sizeof(t[0]));
+  if (r < 0) {
+    // buffer shunting ???
+    //printf("Failed to parse JSON: %d\n", r);
+    return;
+  }
+
+  /* Assume the top-level element is an object */
+  if (r < 1 || t[0].type != JSMN_OBJECT) {
+    //printf("Object expected\n");
+    return;
+  }
+
+    /* Loop over all keys of the root object */
+  for (i = 1; i < r; i++) {
+    sprintf(test, "%.*s", t[i + 1].end - t[i + 1].start,
+            data + t[i + 1].start);
+    if (jsoneq(data, &t[i], "type") == 0) {
+      /* We may use strndup() to fetch string value */
+      is_vu = (strncmp(test, "VU", 2));
+      i++;
+    } else if (jsoneq(data, &t[i], "channel") == 0) {
+      /* We may additionally check if the value is either "true" or "false" */
+      // ignore - we'll digest
+      i++;
+    } else if (jsoneq(data, &t[i], "name") == 0) {
+      channel = (strncmp(test, "L", 1)) ? 0 : 1;
+      i++;
+    } else if (jsoneq(data, &t[i], "accumulated") == 0) {
+      vissy_meter->sample_accum[channel] = atoi(test);
+      i++;
+    } else if (jsoneq(data, &t[i], "scaled") == 0) {
+      vissy_meter->rms_scale[channel] = atoi(test);
+      i++;
+    } else if (jsoneq(data, &t[i], "dBfs") == 0) {
+      vissy_meter->dBfs[channel] = atoi(test);
+      i++;
+    } else if (jsoneq(data, &t[i], "dB") == 0) {
+      vissy_meter->dB[channel] = atoi(test);
+      i++;
+    } else if (jsoneq(data, &t[i], "linear") == 0) {
+      vissy_meter->linear[channel] = atoi(test);
+      i++;
+    } else if (jsoneq(data, &t[i], "numFFT") == 0) {
+      numFFT = atoi(test);
+      i++;
+    } else if (jsoneq(data, &t[i], "FFT") == 0) {
+      int j;
+      if (t[i + 1].type != JSMN_ARRAY) {
+        continue; // We expect FFT values to be an array of int
+      }
+      for (j = 0; j < t[i + 1].size; j++) {
+        jsmntok_t *g = &t[i + j + 2];
+        sprintf(test,"%.*s", g->end - g->start, data + g->start);
+        vissy_meter->sample_bin_chan[channel][j] = atoi(test);
+      }
+      i += t[i + 1].size + 1;
+    } else {
+      continue; // unknown or need to map
+    }
+  }
+
 }

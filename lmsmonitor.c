@@ -55,6 +55,7 @@
 #include "display.h"
 #include "vizsse.h"
 #include "vizshmem.h"
+#include "visualize.h"
 // clang-format on
 
 #endif
@@ -259,6 +260,8 @@ int main(int argc, char *argv[]) {
         if (visualize) {
             // go SSE for visualizer
             visualize = setupSSE(argc, argv);
+// debug here
+activateVisualizer();
         }
 #endif
     }
@@ -268,6 +271,8 @@ int main(int argc, char *argv[]) {
         if (visualize) {
             // go SHMEM for visualizer
             visualize = setupSHMEM(argc, argv);
+// debug here
+activateVisualizer();
         }
     }
 #endif
@@ -300,6 +305,14 @@ int main(int argc, char *argv[]) {
                     refreshLMS = false;
                 }
                 refreshClock = true;
+
+#ifdef __arm__
+                if ((visualize)&&(isVisualizeActive())) {
+                    scrollerPause(); // we need to re-activate too - save state!!!
+                }
+                else
+                {
+#endif
 
                 tOut("_____________________\n");
 
@@ -426,6 +439,10 @@ int main(int argc, char *argv[]) {
                 tOut(stbl);
 #endif
 
+#ifdef __arm__
+                }
+#endif
+                
                 for (int i = 0; i < MAXTAG_TYPES; i++) {
                     tags[i].changed = false;
                 }
@@ -502,10 +519,14 @@ int main(int argc, char *argv[]) {
 
         } // isRefreshed
 
-        usleep(SLEEP_TIME);
 #ifdef __arm__
-        refreshDisplayScroller();
+        if ((visualize)&&(isVisualizeActive()))
+            refreshDisplay();
+        else
+            refreshDisplayScroller();
 #endif
+
+        usleep(SLEEP_TIME);
 
     } // main loop
 

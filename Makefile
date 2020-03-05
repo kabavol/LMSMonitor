@@ -11,7 +11,11 @@ bin:
 .PHONY: default all clean
 
 default: $(TARGET)
-all: default
+
+digest-sse.c: digest-sse.flex
+	flex -I -o $@ $<
+
+all: digest-sse.c default
 
 OBJECTS = $(patsubst %.c, %.o, $(wildcard *.c))
 HEADERS = $(wildcard *.h)
@@ -25,8 +29,7 @@ $(TARGET): $(OBJECTS)
 	$(CC) $(OBJECTS) -Wall $(LIBS) -o $@
 
 clean:
+	-rm digest-sse.c
 	-rm -f *.o
 	-rm -f $(TARGET)
 
-digest-sse.c: digest-sse.flex
-	flex -I -o $@ $<

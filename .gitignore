@@ -30,3 +30,6 @@
 
 # Debug files
 *.dSYM/
+
+# don't include flex generated files
+digest-sse.c

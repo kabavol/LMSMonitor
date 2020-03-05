@@ -27,10 +27,14 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <math.h>
 
 #include "display.h"
 #include "oledimg.h"
 #include "libm6.h"
+
+#define _USE_MATH_DEFINES
+#define PI acos(-1.0000)
 
 #ifdef __arm__
 
@@ -98,7 +102,7 @@ void clearDisplay() {
 }
 
 void vumeter2upl(void) {
-    //display.clearDisplay();
+    display.clearDisplay();
     display.drawBitmap(0, 0, vu2up128x64, 128, 64, WHITE);
 }
 
@@ -107,6 +111,62 @@ void splashScreen(void) {
     display.drawBitmap(0, 0, splash, 128, 64, WHITE);
     display.display();
     delay(2000);
+}
+
+long long last_L = -1000;
+long long last_R = -1000;
+
+void stereoVU(struct vissy_meter_t *vissy_meter)
+{
+
+    // do no work if we don't need to
+    if ((last_L = vissy_meter->rms_bar[0]) && (last_R == vissy_meter->rms_bar[1]))
+        return;
+
+    last_L = vissy_meter->rms_bar[0];
+    last_R = vissy_meter->rms_bar[1];
+
+    vumeter2upl();
+
+    int hMeter = maxYPixel()-4;
+    int rMeter = hMeter-6;
+    int16_t wMeter = maxXPixel()/2;
+    int16_t xpivot[2];
+    xpivot[0] = maxXPixel()/4;
+    xpivot[1] = xpivot[0] * 3;
+    double rad = (180.00 / PI); // 180/pi
+
+    // meter positions
+
+    for (int channel = 0; channel < 2; channel++) {
+
+        // meter value
+	    double mv = (double)vissy_meter->rms_scale[channel] * (2 * 36.00) / 48.00;
+	    mv -= 36.000; // zero adjust [-3dB->-20dB]
+
+	    int16_t ax = (xpivot[channel] + (sin(mv/rad) * rMeter));
+	    int16_t ay = (wMeter - (cos(mv/rad) * rMeter));
+/*
+printf("%2s rms:%d value:%f ax:%3d ay:%3d xp:%3d yp:%3d r:%3d\n",
+vissy_meter->channel_name[channel],
+vissy_meter->rms_scale[channel],
+mv,
+ax,
+ay,
+xpivot[channel],
+wMeter,
+rMeter
+);
+*/
+        // thick needle with definition
+		display.drawLine(xpivot[channel]-2, wMeter, ax, ay, BLACK);
+		display.drawLine(xpivot[channel]-1, wMeter, ax, ay, WHITE);
+		display.drawLine(xpivot[channel], wMeter, ax, ay, WHITE);
+		display.drawLine(xpivot[channel]+1, wMeter, ax, ay, WHITE);
+		display.drawLine(xpivot[channel]+2, wMeter, ax, ay, BLACK);
+
+    }
+
 }
 
 void drawTimeBlink(uint8_t cc) {
