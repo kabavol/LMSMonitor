@@ -261,6 +261,7 @@ int main(int argc, char *argv[]) {
             // go SSE for visualizer
             visualize = setupSSE(argc, argv);
 // debug here
+setVisMode("SA");
 activateVisualizer();
         }
 #endif
@@ -272,6 +273,7 @@ activateVisualizer();
             // go SHMEM for visualizer
             visualize = setupSHMEM(argc, argv);
 // debug here
+setVisMode("SA");
 activateVisualizer();
         }
     }

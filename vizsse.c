@@ -67,10 +67,11 @@ static const char* verify_sse_response(CURL* curl) {
 
 void on_sse_event(char** headers, const char* data)
 {
-    char* result = 0;
-    // parse mesage payload - it is simple JSON - keep it light-weight
 
+    // parse mesage payload - it is simple JSON - keep it light-weight
+    //
     struct vissy_meter_t vissy_meter = {
+        .meter_type = {0},
         .channel_name = {"L", "R"},
         .is_mono = 0,
         .sample_accum = {0, 0},
@@ -84,6 +85,7 @@ void on_sse_event(char** headers, const char* data)
         .bar_size = {6, 6},
         .channel_flipped = {0, 0},
         .clip_subbands = {0, 0},
+        .numFFT = {9, 9},
         .sample_bin_chan = {
           {0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -97,8 +99,6 @@ void on_sse_event(char** headers, const char* data)
 
     parse_visualize((char*)data, &vissy_meter);
     visualize(&vissy_meter); // go visualize (if screen active)
-
-    free(result);
 
 }
 
@@ -168,9 +168,8 @@ void parse_visualize(char *data, struct vissy_meter_t *vissy_meter)
   jsmntok_t t[128]; /* We expect no more than 128 tokens */
 
     uint8_t channel = 0;
-    bool is_vu = true;
+    bool is_vu = false;
     char test[1024];
-    int numFFT = 0;
 
   jsmn_init(&p);
   r = jsmn_parse(&p, data, strlen(data), t,
@@ -193,14 +192,15 @@ void parse_visualize(char *data, struct vissy_meter_t *vissy_meter)
             data + t[i + 1].start);
     if (jsoneq(data, &t[i], "type") == 0) {
       /* We may use strndup() to fetch string value */
-      is_vu = (strncmp(test, "VU", 2));
+      is_vu = (strncmp(test, "VU", 2) == 0);
+      strncpy(vissy_meter->meter_type, test, 2);
       i++;
     } else if (jsoneq(data, &t[i], "channel") == 0) {
       /* We may additionally check if the value is either "true" or "false" */
       // ignore - we'll digest
       i++;
     } else if (jsoneq(data, &t[i], "name") == 0) {
-      channel = (strncmp(test, "L", 1)) ? 0 : 1;
+      channel = (strncmp(test, "L", 1) == 0) ? 0 : 1;
       i++;
     } else if (jsoneq(data, &t[i], "accumulated") == 0) {
       vissy_meter->sample_accum[channel] = atoi(test);
@@ -218,10 +218,11 @@ void parse_visualize(char *data, struct vissy_meter_t *vissy_meter)
       vissy_meter->linear[channel] = atoi(test);
       i++;
     } else if (jsoneq(data, &t[i], "numFFT") == 0) {
-      numFFT = atoi(test);
+      vissy_meter->numFFT[channel] =  atoi(test);
       i++;
     } else if (jsoneq(data, &t[i], "FFT") == 0) {
       int j;
+      //if ((is_vu) || (t[i + 1].type != JSMN_ARRAY)) {
       if (t[i + 1].type != JSMN_ARRAY) {
         continue; // We expect FFT values to be an array of int
       }
@@ -229,11 +230,16 @@ void parse_visualize(char *data, struct vissy_meter_t *vissy_meter)
         jsmntok_t *g = &t[i + j + 2];
         sprintf(test,"%.*s", g->end - g->start, data + g->start);
         vissy_meter->sample_bin_chan[channel][j] = atoi(test);
+        //printf("%d-%d %4s -> %3d (%d) %s\n",
+        //channel,j,test,vissy_meter->sample_bin_chan[channel][j],
+        //vissy_meter->numFFT[channel],
+        //vissy_meter->meter_type);
       }
       i += t[i + 1].size + 1;
     } else {
-      continue; // unknown or need to map
+      continue; // unknown or we need to map
     }
   }
 
 }
+

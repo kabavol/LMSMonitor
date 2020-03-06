@@ -30,13 +30,21 @@
 #include <sys/time.h>
 #include <time.h>
 
+#include "visdata.h"
 #include "display.h"
 
 bool vis_is_active = false;
+char vis_mode[3] = {0};
 
 void activateVisualizer(void)
 {
     vis_is_active = true;
+}
+
+void setVisMode(char *mode)
+{
+    strncpy(vis_mode, mode, 2);
+    // clear display ???
 }
 
 bool isVisualizeActive(void) { return vis_is_active; }
@@ -49,12 +57,16 @@ void deactivateVisualizer(void)
 int visgood = 0;
 void visualize(struct vissy_meter_t *vissy_meter) {
 
-    if((vis_is_active)&&(1 == visgood)){
-        stereoVU(vissy_meter);
+    //if ((vis_is_active) && (1 == visgood)){
+    if ((vis_is_active) && (visgood) < 2){
+        if (strncmp(mode_vu,vissy_meter->meter_type,2) == 0)
+            stereoVU(vissy_meter);
+        else
+            stereoSpectrum(vissy_meter);
     }
 
-    // stream too fast for display - 1:40 ratio plays happy with display
-    // routine does check for change so we may be Ok, parameterize and push limits
+    // stream is too fast for display - a 1:40 consumption ratio plays happy w/ display
+    // routine VU routine checks for change so we may be Ok, parameterize and push limits
     visgood++;
     if (visgood > 39)
         visgood = 0;

@@ -23,6 +23,7 @@
 
 #include "visdata.h"
 
+void setVisMode(char *mode);
 void visualize(struct vissy_meter_t *vissy_meter);
 bool isVisualizeActive(void);
 

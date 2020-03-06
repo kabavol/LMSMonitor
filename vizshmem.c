@@ -38,6 +38,7 @@
 #include "log.h"
 #include "visdata.h"
 #include "vision.h"
+#include "visualize.h"
 #include "vissy.h"
 
 pthread_t vizSHMEMThread;
@@ -50,21 +51,13 @@ void vissySHMEMFinalize(void) {
 }
 
 static const char *payload_mode(bool samode) {
-    static const char *mode_sa = "SA";
-    static const char *mode_vu = "VU";
-    if (samode)
-        return mode_sa;
-
-    return mode_vu;
-}
-
-void publish_shmem(struct vissy_meter_t vissy_meter, const char *type) {
-    printf("%s\n", type);
+    return (samode) ? mode_sa : mode_vu;
 }
 
 void zero_payload(size_t timer_id, void *user_data) {
 
     struct vissy_meter_t vissy_meter = {
+        .meter_type = {0},
         .channel_name = {"L", "R"},
         .is_mono = 0,
         .sample_accum = {0, 0},
@@ -72,12 +65,14 @@ void zero_payload(size_t timer_id, void *user_data) {
         .dB = {-1000,-1000},
         .linear = {0,0},
         .rms_bar = {0,0},
+        .numFFT = {9,9},
         .sample_bin_chan = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
                             {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
     };
 
     for (int i = 0; i < 2; i++) {
-        publish_shmem(vissy_meter, payload_mode(i));
+        strncpy(vissy_meter.meter_type, payload_mode(i), 2);
+        visualize(&vissy_meter);
     }
 }
 
@@ -86,6 +81,7 @@ void *vizSHMEMPolling(void *x_voidptr) {
     uint8_t channel;
 
     struct vissy_meter_t vissy_meter = {
+        .meter_type = {0},
         .channel_name = {"L", "R"},
         .is_mono = 0,
         .sample_accum = {0, 0},
@@ -146,6 +142,8 @@ void *vizSHMEMPolling(void *x_voidptr) {
             }
 
             // push to visualize here
+            strncpy(vissy_meter.meter_type, payload_mode(samode), 2);
+            visualize(&vissy_meter);
 
             // cleanup (zero meter) timer - when the toons stop we zero
             timer_stop(ztimer);

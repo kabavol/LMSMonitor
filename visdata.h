@@ -36,6 +36,9 @@
 #define MIN_SUBBANDS 16
 #define MIN_FFT_INPUT_SAMPLES 128
 
+static const char *mode_sa = "SA";
+static const char *mode_vu = "VU";
+
 struct peak_meter_t {
   uint16_t int_time;  // Integration time (ms).
   uint16_t samples;   // Samples for integration time.
@@ -57,7 +60,9 @@ struct peak_meter_t {
   int16_t scale[PEAK_METER_LEVELS_MAX]; // Scale intervals.
 };
 
+struct bin_chan_t {int bin[METER_CHANNELS][MAX_SUBBANDS];};
 struct vissy_meter_t {
+  char meter_type[3];
   char channel_name[METER_CHANNELS][2];
   int is_mono;
   long long sample_accum[METER_CHANNELS]; // VU raw peak values.
@@ -84,6 +89,7 @@ struct vissy_meter_t {
   double preemphasis[MAX_SUBBANDS];
   int decade_idx[MAX_SUBBANDS];
   int decade_len[MAX_SUBBANDS];
+  int numFFT[METER_CHANNELS];
   int sample_bin_chan[METER_CHANNELS][MAX_SUBBANDS];
   float avg_power[2 * MAX_SUBBANDS];
   kiss_fft_cfg cfg;
