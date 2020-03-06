@@ -56,12 +56,24 @@
 #include "vizsse.h"
 #include "vizshmem.h"
 #include "visualize.h"
+#include "timer.h"
 // clang-format on
 
+#include <ctype.h>
+// missing under linux
+void strupr(char *s)
+{
+    char *p = s;
+    while (*p) {
+        *p = toupper(*p);
+        ++p;
+    }
+} 
 #endif
 
 #define SLEEP_TIME 200
 #define CHRPIXEL 8
+#define LINE_NUM 5
 
 #ifdef __arm__
 DEFINE_OBJECT(Options, options);
@@ -69,6 +81,18 @@ DEFINE_OBJECT(Options, options);
 
 char stbl[BSIZE];
 tag *tags;
+
+    // clang-format off
+	tagtypes_t layout[LINE_NUM][3] = {
+		{MAXTAG_TYPES, MAXTAG_TYPES, MAXTAG_TYPES},
+		{COMPOSER,     ARTIST,       MAXTAG_TYPES},
+		{ALBUM,        MAXTAG_TYPES, MAXTAG_TYPES},
+		{TITLE,        MAXTAG_TYPES, MAXTAG_TYPES},
+		{ALBUMARTIST,  CONDUCTOR,    MAXTAG_TYPES},
+	};
+    // clang-format on
+
+
 
 // free and cleanup here
 void before_exit(void) {
@@ -79,6 +103,7 @@ void before_exit(void) {
     closeDisplay();
     vissySSEFinalize();
     vissySHMEMFinalize();
+    timer_finalize(); // should be all set ???
 #endif
     printf("All Done\nBye Bye.\n");
 }
@@ -178,6 +203,36 @@ void print_help(char *executable) {
     signature(executable);
 }
 
+#ifdef __arm__
+void setupPlayMode(void)
+{
+    for (int line = 1; line < LINE_NUM; line++) {
+        for (tagtypes_t *t = layout[line]; *t != MAXTAG_TYPES;
+             t++) {
+            if (tags[*t].valid) {
+                tags[*t].changed = true;
+            }
+        }
+    }
+}
+
+void toggleVisualize(size_t timer_id, void *user_data) {
+    if ((bool)user_data) {
+        if (isVisualizeActive()) {
+            deactivateVisualizer();
+            setupPlayMode();
+            //strncpy(lastTime,"XX:XX",5);
+        }
+        else
+        {
+            scrollerPause(); // we need to re-activate too - save state!!!
+            activateVisualizer();
+            clearDisplay();
+        }
+    }
+}
+#endif
+
 int main(int argc, char *argv[]) {
 
     attach_signal_handler();
@@ -187,15 +242,12 @@ int main(int argc, char *argv[]) {
     bool extended = false;
     bool remaining = false;
     bool splash = true;
-    long lastVolume = -100;
     long actVolume = 0;
     int audio = 3; // 2 HD 3 SD 4 DSD
     long pTime, dTime, rTime;
     char buff[255];
     char *playerName = NULL;
-    char lastBits[16] = "LMS";
-    char lastTime[6] =
-        "XX:XX"; // non-matching time digits (we compare one by one)!
+    char meterMode[3];
     int aName;
     char *thatMAC = NULL;
     char *thisMAC = get_mac_address();
@@ -203,21 +255,16 @@ int main(int argc, char *argv[]) {
     bool refreshLMS = false;
     bool refreshClock = false;
 
-    // clang-format off
-	#define LINE_NUM 5
-	tagtypes_t layout[LINE_NUM][3] = {
-		{MAXTAG_TYPES, MAXTAG_TYPES, MAXTAG_TYPES},
-		{COMPOSER,     ARTIST,       MAXTAG_TYPES},
-		{ALBUM,        MAXTAG_TYPES, MAXTAG_TYPES},
-		{TITLE,        MAXTAG_TYPES, MAXTAG_TYPES},
-		{ALBUMARTIST,  CONDUCTOR,    MAXTAG_TYPES},
-	};
-    // clang-format on
+    long lastVolume = -100;
+    char lastBits[16] = "LMS";
+    char lastTime[6] = "XX:XX"; // non-matching time digits (we compare one by one)!
 
     opterr = 0;
-    while ((aName = getopt(argc, argv, "n:tivcrzh")) != -1) {
+    while ((aName = getopt(argc, argv, "n:m:tivcrzh")) != -1) {
         switch (aName) {
             case 'n': playerName = optarg; break;
+
+            case 'm': strncpy(meterMode, optarg, 2); break;
 
             case 't': enableTOut(); break;
 
@@ -240,6 +287,16 @@ int main(int argc, char *argv[]) {
 
 #ifdef __arm__
 
+    if (!(meterMode))
+        strncpy(meterMode, mode_vu, 2);
+    else
+    {
+        strupr(meterMode);
+        // validate and silently assign to default if "bogus"
+        if ((strncmp(meterMode,mode_vu,2) != 0)&&(strncmp(meterMode,mode_sa,2) != 0))
+            strncpy(meterMode, mode_vu, 2);
+    }
+    
     // init OLED display
     if (initDisplay() == EXIT_FAILURE) {
         exit(EXIT_FAILURE);
@@ -260,9 +317,6 @@ int main(int argc, char *argv[]) {
         if (visualize) {
             // go SSE for visualizer
             visualize = setupSSE(argc, argv);
-// debug here
-setVisMode("SA");
-activateVisualizer();
         }
 #endif
     }
@@ -272,13 +326,20 @@ activateVisualizer();
         if (visualize) {
             // go SHMEM for visualizer
             visualize = setupSHMEM(argc, argv);
-// debug here
-setVisMode("SA");
-activateVisualizer();
         }
     }
+
+    // if we had a clean setup
+    // init visualizer mode and
+    // timer toggle
+    if (visualize) {
+        setVisMode(meterMode);
+        size_t viztimer;
+        timer_initialize();
+        viztimer = timer_start(45*1000, toggleVisualize, TIMER_PERIODIC, (void*)visualize);
+    }
+
 #endif
-    
 
     // init here - splash delay mucks the refresh flagging
     if ((tags = initSliminfo(playerName)) == NULL) {
@@ -289,6 +350,12 @@ activateVisualizer();
 
 #ifdef __arm__
     clearDisplay(); // clear splash if shown
+
+    // set the visualizer switch
+    if (visualize) {
+
+    }
+
 #endif
 
     // re-work this so as to "pages" metaphor
@@ -311,6 +378,8 @@ activateVisualizer();
 #ifdef __arm__
                 if ((visualize)&&(isVisualizeActive())) {
                     scrollerPause(); // we need to re-activate too - save state!!!
+                    lastVolume = -1;
+                    lastBits[0] = 0;
                 }
                 else
                 {
@@ -502,14 +571,7 @@ activateVisualizer();
                     putTextToCenter(56, buff);
 
                     // set changed so we'll repaint on play
-                    for (int line = 1; line < LINE_NUM; line++) {
-                        for (tagtypes_t *t = layout[line]; *t != MAXTAG_TYPES;
-                             t++) {
-                            if (tags[*t].valid) {
-                                tags[*t].changed = true;
-                            }
-                        }
-                    }
+                    setupPlayMode();
                     lastVolume = -1;
                     lastBits[0] = 0;
                     refreshDisplay();

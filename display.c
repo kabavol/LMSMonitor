@@ -180,12 +180,15 @@ void stereoSpectrum(struct vissy_meter_t *vissy_meter)
 	int wsa = maxXPixel()-2;
 	int hsa = maxYPixel()-2;
 
-	int wbin = wsa / (2 + (bins * 2)); // 12 bar display
+	//int wbin = wsa / (2 + (bins * 2)); // 12 bar display
+	int wbin = wsa / ((bins+1) * 2); // 12 bar display
+
 	// SA scaling
 	double multiSA = (double)hsa / 31.00; // max input is 31 -2 to leaves head-room
 
     for (int channel = 0; channel < 2; channel++) {
-		int ofs = int(wbin/2) + 2 + (channel * ((wsa+2) / 2));
+		//int ofs = int(wbin/2) + 2 + (channel * ((wsa+2) / 2));
+		int ofs = int(wbin/2) + (channel * ((wsa+2) / 2));
 		for (int bin = 0; bin < bins; bin++) {
             double test = 0.00;
 			int lob = (int)(multiSA / 2.00);
@@ -224,6 +227,8 @@ void stereoSpectrum(struct vissy_meter_t *vissy_meter)
 
         }
     }
+    // finesse
+    display.fillRect(0, maxYPixel()-2, maxXPixel(), 2, BLACK);
 
 }
 
