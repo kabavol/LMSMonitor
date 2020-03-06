@@ -81,17 +81,17 @@ DEFINE_OBJECT(Options, options);
 
 char stbl[BSIZE];
 tag *tags;
+bool playing = false;
 
-    // clang-format off
-	tagtypes_t layout[LINE_NUM][3] = {
-		{MAXTAG_TYPES, MAXTAG_TYPES, MAXTAG_TYPES},
-		{COMPOSER,     ARTIST,       MAXTAG_TYPES},
-		{ALBUM,        MAXTAG_TYPES, MAXTAG_TYPES},
-		{TITLE,        MAXTAG_TYPES, MAXTAG_TYPES},
-		{ALBUMARTIST,  CONDUCTOR,    MAXTAG_TYPES},
-	};
-    // clang-format on
-
+// clang-format off
+tagtypes_t layout[LINE_NUM][3] = {
+	{MAXTAG_TYPES, MAXTAG_TYPES, MAXTAG_TYPES},
+	{COMPOSER,     ARTIST,       MAXTAG_TYPES},
+	{ALBUM,        MAXTAG_TYPES, MAXTAG_TYPES},
+	{TITLE,        MAXTAG_TYPES, MAXTAG_TYPES},
+	{ALBUMARTIST,  CONDUCTOR,    MAXTAG_TYPES},
+};
+// clang-format on
 
 
 // free and cleanup here
@@ -218,19 +218,20 @@ void setupPlayMode(void)
 
 void toggleVisualize(size_t timer_id, void *user_data) {
     if ((bool)user_data) {
-        if (isVisualizeActive()) {
-            deactivateVisualizer();
-            setupPlayMode();
-            //strncpy(lastTime,"XX:XX",5);
-        }
-        else
-        {
-            scrollerPause(); // we need to re-activate too - save state!!!
-            activateVisualizer();
-            clearDisplay();
-        }
+        if (playing) {
+                if (isVisualizeActive()) {
+                    deactivateVisualizer();
+                    setupPlayMode();
+                    //strncpy(lastTime,"XX:XX",5);
+                } else {
+                    scrollerPause(); // we need to re-activate too - save state!!!
+                    activateVisualizer();
+                    clearDisplay();
+                }
+            }
     }
 }
+
 #endif
 
 int main(int argc, char *argv[]) {
@@ -363,7 +364,7 @@ int main(int argc, char *argv[]) {
 
         if (isRefreshed()) {
 
-            bool playing = (strcmp("play", tags[MODE].tagData) == 0);
+            playing = (strcmp("play", tags[MODE].tagData) == 0);
 
             if (playing) {
 
