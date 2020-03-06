@@ -226,8 +226,8 @@ void toggleVisualize(size_t timer_id, void *user_data) {
                 } else {
                     scrollerPause(); // we need to re-activate too - save state!!!
                     activateVisualizer();
-                    clearDisplay();
                 }
+                clearDisplay();
             }
     }
 }

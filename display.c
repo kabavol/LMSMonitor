@@ -181,7 +181,7 @@ void stereoSpectrum(struct vissy_meter_t *vissy_meter)
 	int hsa = maxYPixel()-2;
 
 	//int wbin = wsa / (2 + (bins * 2)); // 12 bar display
-	int wbin = wsa / ((bins+1) * 2); // 12 bar display
+	double wbin = (double)wsa / (double)((bins+1) * 2); // 12 bar display
 
 	// SA scaling
 	double multiSA = (double)hsa / 31.00; // max input is 31 -2 to leaves head-room
@@ -200,8 +200,8 @@ void stereoSpectrum(struct vissy_meter_t *vissy_meter)
             if (last_bin.bin[channel][bin])
                 lob = int(multiSA * last_bin.bin[channel][bin]);
 
-			display.fillRect(ofs+(bin*wbin), hsa-lob, wbin-1, lob, BLACK);
-			display.fillRect(ofs+(bin*wbin), hsa-oob, wbin-1, oob, WHITE);
+			display.fillRect(ofs+(int)(bin*wbin), hsa-lob, wbin-1, lob, BLACK);
+			display.fillRect(ofs+(int)(bin*wbin), hsa-oob, wbin-1, oob, WHITE);
             last_bin.bin[channel][bin] = vissy_meter->sample_bin_chan[channel][bin];
 
 			if (test >= caps.bin[channel][bin]) {
@@ -216,11 +216,11 @@ void stereoSpectrum(struct vissy_meter_t *vissy_meter)
             int coot = 0;
 			if (last_caps.bin[channel][bin] > 0) {
 				coot = int(multiSA * last_caps.bin[channel][bin]);
-    			display.fillRect(ofs+(bin*wbin), hsa-coot, wbin-1, 1, BLACK);
+    			display.fillRect(ofs+(int)(bin*wbin), hsa-coot, wbin-1, 1, BLACK);
 			}
 			if (caps.bin[channel][bin] > 0) {
 				coot = int(multiSA * caps.bin[channel][bin]);
-    			display.fillRect(ofs+(bin*wbin), hsa-coot, wbin-1, 1, WHITE);
+    			display.fillRect(ofs+(int)(bin*wbin), hsa-coot, wbin-1, 1, WHITE);
 			}
 
             last_caps.bin[channel][bin] = caps.bin[channel][bin];
