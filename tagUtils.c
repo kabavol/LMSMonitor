@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "sliminfo.h"
 
@@ -164,6 +165,37 @@ int decode(const char *s, char *dec) {
     return o - dec;
 }
 
+void urldecode2(const char *src, char *dst) {
+
+    *dst = '\0';
+    char a, b;
+    while (*src) {
+        if ((*src == '%') && ((a = src[1]) && (b = src[2])) &&
+            (isxdigit(a) && isxdigit(b))) {
+            if (a >= 'a')
+                a -= 'a' - 'A';
+            if (a >= 'A')
+                a -= ('A' - 10);
+            else
+                a -= '0';
+            if (b >= 'a')
+                b -= 'a' - 'A';
+            if (b >= 'A')
+                b -= ('A' - 10);
+            else
+                b -= '0';
+            *dst++ = 16 * a + b;
+            src += 3;
+        } else if (*src == '+') {
+            *dst++ = ' ';
+            src++;
+        } else {
+            *dst++ = *src++;
+        }
+    }
+    *dst++ = '\0';
+}
+
 char *getTag(const char *tag, char *input, char *output, int outSize) {
     char exactTag[MAXTAGLEN];
     char *foundT;
@@ -198,17 +230,15 @@ int isPlaying(char *input) {
     char tagData[MAXTAGLEN];
 
     if (input == NULL) {
-        return true;
+        return false;
     }
 
     if ((getTag("mode", input, tagData, MAXTAGLEN)) == NULL) {
         return true;
     }
-    if (strstr("play", tagData) != NULL) {
-        return true;
-    }
 
-    return false;
+    return (strstr("play", tagData) != NULL);
+
 }
 
 long getMinute(tag *timeTag) {
@@ -220,6 +250,7 @@ long getMinute(tag *timeTag) {
         return 0;
     }
 
+    // these are actually double?!?
     return strtol(timeTag->tagData, NULL, 10);
 }
 

@@ -272,8 +272,11 @@ void *serverPolling(void *x_voidptr) {
 
     char variousArtist[BSIZE] = "Various Artists";
     char buffer[BSIZE];
+    char dbuffer[BSIZE];
     char tagData[BSIZE];
     int rbytes;
+
+int z = 0;
 
     while (true) {
 
@@ -286,16 +289,21 @@ void *serverPolling(void *x_voidptr) {
                 abortMonitor("ERROR reading from socket");
             }
             buffer[rbytes] = 0;
-
+/*
+// works well but incurs good chunk of re-write
+if (z < 20) {
+    urldecode2(buffer, dbuffer);
+    strncpy(dbuffer, replaceStr(
+        dbuffer, replaceStr(query, "\n", " "), ""), BSIZE);
+    printf("%s\n%s\n%s\n",
+    buffer, 
+    query, 
+    dbuffer);
+z++;
+}
+*/
             for (int i = 0; i < MAXTAG_TYPES; i++) {
 
-                if (0 == 1) {
-                    if (ALBUM == i) {
-                        printf("> %d) %s: %s %d %d\n", i,
-                               tagStore[i].displayName, tagStore[i].tagData,
-                               tagStore[i].valid, tagStore[i].changed);
-                    }
-                }
                 if ((getTag((char *)tagStore[i].name, buffer, tagData,
                             BSIZE)) != NULL) {
                     if ((i != REMAINING) &&

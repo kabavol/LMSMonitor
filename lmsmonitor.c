@@ -222,7 +222,6 @@ void toggleVisualize(size_t timer_id, void *user_data) {
                 if (isVisualizeActive()) {
                     deactivateVisualizer();
                     setupPlayMode();
-                    //strncpy(lastTime,"XX:XX",5);
                 } else {
                     scrollerPause(); // we need to re-activate too - save state!!!
                     activateVisualizer();
@@ -351,12 +350,8 @@ int main(int argc, char *argv[]) {
 
 #ifdef __arm__
     clearDisplay(); // clear splash if shown
-
-    // set the visualizer switch
-    if (visualize) {
-
-    }
-
+    //setSnapOn();
+    //setSnapOff();
 #endif
 
     // re-work this so as to "pages" metaphor
@@ -591,6 +586,9 @@ int main(int argc, char *argv[]) {
             refreshDisplayScroller();
 #endif
 
+#ifdef __arm__
+//setSnapOff();
+#endif
         usleep(SLEEP_TIME);
 
     } // main loop

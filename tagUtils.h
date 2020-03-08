@@ -24,6 +24,8 @@
 
 #include "sliminfo.h"
 
+void urldecode2(const char *src, char *dst);
+
 char *getTag(const char *tag, char *input, char *output, int outSize);
 int isPlaying(char *input);
 long getMinute(tag *timeTag);

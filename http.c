@@ -31,6 +31,11 @@
 
 #define SSE_CLIENT_USERAGENT     "LMSMonitor/" VERSION
 
+
+// we don't want hard aborts - if we cannot access visualization should
+// simply be disabled and a retry timer hook implemented
+// need to track down the rogue ref thats throwing a seg fault on server
+// as this would solve all problems, working in SHMEM  mode makes this moot!!!
 #define die(msg) do { perror(msg); exit(1); } while(0)
 
 static void curl_perform(CURL* curl) {
@@ -45,8 +50,9 @@ static void curl_perform(CURL* curl) {
       case CURLE_COULDNT_RESOLVE_HOST:
       case CURLE_COULDNT_CONNECT:
         fprintf(stderr, "curl: %s\n", curl_error_buf);
+
         if(retries-- <= 0) 
-          exit(1);
+          exit(1); // no!!! set visualize off!!!
 
         fprintf(stderr, "retrying...\n");
         sleep(3);

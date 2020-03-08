@@ -31,7 +31,7 @@
 
 #include "display.h"
 #include "oledimg.h"
-#include "libm6.h"
+///#include "libm6.h"
 
 #define _USE_MATH_DEFINES
 #define PI acos(-1.0000)
@@ -43,6 +43,7 @@
 #include "ArduiPi_OLED_lib.h"
 #include "Adafruit_GFX.h"
 #include "ArduiPi_OLED.h"
+#include "bmpfile.h"
 // clang-format on
 
 ArduiPi_OLED display;
@@ -474,7 +475,7 @@ void drawTimeText2(char *buff, char *last) {
 void drawHorizontalBargraph(int x, int y, int w, int h, int percent) {
 
     if (x == -1) {
-        x = 0;
+        x = 1;
         w = display.width() - 2; // is a box so -2 for sides!!!
     }
 
@@ -488,6 +489,57 @@ void drawHorizontalBargraph(int x, int y, int w, int h, int percent) {
     return;
 }
 
+bool snapOn = false;
+void setSnapOn(void) { snapOn = true; }
+void setSnapOff(void) { snapOn = false; }
+
+int soff = 0;
+void shotAndDisplay(void)
+{
+    int16_t h = maxYPixel();
+    int16_t w = maxXPixel();
+
+    // read internal buffer and dump to bitmap
+    if (snapOn) {
+
+        char snapfile[32];
+
+        sprintf(snapfile,"snap%05d.bmp", soff);
+        bmpfile_t *bmp;
+
+        // not black and white - make it "fun"
+        rgb_pixel_t pixelW = {255, 0, 0, 128};
+        rgb_pixel_t pixelB = {128, 128, 128, 0};
+        int depth = 8; // 1 bit iis just fine
+
+        if ((bmp = bmp_create(w, h, depth)) != NULL) {
+            for (int16_t y = 0; y < h; y++)
+            {
+                for (int16_t x = 0; x < w; x++)
+                {
+                    if (display.readPixel(x, y))
+                        bmp_set_pixel(bmp, x, y, pixelW);
+                    else
+                        bmp_set_pixel(bmp, x, y, pixelB);
+                }
+            }                
+            bmp_save(bmp, snapfile);
+            bmp_destroy(bmp);
+        }
+
+    }
+
+    if (soff>2000)
+        setSnapOff();
+    else
+        soff++;
+
+    // finally display
+    display.display();
+
+}
+
+//void refreshDisplay(void) { shotAndDisplay(); }
 void refreshDisplay(void) { display.display(); }
 
 void refreshDisplayScroller(void) {
