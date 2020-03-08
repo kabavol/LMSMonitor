@@ -23,8 +23,23 @@ OLED information display control program for [piCorePlayer](https://www.picorepl
 - Audio attributes, volume, sample depth, and sample rate are displayed
 - A retro clock is displayed when audio paused/stopped.
 
+### Screen-snaps
+The following images were captured by dumping the display on refresh; it's a tad blocky but the actual screen animations are buttery smot with a 15 FPS attained.
+
+At 15 FPS scrolling text is smooth and the visualizer modes very kinetic.
+
+<img width="300" src="source/demo.gif" align="center" />
+
+### Visualizer Modes
+
+Currently two visualizer modes are supported
+- Stereo VU Meters - dBfs metered
+- Stereo 12-band Spectrum Analysis
+
 ### Coming soon
-- Audio visualizer support: stereo VU meters
-- Audio visualizer support: spectrum analyzer
+- DONE! Audio visualizer support: stereo VU meters
+- DONE! Audio visualizer support: spectrum analyzer
+- Audio visualizer support: horizontal Peak RMS
 - Weather: TBD
-- Dual OLED VU meter mode: TBD
+- Dual OLED visualizer mode: TBD
+- Color 128 x 128 color TFT support
