@@ -24,7 +24,7 @@ OLED information display control program for [piCorePlayer](https://www.picorepl
 - A retro clock is displayed when audio paused/stopped.
 
 ### Screen-snaps
-The following images were captured by dumping the display on refresh; it's a tad blocky but the actual screen animations are buttery smot with a 15 FPS attained.
+The following images were captured by dumping the display on refresh; it's a tad blocky but the actual screen animations are buttery smooth with a 15 FPS attained.
 
 At 15 FPS scrolling text is smooth and the visualizer modes very kinetic.
 
