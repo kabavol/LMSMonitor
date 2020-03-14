@@ -51,7 +51,7 @@ void vissySHMEMFinalize(void) {
 }
 
 static const char *payload_mode(bool samode) {
-    return (samode) ? mode_sa : mode_vu;
+    return (samode) ? MODE_SA : MODE_VU;
 }
 
 void zero_payload(size_t timer_id, void *user_data) {

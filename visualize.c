@@ -59,19 +59,24 @@ void visualize(struct vissy_meter_t *vissy_meter) {
 
     //if ((vis_is_active) && (1 == visgood)){
     if ((vis_is_active) && (visgood) < 2){
-        if (strncmp(mode_vu,vissy_meter->meter_type,2) == 0) {
-            if (strncmp(vis_mode,vissy_meter->meter_type,2) == 0)
+
+        if (strncmp(MODE_VU, vissy_meter->meter_type, 2) == 0) {
+            // support vu or pk
+            if (strncmp(vis_mode, MODE_VU, 2) == 0)
                 stereoVU(vissy_meter);
+            else
+                stereoPeakH(vissy_meter);
         }
-        else
+        else 
             if (strncmp(vis_mode,vissy_meter->meter_type,2) == 0)
                 stereoSpectrum(vissy_meter);
+        
     }
 
-    // stream is too fast for display - a 1:40 consumption ratio plays happy w/ display
+    // stream is too fast for display - a 1:20 consumption ratio plays happy w/ display
     // routine VU routine checks for change so we may be Ok, parameterize and push limits
     visgood++;
-    //if (visgood > 39)
+
     if (visgood > 19) // sweet spot for SA
         visgood = 0;
 

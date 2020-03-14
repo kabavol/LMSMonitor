@@ -57,6 +57,7 @@
 #include "vizshmem.h"
 #include "visualize.h"
 #include "timer.h"
+
 // clang-format on
 
 #include <ctype.h>
@@ -74,10 +75,6 @@ void strupr(char *s)
 #define SLEEP_TIME 200
 #define CHRPIXEL 8
 #define LINE_NUM 5
-
-#ifdef __arm__
-DEFINE_OBJECT(Options, options);
-#endif
 
 char stbl[BSIZE];
 tag *tags;
@@ -190,7 +187,7 @@ void signature(char *executable) {
 }
 
 void print_help(char *executable) {
-    printf("LMSMonitor Ver. %s\n"
+    printf("%s Ver. %s\n"
            "Usage [options] -n Player name\n"
            "options:\n"
            " -r show remain time rather than track time\n"
@@ -199,7 +196,7 @@ void print_help(char *executable) {
            " -t enable print info to stdout\n"
            " -z no splash screen\n"
            " -i increment verbose level\n\n",
-           VERSION);
+           APPNAME, VERSION);
     signature(executable);
 }
 
@@ -259,17 +256,24 @@ int main(int argc, char *argv[]) {
     char lastBits[16] = "LMS";
     char lastTime[6] = "XX:XX"; // non-matching time digits (we compare one by one)!
 
+#ifdef __arm__
+    Options opt;
+#endif
+
     opterr = 0;
-    while ((aName = getopt(argc, argv, "n:m:tivcrzh")) != -1) {
+    while ((aName = getopt(argc, argv, "n:m:tivcrzhp")) != -1) {
         switch (aName) {
             case 'n': playerName = optarg; break;
 
-            case 'm': strncpy(meterMode, optarg, 2); break;
+            case 'm': strncpy(meterMode, optarg, 2); break; // need to support a list
 
             case 't': enableTOut(); break;
 
             case 'i': incVerbose(); break;
 
+#ifdef __arm__
+            case 'p': sscanf(optarg, "%d", &opt.port); break;
+#endif
             case 'v': visualize = true; break;
 
             case 'c': clock = true; break;
@@ -288,13 +292,16 @@ int main(int argc, char *argv[]) {
 #ifdef __arm__
 
     if (!(meterMode))
-        strncpy(meterMode, mode_vu, 2);
+        strncpy(meterMode, MODE_VU, 2);
     else
     {
         strupr(meterMode);
         // validate and silently assign to default if "bogus"
-        if ((strncmp(meterMode,mode_vu,2) != 0)&&(strncmp(meterMode,mode_sa,2) != 0))
-            strncpy(meterMode, mode_vu, 2);
+        if ((strncmp(meterMode, MODE_VU, 2) != 0) 
+        &&(strncmp(meterMode, MODE_SA, 2) != 0)
+        &&(strncmp(meterMode, MODE_PK, 2) != 0)) {
+            strncpy(meterMode, MODE_VU, 2);
+        }
     }
     
     // init OLED display
@@ -310,13 +317,23 @@ int main(int argc, char *argv[]) {
     signature(argv[0]);
     thatMAC = player_mac();
 
+    // init here - splash delay mucks the refresh flagging
+    if ((tags = initSliminfo(playerName)) == NULL) {
+        exit(1);
+    }
+
+    // init for visualize mechanism here
     if (thatMAC != thisMAC) {
         extended = true;
-        printf("Extended attrs from LMS enabled, no mimo!\n");
+        printf("Extended attrs from LMS enabled, no MIMO!\n");
 #ifdef __arm__
         if (visualize) {
             // go SSE for visualizer
-            visualize = setupSSE(argc, argv);
+            opt.host = getPlayerIP();
+            if(!opt.port)
+                opt.port = 8022;
+            opt.endpoint = "/visionon?subscribe=SA-VU";
+            visualize = setupSSE(opt);
         }
 #endif
     }
@@ -329,27 +346,24 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    if(!visualize)
+        putMSG("Visualization is not active", LL_INFO);
     // if we had a clean setup
     // init visualizer mode and
     // timer toggle
     if (visualize) {
-        setVisMode(meterMode);
+        setVisMode(meterMode); // need a user specified cycle mode on this
         size_t viztimer;
         timer_initialize();
-        viztimer = timer_start(45*1000, toggleVisualize, TIMER_PERIODIC, (void*)visualize);
+        viztimer = timer_start(60*1000, toggleVisualize, TIMER_PERIODIC, (void*)visualize);
     }
 
 #endif
 
-    // init here - splash delay mucks the refresh flagging
-    if ((tags = initSliminfo(playerName)) == NULL) {
-        exit(1);
-    }
-
-    // init for visualize mechanism here
 
 #ifdef __arm__
     clearDisplay(); // clear splash if shown
+    // bitmap capture
     //setSnapOn();
     //setSnapOff();
 #endif
@@ -496,7 +510,7 @@ int main(int argc, char *argv[]) {
                     56, buff);
 
                 drawHorizontalBargraph(
-                    -1, 51, 0, 4, (pTime * 100) / (dTime == 0 ? 1 : dTime));
+                    2, 51, maxXPixel()-4, 4, (pTime * 100) / (dTime == 0 ? 1 : dTime));
 #else
                 sprintf(buff, "%3ld:%02ld  %5s  %3ld:%02ld", pTime / 60,
                         pTime % 60,
@@ -557,14 +571,14 @@ int main(int argc, char *argv[]) {
 
                     // seconds
                     drawHorizontalBargraph(
-                        -1, 48, 0, 4,
+                        2, 48, maxXPixel()-4, 4,
                         (int)((100 *
                                (loctm.tm_sec + ((double)tv.tv_usec / 1000000)) /
                                60)));
                     // date
                     sprintf(buff, "  %d-%02d-%02d  ", loctm.tm_year + 1900,
                             loctm.tm_mon + 1, loctm.tm_mday);
-                    putTextToCenter(56, buff);
+                    putTextToCenter(54, buff);
 
                     // set changed so we'll repaint on play
                     setupPlayMode();

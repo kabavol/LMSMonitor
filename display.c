@@ -24,10 +24,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <math.h>
 #include <stdint.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <math.h>
 
 #include "display.h"
 #include "oledimg.h"
@@ -107,6 +107,11 @@ void vumeter2upl(void) {
     display.drawBitmap(0, 0, vu2up128x64, 128, 64, WHITE);
 }
 
+void peakMeterH(void) {
+    display.clearDisplay();
+    display.drawBitmap(0, 0, peak_rms, 128, 64, WHITE);
+}
+
 void splashScreen(void) {
     display.clearDisplay();
     display.drawBitmap(0, 0, splash, 128, 64, WHITE);
@@ -117,24 +122,24 @@ void splashScreen(void) {
 long long last_L = -1000;
 long long last_R = -1000;
 
-void stereoVU(struct vissy_meter_t *vissy_meter)
-{
+void stereoVU(struct vissy_meter_t *vissy_meter) {
     // VU Mode
 
     // do no work if we don't need to
-    if ((last_L = vissy_meter->rms_bar[0]) && (last_R == vissy_meter->rms_bar[1]))
+    if ((last_L == vissy_meter->rms_scale[0]) &&
+        (last_R == vissy_meter->rms_scale[1]))
         return;
 
-    last_L = vissy_meter->rms_bar[0];
-    last_R = vissy_meter->rms_bar[1];
+    last_L = vissy_meter->rms_scale[0];
+    last_R = vissy_meter->rms_scale[1];
 
     vumeter2upl();
 
-    int hMeter = maxYPixel()-4;
-    int rMeter = hMeter-6;
-    int16_t wMeter = maxXPixel()/2;
+    int hMeter = maxYPixel() - 4;
+    int rMeter = hMeter - 3;
+    int16_t wMeter = maxXPixel() / 2;
     int16_t xpivot[2];
-    xpivot[0] = maxXPixel()/4;
+    xpivot[0] = maxXPixel() / 4;
     xpivot[1] = xpivot[0] * 3;
     double rad = (180.00 / PI); // 180/pi
 
@@ -143,28 +148,28 @@ void stereoVU(struct vissy_meter_t *vissy_meter)
     for (int channel = 0; channel < 2; channel++) {
 
         // meter value
-	    double mv = (double)vissy_meter->rms_scale[channel] * (2 * 36.00) / 48.00;
-	    mv -= 36.000; // zero adjust [-3dB->-20dB]
+        double mv =
+            (double)vissy_meter->rms_scale[channel] * (2 * 36.00) / 48.00;
+        mv -= 36.000; // zero adjust [-3dB->-20dB]
 
-	    int16_t ax = (xpivot[channel] + (sin(mv/rad) * rMeter));
-	    int16_t ay = (wMeter - (cos(mv/rad) * rMeter));
+        int16_t ax = (xpivot[channel] + (sin(mv / rad) * rMeter));
+        int16_t ay = (wMeter - (cos(mv / rad) * rMeter));
 
         // thick needle with definition
-		display.drawLine(xpivot[channel]-2, wMeter, ax, ay, BLACK);
-		display.drawLine(xpivot[channel]-1, wMeter, ax, ay, WHITE);
-		display.drawLine(xpivot[channel], wMeter, ax, ay, WHITE);
-		display.drawLine(xpivot[channel]+1, wMeter, ax, ay, WHITE);
-		display.drawLine(xpivot[channel]+2, wMeter, ax, ay, BLACK);
-
+        display.drawLine(xpivot[channel] - 2, wMeter, ax, ay, BLACK);
+        display.drawLine(xpivot[channel] - 1, wMeter, ax, ay, WHITE);
+        display.drawLine(xpivot[channel], wMeter, ax, ay, WHITE);
+        display.drawLine(xpivot[channel] + 1, wMeter, ax, ay, WHITE);
+        display.drawLine(xpivot[channel] + 2, wMeter, ax, ay, BLACK);
     }
 
     // finesse
-    display.fillRect(xpivot[0]-3, maxYPixel()-6, maxXPixel()/2, 6, BLACK);
+    display.fillRect(xpivot[0] - 3, maxYPixel() - 6, maxXPixel() / 2, 6, BLACK);
     uint16_t r = 7;
     for (int channel = 0; channel < 2; channel++) {
         display.fillCircle(xpivot[channel], wMeter, r, WHITE);
-        display.drawCircle(xpivot[channel], wMeter, r-2, BLACK);
-        display.fillCircle(xpivot[channel], wMeter, r-4, BLACK);
+        display.drawCircle(xpivot[channel], wMeter, r - 2, BLACK);
+        display.fillCircle(xpivot[channel], wMeter, r - 4, BLACK);
     }
 }
 
@@ -173,144 +178,123 @@ bin_chan_t caps;
 bin_chan_t last_bin;
 bin_chan_t last_caps;
 
-void stereoSpectrum(struct vissy_meter_t *vissy_meter) 
-{
+void stereoSpectrum(struct vissy_meter_t *vissy_meter) {
     // SA mode
 
     int bins = 12;
-	int wsa = maxXPixel()-2;
-	int hsa = maxYPixel()-2;
+    int wsa = maxXPixel() - 2;
+    int hsa = maxYPixel() - 4;
 
-	//int wbin = wsa / (2 + (bins * 2)); // 12 bar display
-	double wbin = (double)wsa / (double)((bins+1) * 2); // 12 bar display
+    // 2.5.5.5 ...
+    //int wbin = wsa / (2 + (bins * 2)); // 12 bar display
+    double wbin = (double)wsa / (double)((bins + 1) * 2); // 12 bar display
+    wbin = 5.00;                                          // fix
 
-	// SA scaling
-	double multiSA = (double)hsa / 31.00; // max input is 31 -2 to leaves head-room
+    // SA scaling
+    double multiSA =
+        (double)hsa / 31.00; // max input is 31 -2 to leaves head-room
 
     for (int channel = 0; channel < 2; channel++) {
-		//int ofs = int(wbin/2) + 2 + (channel * ((wsa+2) / 2));
-		int ofs = int(wbin/2) + (channel * ((wsa+2) / 2));
-		for (int bin = 0; bin < bins; bin++) {
+        //int ofs = int(wbin/2) + 2 + (channel * ((wsa+2) / 2));
+        int ofs = int(wbin * 0.75) + (channel * ((wsa + 2) / 2));
+        ofs = 2 + (channel * ((wsa + 2) / 2)); // fix
+        for (int bin = 0; bin < bins; bin++) {
             double test = 0.00;
-			int lob = (int)(multiSA / 2.00);
-			int oob = (int)(multiSA / 2.00);
-			if (bin < vissy_meter->numFFT[channel]) {
-				test = (double)vissy_meter->sample_bin_chan[channel][bin];
-				oob = (int)(multiSA * test);
+            int lob = (int)(multiSA / 2.00);
+            int oob = (int)(multiSA / 2.00);
+            if (bin < vissy_meter->numFFT[channel]) {
+                test = (double)vissy_meter->sample_bin_chan[channel][bin];
+                oob = (int)(multiSA * test);
             }
             if (last_bin.bin[channel][bin])
                 lob = int(multiSA * last_bin.bin[channel][bin]);
 
-			display.fillRect(ofs+(int)(bin*wbin), hsa-lob, wbin-1, lob, BLACK);
-			display.fillRect(ofs+(int)(bin*wbin), hsa-oob, wbin-1, oob, WHITE);
-            last_bin.bin[channel][bin] = vissy_meter->sample_bin_chan[channel][bin];
+            display.fillRect(ofs + (int)(bin * wbin), hsa - lob, wbin - 1, lob,
+                             BLACK);
+            display.fillRect(ofs + (int)(bin * wbin), hsa - oob, wbin - 1, oob,
+                             WHITE);
+            last_bin.bin[channel][bin] =
+                vissy_meter->sample_bin_chan[channel][bin];
 
-			if (test >= caps.bin[channel][bin]) {
-				caps.bin[channel][bin] = test;
-			} else if (caps.bin[channel][bin] > 0) {
-				caps.bin[channel][bin]--;
-				if (caps.bin[channel][bin] < 0) {
-					caps.bin[channel][bin] = 0;
-				}
-			}
+            if (test >= caps.bin[channel][bin]) {
+                caps.bin[channel][bin] = test;
+            } else if (caps.bin[channel][bin] > 0) {
+                caps.bin[channel][bin]--;
+                if (caps.bin[channel][bin] < 0) {
+                    caps.bin[channel][bin] = 0;
+                }
+            }
 
             int coot = 0;
-			if (last_caps.bin[channel][bin] > 0) {
-				coot = int(multiSA * last_caps.bin[channel][bin]);
-    			display.fillRect(ofs+(int)(bin*wbin), hsa-coot, wbin-1, 1, BLACK);
-			}
-			if (caps.bin[channel][bin] > 0) {
-				coot = int(multiSA * caps.bin[channel][bin]);
-    			display.fillRect(ofs+(int)(bin*wbin), hsa-coot, wbin-1, 1, WHITE);
-			}
+            if (last_caps.bin[channel][bin] > 0) {
+                coot = int(multiSA * last_caps.bin[channel][bin]);
+                display.fillRect(ofs + (int)(bin * wbin), hsa - coot, wbin - 1,
+                                 1, BLACK);
+            }
+            if (caps.bin[channel][bin] > 0) {
+                coot = int(multiSA * caps.bin[channel][bin]);
+                display.fillRect(ofs + (int)(bin * wbin), hsa - coot, wbin - 1,
+                                 1, WHITE);
+            }
 
             last_caps.bin[channel][bin] = caps.bin[channel][bin];
-
         }
     }
     // finesse
-    display.fillRect(0, maxYPixel()-2, maxXPixel(), 2, BLACK);
+    display.fillRect(0, maxYPixel() - 4, maxXPixel(), 4, BLACK);
+
+    // track detail scroller...
+}
+
+int last_LdBfs = -1000;
+int last_RdBfs = -1000;
+
+void stereoPeakH(struct vissy_meter_t *vissy_meter) {
+
+    // intermediate variable so we can easily switch metrics
+    int meter[METER_CHANNELS] = {vissy_meter->rms_scale[0],
+                                 vissy_meter->rms_scale[1]};
+
+    // do no work if we don't need to
+    if ((last_LdBfs == meter[0]) && (last_RdBfs == meter[1]))
+        return;
+
+    last_LdBfs = meter[0];
+    last_RdBfs = meter[1];
+
+    peakMeterH();
+
+    // 14, 15 4x11  -> + 84, 15 6x11
+    // 14, 38 4x11  -> + 84, 38 6x11
+    int level[19] = {-36, -30, -20, -17, -13, -10, -8, -7, -6, -5,
+                     -4,  -3,  -2,  -1,  0,   2,   3,  5,  8};
+    uint8_t xpos = 14; // 19
+    uint8_t ypos[4] = {15, 38, 15, 38}; // {21, 38, 17, 44};
+    size_t ll = sizeof(level) / sizeof(level[0]);
+    size_t p = 0;
+
+    for (int *l = level; (p < ll); l++) {
+        uint8_t nodeo = (*l < 0) ? 5 : 9;
+        uint8_t nodew = (*l < 0) ? 4 : 6;
+        for (int channel = 0; channel < 2; channel++) {
+            // meter value
+            double mv =
+                (double)meter[channel] * (2 * 36.00) / 48.00;
+            mv -= 48.000; // zero adjust [-3dB->-20dB]
+            if (mv >= (double)*l) {
+                //display.fillRect(xpos, ypos[channel], nodew, 5, WHITE);
+                display.fillRect(xpos, ypos[channel], nodew, 11, WHITE);
+                //if (*l >= 0)
+                //    display.fillRect(xpos, ypos[channel+2], nodew, 3, WHITE);
+
+            }
+        }
+        xpos += nodeo;
+        p++;
+    }
 
 }
 
-void stereoPeak(struct vissy_meter_t *vissy_meter) {
-    /*
-    	w, h := 162, 40 // ls.vulayout.w2m, ls.vulayout.h2m
-	var iconMem = new(bytes.Buffer)
-
-	level := [12]int32{-50, -40, -30, -24, -18, -12, -9, -6, -3, 0, 2, 4}
-	ypos := [2]float64{9.28, 25.21}
-
-	bs := `<svg width="162" height="40" xmlns="http://www.w3.org/2000/svg">
-
-	     <defs>
-	       <g id="led">
-		   <rect x="0" y="0" width="8" height="5.5" />
-		   <rect x=".5" y=".5" width="1.25" height="4.5" fill="black" fill-opacity=".15" stroke-width=".2" stroke-opacity=".5" stroke-position="inside" stroke="darkgray"/>
-		   <rect x="2.33" y=".5" width="1.25" height="4.5" fill="black" fill-opacity=".15" stroke-width=".2" stroke-opacity=".5" stroke-position="inside" stroke="darkgray"/>
-		   <rect x="4.13" y=".5" width="1.25" height="4.5" fill="black" fill-opacity=".15" stroke-width=".2" stroke-opacity=".5" stroke-position="inside" stroke="darkgray"/>
-		   <rect x="6.0" y=".5" width="1.25" height="4.5" fill="black" fill-opacity=".15" stroke-width=".2" stroke-opacity=".5" stroke-position="inside" stroke="darkgray"/>
-			  </g>
-	       <path id="over" fill-opacity="0.4" d="m136.51396,17.79571c0.720987,0 1.231205,0.184043 1.530655,0.552737c0.29945,0.368694 0.362619,0.90503 0.188295,1.609617c-0.177969,0.704587 -0.508396,1.240924 -0.990067,1.609617c-0.485922,0.368694 -1.089073,0.552737 -1.81006,0.552737c-0.720987,0 -1.231205,-0.184043 -1.530655,-0.552737c-0.29945,-0.364442 -0.36019,-0.900778 -0.182221,-1.609617c0.174325,-0.708839 0.502322,-1.245176 0.983993,-1.609617c0.485922,-0.368694 1.089073,-0.552737 1.81006,-0.552737zm-0.255109,1.002215c-0.287302,0 -0.526618,0.086859 -0.716735,0.261183c-0.194369,0.174325 -0.327998,0.408782 -0.400886,0.704587l-0.097184,0.388738c-0.072888,0.295805 -0.056488,0.530263 0.048592,0.704587c0.105081,0.174325 0.301879,0.261183 0.589181,0.261183c0.287302,0 0.52844,-0.086859 0.722809,-0.261183c0.198621,-0.174325 0.334072,-0.408782 0.40696,-0.704587l0.097184,-0.388738c0.072888,-0.295805 0.054666,-0.530263 -0.054666,-0.704587c-0.109333,-0.174325 -0.307953,-0.261183 -0.595255,-0.261183zm4.604113,3.249605l-1.554951,0l-0.43733,-4.178931l1.433471,0l0.139703,2.794053l0.024296,0l1.542803,-2.794053l1.37273,0l-2.520722,4.178931zm2.034192,0l1.044733,-4.178931l3.614047,0l-0.255109,1.002215l-2.271686,0l-0.139703,0.577033l1.943689,0l-0.242961,0.959696l-1.943689,0l-0.157925,0.637773l2.314205,0l-0.249035,1.002215l-3.656565,0l-0.000001,-0.000001zm9.074598,-2.897311c-0.064992,0.255109 -0.190117,0.485922 -0.37659,0.692439c-0.190117,0.206517 -0.429434,0.358368 -0.716735,0.455552l0.491996,1.74932l-1.506359,0l-0.358368,-1.524581l-0.49807,0l-0.382664,1.524581l-1.34236,0l1.044733,-4.178931l2.557166,0c0.29945,0 0.540588,0.058918 0.722809,0.176147c0.182221,0.113584 0.303701,0.267257 0.364442,0.461626c0.056488,0.198621 0.056488,0.413034 0,0.643847zm-1.378804,0.054666c0.024296,-0.109333 0.010326,-0.200443 -0.042518,-0.273331c-0.056488,-0.072888 -0.13788,-0.109333 -0.242961,-0.109333l-0.880734,0l-0.188295,0.771402l0.880734,0c0.105081,0 0.202265,-0.036444 0.291553,-0.109333c0.092933,-0.07714 0.153673,-0.170073 0.182221,-0.279405z"/>
-	   </defs>
-
-	`
-	tick := `<use xlink:href="#led" x="%f" y="%f" fill="%s" fill-opacity="%f" stroke-width="0.1" stroke="darkslategrey"/>`
-	for p, l := range level {
-		xpos := float64(24.00 + ((float64(p) + 1.00) * 9.791538))
-		for channel := 0; channel < 2; channel++ {
-			color := `green`
-			opacity := .9
-			testd := (20.00 + dBfs[channel])
-			if l >= testd {
-				color = `lightgrey`
-				opacity = .4
-			} else {
-				if l >= 0 && testd > 0 {
-					if l >= 4 {
-						color = `red`
-					} else {
-						color = `yellow`
-					}
-				}
-			}
-			bs += fmt.Sprintf("\n"+tick, xpos, ypos[channel], color, opacity)
-		}
-	}
-
-	// Overload
-	style := `style="fill:lightgrey;fill-opacity:0.5"`
-	if dBfs[0] > 0 || dBfs[1] > 0 {
-		style = `style="fill:red;fill-opacity:1"`
-	}
-	bs += fmt.Sprintf("\n<use xlink:href=\"#over\" %s/>", style)
-
-	bs += " </svg>"
-
-	iconMem.WriteString(bs)
-
-	iconI, err := oksvg.ReadIconStream(iconMem)
-	if err != nil {
-		fmt.Println(iconMem.String())
-		panic(err)
-	}
-
-	img := image.NewRGBA(image.Rect(0, 0, ls.vulayout.w2m, ls.vulayout.h2m))
-	gv := rasterx.NewScannerGV(w, h, img, img.Bounds())
-	r := rasterx.NewDasher(w, h, gv)
-	iconI.SetTarget(0, 0, float64(ls.vulayout.w2m), float64(ls.vulayout.h2m))
-	iconI.Draw(r, 1.0)
-
-	dc := gg.NewContext(ls.vulayout.w2m, ls.vulayout.h2m)
-	dc.DrawImageAnchored(ls.vulayout.baseImage, 0, 0, 0, 0)
-	dc.DrawImageAnchored(img, 0, 0, 0, 0)
-
-	ls.mux.Lock()
-	draw.Draw(ls.vulayout.vu, ls.vulayout.vu.Bounds(), dc.Image(), image.ZP, draw.Over)
-	ls.mux.Unlock()
-*/
-
-}
 void drawTimeBlink(uint8_t cc) {
     int x = 2 + (2 * 25);
     if (32 == cc)
@@ -331,13 +315,13 @@ void putVolume(bool v, char *buff) {
 void putAudio(int a, char *buff) {
     char pad[32];
     sprintf(pad, "   %s  ", buff); // ensue we cleanup
-    int x = maxXPixel()-(strlen(pad)*CHAR_WIDTH);
+    int x = maxXPixel() - (strlen(pad) * CHAR_WIDTH);
     putText(x, 0, pad);
     int w = 8;
     int start = a * w;
     uint8_t dest[w];
     memcpy(dest, volume8x8 + start, sizeof dest);
-    display.drawBitmap(maxXPixel()-(w+2), 0, dest, w, w, WHITE);
+    display.drawBitmap(maxXPixel() - (w + 2), 0, dest, w, w, WHITE);
 }
 
 void drawTimeText(char *buff) {
@@ -379,28 +363,24 @@ void putScrollable(int line, char *buff) {
     if (!goscroll) {
         putTextToCenter(scroll[line].ypos, buff);
         scroll[line].textPix = -1;
-    }
-    else
-    {
+    } else {
         baselineScroller(&scroll[line]);
         sprintf(scroll[line].text, " %s ", buff); // pad ends
         scroll[line].textPix = tlen * CHAR_WIDTH;
         scroll[line].active = true;
     }
-    
 }
 
 #define SCAN_TIME 100
 #define PAUSE_TIME 5000
 
-void* scrollLine(void *input)
-{
+void *scrollLine(void *input) {
     sme *s;
-    s = ((struct Scroller*)input);
+    s = ((struct Scroller *)input);
     int timer = SCAN_TIME;
     //int testmin = 10000;
     //int testmax = -10000;
-    while(true) {
+    while (true) {
         timer = SCAN_TIME;
         if (s->active) {
             // cylon sweep
@@ -413,29 +393,31 @@ void* scrollLine(void *input)
             display.setCursor(s->xpos, s->ypos);
             display.print(s->text);
 
-            if (-(CHAR_WIDTH/2) == s->xpos) {
-            //if (0 == s->xpos) {
+            if (-(CHAR_WIDTH / 2) == s->xpos) {
+                //if (0 == s->xpos) {
                 if (!s->forward)
                     timer = PAUSE_TIME;
                 s->forward = false;
             }
 
-            if ((maxXPixel()-(int)(1.5*CHAR_WIDTH)) == ((s->textPix)+s->xpos))
+            if ((maxXPixel() - (int)(1.5 * CHAR_WIDTH)) ==
+                ((s->textPix) + s->xpos))
                 s->forward = true;
 
             // address annoying pixels
-            display.fillRect(0, s->ypos, 2, CHAR_HEIGHT+2, BLACK);
-            display.fillRect(maxXPixel()-2, s->ypos, 2, CHAR_HEIGHT+2, BLACK);
+            display.fillRect(0, s->ypos, 2, CHAR_HEIGHT + 2, BLACK);
+            display.fillRect(maxXPixel() - 2, s->ypos, 2, CHAR_HEIGHT + 2,
+                             BLACK);
 
             // need to test for "nystagma" - where text is just shy
             // of being with static limits and gets to a point
             // where it rapidly bounces left to right and back again
-            // more than annoying and needs to pin to xpos=0 and 
+            // more than annoying and needs to pin to xpos=0 and
             // deactivate - implement test - check length limits
-            // and travel test 
+            // and travel test
         }
         delay(timer);
-    }   
+    }
 }
 
 void scrollerPause(void) {
@@ -452,9 +434,10 @@ void scrollerInit(void) {
             return;
         } else {
             baselineScroller(&scroll[line]);
-            scroll[line].ypos = line * (2+CHAR_HEIGHT);
+            scroll[line].ypos = line * (2 + CHAR_HEIGHT);
             scroll[line].scrollMe = scrollLine;
-            pthread_create(&scroll[line].scrollThread, NULL, scroll[line].scrollMe, (void *)&scroll[line]);
+            pthread_create(&scroll[line].scrollThread, NULL,
+                           scroll[line].scrollMe, (void *)&scroll[line]);
         }
     }
 }
@@ -475,7 +458,7 @@ void drawTimeText2(char *buff, char *last) {
 void drawHorizontalBargraph(int x, int y, int w, int h, int percent) {
 
     if (x == -1) {
-        x = 1;
+        x = 0;
         w = display.width() - 2; // is a box so -2 for sides!!!
     }
 
@@ -494,8 +477,7 @@ void setSnapOn(void) { snapOn = true; }
 void setSnapOff(void) { snapOn = false; }
 
 int soff = 0;
-void shotAndDisplay(void)
-{
+void shotAndDisplay(void) {
     int16_t h = maxYPixel();
     int16_t w = maxXPixel();
 
@@ -504,39 +486,34 @@ void shotAndDisplay(void)
 
         char snapfile[32];
 
-        sprintf(snapfile,"snap%05d.bmp", soff);
+        sprintf(snapfile, "snap%05d.bmp", soff);
         bmpfile_t *bmp;
 
-        // not black and white - make it "fun"
-        rgb_pixel_t pixelW = {255, 0, 0, 128};
-        rgb_pixel_t pixelB = {128, 128, 128, 0};
+        rgb_pixel_t pixelW = {255, 255, 255, 255};
+        rgb_pixel_t pixelB = {0, 0, 0, 255};
         int depth = 8; // 1 bit iis just fine
 
         if ((bmp = bmp_create(w, h, depth)) != NULL) {
-            for (int16_t y = 0; y < h; y++)
-            {
-                for (int16_t x = 0; x < w; x++)
-                {
+            for (int16_t y = 0; y < h; y++) {
+                for (int16_t x = 0; x < w; x++) {
                     if (display.readPixel(x, y))
                         bmp_set_pixel(bmp, x, y, pixelW);
                     else
                         bmp_set_pixel(bmp, x, y, pixelB);
                 }
-            }                
+            }
             bmp_save(bmp, snapfile);
             bmp_destroy(bmp);
         }
-
     }
 
-    if (soff>2000)
+    if (soff > 2000)
         setSnapOff();
     else
         soff++;
 
     // finally display
     display.display();
-
 }
 
 //void refreshDisplay(void) { shotAndDisplay(); }
@@ -545,7 +522,7 @@ void refreshDisplay(void) { display.display(); }
 void refreshDisplayScroller(void) {
     for (int line = 0; line < MAX_LINES; line++) {
         if (scroll[line].active) {
-            display.display(); 
+            display.display();
             break;
         }
     }
@@ -581,13 +558,12 @@ void drawRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
 }
 
 // parked
-void* scrollLineUgh(void *input)
-{
+void *scrollLineUgh(void *input) {
     sme *s;
-    s = ((struct Scroller*)input);
+    s = ((struct Scroller *)input);
     int timer = SCAN_TIME;
 
-    while(true) {
+    while (true) {
         timer = SCAN_TIME;
 
         if (s->active) {
@@ -605,8 +581,9 @@ void* scrollLineUgh(void *input)
             display.print(s->text);
 
             // address annoying pixels
-            display.fillRect(0, s->ypos, 2, CHAR_HEIGHT+2, BLACK);
-            display.fillRect(maxXPixel()-2, s->ypos, 2, CHAR_HEIGHT+2, BLACK);
+            display.fillRect(0, s->ypos, 2, CHAR_HEIGHT + 2, BLACK);
+            display.fillRect(maxXPixel() - 2, s->ypos, 2, CHAR_HEIGHT + 2,
+                             BLACK);
 
             if (-3 == s->xpos) {
                 s->forward = false; // what resets?
@@ -614,7 +591,7 @@ void* scrollLineUgh(void *input)
             }
         }
         usleep(timer);
-    }   
+    }
 }
 
 #endif

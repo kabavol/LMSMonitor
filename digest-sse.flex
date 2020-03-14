@@ -139,9 +139,9 @@ static void flush()
   // keep-alive traffic (or some other traffic that does not conform
   // to SSE)
   */
-  if(*headers || (data && *data)) {
-    /* on_sse_event(headers, data ? data : "", reply_url); */
-    on_sse_event(headers, data ? data : "");
+
+  if(data && *data) {
+    on_sse_event(data ? data : "");
   }
 
   set_reply_url(0);
@@ -185,11 +185,11 @@ reply:.*          set_reply_url(yytext + 6);
 
 %%
 
-/* curl callback to feed some data into the lexer. */
-void parse_payload(char *ptr, size_t size) {
+/* thin/or curl callback to feed some data into the lexer. */
+void parse_payload(char *data, uint64_t len) {
   (void)yyunput;
   
-  YY_BUFFER_STATE buffer = yy_scan_bytes(ptr, size);
+  YY_BUFFER_STATE buffer = yy_scan_bytes(data, (size_t)len);
   while(yylex());
   yy_delete_buffer(buffer);
 }
@@ -197,23 +197,4 @@ void parse_payload(char *ptr, size_t size) {
 int yywrap() { 
   return 1; 
 }
-
-/*
-
-// ignore FFT when VU
-
-{"type":"VU",
-"channel":[
-  {"name":"L","accumulated":176,"scaled":13,"dBfs":-61,"dB":186,"linear":100,"FFT":[0],"numFFT":1},
-  {"name":"R","accumulated":242,"scaled":15,"dBfs":-62,"dB":68,"linear":100,"FFT":[0],"numFFT":1}]}
-
-// ignore rms and related when SA
-{"type":"SA",
-"channel":[
-  {"name":"L","accumulated":700,"scaled":22,"dBfs":-55,"dB":186,"linear":100,
-  "FFT":[4,3,4,1,1,1,1,1,1,2,5,12,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31],"numFFT":32},
-  {"name":"R","accumulated":967,"scaled":25,"dBfs":-55,"dB":68,"linear":100,
-  "FFT":[4,5,6,1,1,1,1,1,1,3,6,15,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31,31],"numFFT":32}]}
-
-*/
 

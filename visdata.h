@@ -36,8 +36,9 @@
 #define MIN_SUBBANDS 16
 #define MIN_FFT_INPUT_SAMPLES 128
 
-static const char *mode_sa = "SA";
-static const char *mode_vu = "VU";
+#define MODE_SA "SA"
+#define MODE_VU "VU"
+#define MODE_PK "PK"
 
 struct peak_meter_t {
   uint16_t int_time;  // Integration time (ms).

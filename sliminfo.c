@@ -57,6 +57,10 @@ tag tagStore[MAXTAG_TYPES];
 bool refreshRequ;
 pthread_t sliminfoThread;
 
+char *getPlayerIP(void){
+    return (char *)playerIP;
+}
+
 int discoverPlayer(char *playerName) {
     char qBuffer[BSIZE];
     char aBuffer[BSIZE];
@@ -163,7 +167,7 @@ in_addr_t getServerAddress(void) {
         pollinfo.events = POLLIN;
 
         do {
-            putMSG("Sending discovery...\n", LL_INFO);
+            putMSG("Sending LMS Discovery ...\n", LL_INFO);
             memset(&s, 0, sizeof(s));
 
             if (sendto(disc_sock, buf, 1, 0, (struct sockaddr *)&d, sizeof(d)) <
@@ -176,7 +180,7 @@ in_addr_t getServerAddress(void) {
                 socklen_t slen = sizeof(s);
                 recvfrom(disc_sock, readbuf, 10, 0, (struct sockaddr *)&s,
                          &slen);
-                sprintf(stb, "LMS (Server) responsed:\nServer IP ....: %s:%d\n",
+                sprintf(stb, "LMS (Server) responded:\nServer IP ....: %s:%d\n",
                         inet_ntoa(s.sin_addr), ntohs(s.sin_port));
                 putMSG(stb, LL_INFO);
             }
@@ -291,6 +295,7 @@ int z = 0;
             buffer[rbytes] = 0;
 /*
 // works well but incurs good chunk of re-write
+//(?P<name>[^:]*):?( ?(?P<value>.*))?
 if (z < 20) {
     urldecode2(buffer, dbuffer);
     strncpy(dbuffer, replaceStr(

@@ -3107,6 +3107,7 @@ inline bool Server::write_response(Stream &strm, bool last_connection,
       if (res.content_provider) {
         res.set_header("Transfer-Encoding", "chunked");
       } else {
+        printf("trigger2\n");
         res.set_header("Content-Length", "0");
       }
     }
@@ -3841,8 +3842,15 @@ inline bool Client::write_request(Stream &strm, const Request &req,
 
   // Additonal headers
   Headers headers;
-  if (last_connection) { headers.emplace("Connection", "close"); }
 
+  // emplace should not add if key found!!!!
+  // but we just initialized above!!!!
+  if (last_connection) { 
+    if (!req.has_header("Connection")) {
+      printf("right here\n"); 
+      headers.emplace("Connection", "close"); 
+    }
+  }
   if (!req.has_header("Host")) {
     if (is_ssl()) {
       if (port_ == 443) {

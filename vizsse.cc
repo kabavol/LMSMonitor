@@ -14,7 +14,8 @@ using namespace httplib;
 
 pthread_t vizSSEThread;
 bool reconnect = true;
-unsigned long retrybase = 3000;
+unsigned long retrylong = 5;    // minutes
+unsigned long retrybase = 3000; // milliseconds
 unsigned long retry = retrybase;
 Options options;
 
@@ -66,12 +67,22 @@ void urlparse(const char *uri, char *host, uint *port, char *endpoint)
     sscanf(uri, "http://%99[^:]:%99d/%99[^\n]", host, port, endpoint);
 }
 
-static void parseSSEArguments(int argc, char **argv) {
-    return;
+static void parseSSEArguments(struct Options opt) {
+
     // set default url and allow_insecure is always set to true for now
     options.allow_insecure = true;
-    // expose this!!!!!!!
-    options.uri = "http://192.168.1.37:8022/visionon?subscribe=SA-VU";
+
+    if (opt.uri)
+        options.uri = opt.uri;
+    if (opt.host)
+        options.host = opt.host;
+    if (opt.port)
+        options.port = opt.port;
+    if (opt.endpoint)
+        options.endpoint = opt.endpoint;
+
+    if ((!options.host)&&(options.uri))
+        urlparse((char*)options.uri, (char*)options.host, (uint*)&options.port, (char*)options.endpoint);
 
     if (!options.allow_insecure) {
         if (strncmp(options.uri, "https:", 6)) {
@@ -81,27 +92,39 @@ static void parseSSEArguments(int argc, char **argv) {
             exit(1);
         }
     }
+
+    char info[BSIZE];
+    sprintf(info, "SSE Host .....: %s\nComms Port ...: %d\nEndpoint .....: %s\n",
+            options.host, options.port, options.endpoint);
+    printf("%s",info);
+
 }
 
 void *vizSSEPolling(void *x_voidptr) {
 
-  Client cli( "192.168.1.37", 8022 );
+  Client cli( options.host, options.port );
 
+  char agent[BSIZE];
+  sprintf(agent,"%s/%s", APPNAME, VERSION);
   cli.set_follow_location(true);
   const httplib::Headers headers = {
-    { "User-Agent", "LMSMonitor/0.4.11" },
+    { "User-Agent", agent },
     { "Accept", "text/event-stream" },
     { "Cache-Control", "no-cache" },
-    { "Connection", "Keep-Alive" }, // fixed case!!!
+    { "Connection", "Keep-Alive" }, // fixed case httplib not case tolerant!!!
   };
 
   while(reconnect){
 
-    auto res = cli.Get("/visionon?subscribe=SA-VU", headers, on_sse_callback);
+    /////printf("connect...\n");
+    //auto res = cli.Get("/visionon?subscribe=SA-VU", headers, on_sse_callback);
+    auto res = cli.Get(options.endpoint, headers, on_sse_callback);
 
     if(res){
       //check that response code is 2xx
       reconnect = (res->status / 100) == 2;
+      if (reconnect)
+        std::this_thread::sleep_for(std::chrono::minutes(retrylong));
     }
     else{
       std::this_thread::sleep_for(std::chrono::milliseconds(retry));
@@ -114,18 +137,25 @@ void *vizSSEPolling(void *x_voidptr) {
 
 }
 
-bool setupSSE(int argc, char **argv) {
+bool setupSSE(struct Options opt) {
 
-    bool ret = true;
-    // pass in arguments that will be used in REST call/connection
-    parseSSEArguments(argc, argv);
+    // setup for REST call/connection
+    parseSSEArguments(opt);
 
+    if(!options.host)
+        return false;
+
+    printf("Initializing SSE ...\n");
     if (pthread_create(&vizSSEThread, NULL, vizSSEPolling, NULL) != 0) {
         vissySSEFinalize();
         toLog(1, "Failed to create SSE Visualization thread!");
-        ret = false;
+        return false;
     }
-    return ret;
+    else
+        printf("SSE active on %s:%d\n", options.host, options.port);
+
+    return true;
+
 }
 
 void vissySSEFinalize(void) {

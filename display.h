@@ -22,12 +22,11 @@
 #ifndef DISPLAY_H
 #define DISPLAY_H 1
 
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <pthread.h>
-#include <stdbool.h>
 
 #include "visdata.h"
 
@@ -37,7 +36,7 @@
 #define MAX_LINES 8
 #define MAXSCROLL_DATA 255
 
- typedef struct Scroller {
+typedef struct Scroller {
     char *text;
     pthread_t scrollThread;
     int textPix;
@@ -50,14 +49,14 @@
     bool forward;
     bool active;
     bool pause;
-    void* (*scrollMe)(void *input);
+    void *(*scrollMe)(void *input);
 } sme;
 
 void splashScreen(void);
- 
+
 void scrollerPause(void);
-void* scrollLine(void *input); // threadable
-void scrollerInit(void); 
+void *scrollLine(void *input); // threadable
+void scrollerInit(void);
 void putScrollable(int y, char *buff);
 void scrollerFinalize(void);
 
@@ -70,7 +69,7 @@ void closeDisplay(void);
 void vumeter2upl(void);
 void stereoVU(struct vissy_meter_t *vissy_meter);
 void stereoSpectrum(struct vissy_meter_t *vissy_meter);
-void stereoPeak(struct vissy_meter_t *vissy_meter);
+void stereoPeakH(struct vissy_meter_t *vissy_meter);
 
 // audio attributes
 void putVolume(bool v, char *buff);
