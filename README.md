@@ -28,7 +28,7 @@ The following images were captured by dumping the display on refresh; it's a tad
 
 At 15 FPS scrolling text is smooth and the visualizer modes very kinetic.
 
-<img width="300" src="sources/demo.gif" align="center" />
+<img width="300" src="base/demo.gif" align="center" />
 
 ### Visualizer Modes
 
