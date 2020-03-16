@@ -66,27 +66,27 @@ SSH to your pCP device.
 
 cd to the /mnt/mmcblk0p2/tce folder
 
-and, then type
+and, then type:
 
-'''
+```bash
 wget "https://github.com/shunte88/LMSMonitor/blob/master/bin/lmsmonitorpcp.tgz?raw=true" -O lmsmonitorpcp.tgz && tar -xzvf lmsmonitorpcp.tgz
-'''
+```
 
 This downloads the monitor archive to pCP and extracts the contents
 
-To ensure smooth running perform the following
+To ensure smooth running perform the following:
 
-'''
+```bash
 chmod +x gomonitor
-'''
+```
 
 With that you can manually start the monitor specifying the visualization you'd like to display, vu, sa or pk
 
 For example:
 
-'''
+```bash
 ./gomonitor sa
-'''
+```
 
 You should see the monitor logo screen appear.  You're pretty much done
 
@@ -96,9 +96,9 @@ I you'd like the monitor to automatically start with your pCP and squeezelite se
 
 Add a *User command*, here for example requesting the Spectrum Analysis visualization
 
-'''
+```bash
 /mnt/mmcblk0p2/tce/gomonitor sa
-'''
+```
 
 ### Coming soon
 - DONE! Audio visualizer support: stereo VU meters
