@@ -54,11 +54,12 @@ And, in the Various Options add *-v*
 
 See the squeezelite page for more details
 
-We also need to install the WiringPi library so we can communicate wit the OLED screen
+We also need to install the WiringPi and i2c tools libraries so we can communicate wit the OLED screen
 
 From the main web form click on Extensions button in the *Additional functions* section
 
 On the page displayed select *wiringpi.tcz* from the dropdown and install
+On the page displayed select *i2c-tools-dev.tcz* from the dropdown and install
 
 ## pCP Install
 
@@ -92,7 +93,7 @@ You should see the monitor logo screen appear.  You're pretty much done
 
 ## Automated start-up
 
-I you'd like the monitor to automatically start with your pCP and squeezelite setup goto the *Tweaks* page of the pCP web forms.
+If you'd like the monitor to automatically start with your pCP and squeezelite setup goto the *Tweaks* page of the pCP web forms.
 
 Add a *User command*, here for example requesting the Spectrum Analysis visualization
 
