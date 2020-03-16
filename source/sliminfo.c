@@ -85,7 +85,8 @@ int discoverPlayer(char *playerName) {
         aBuffer[bytes] = 0;
 
         if (strncmp(qBuffer, aBuffer, strlen(aBuffer)) == 0) {
-            abortMonitor("Player not found!");
+            sprintf(aBuffer, "Player specified \"%s\" not found, supply corrected name!", playerName);
+            abortMonitor(aBuffer);
         }
 
         decode(aBuffer, playerID);
