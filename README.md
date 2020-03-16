@@ -69,7 +69,7 @@ cd to the /mnt/mmcblk0p2/tce folder
 and, then type
 
 '''
-wget https://raw.githubusercontent.com/shunte88/LMSMonitor/master/bin/lmsmonitorpcp.tgz && tar -xzvf lmsmonitorpcp.tgz
+wget "https://github.com/shunte88/LMSMonitor/blob/master/bin/lmsmonitorpcp.tgz?raw=true" -O lmsmonitorpcp.tgz && tar -xzvf lmsmonitorpcp.tgz
 '''
 
 This downloads the monitor archive to pCP and extracts the contents
