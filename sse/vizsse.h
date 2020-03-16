@@ -33,9 +33,6 @@
 #include "vissy.h"
 #include "visdata.h"
 
-#define APPNAME "LMSMonitor"
-#define VERSION "0.4.11"
-
 #define MAX_HEADERS 100
 #define RESPONSE_LIMIT  128 * 1024
 

@@ -31,6 +31,6 @@
 #define VISSY_VIZSHMEM_H
 
 void vissySHMEMFinalize(void);
-bool setupSHMEM(int argc, char** argv);
+bool setupSHMEM(void);
 
 #endif

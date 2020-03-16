@@ -31,7 +31,6 @@
 
 #include "display.h"
 #include "oledimg.h"
-///#include "libm6.h"
 
 #define _USE_MATH_DEFINES
 #define PI acos(-1.0000)
@@ -43,7 +42,9 @@
 #include "ArduiPi_OLED_lib.h"
 #include "Adafruit_GFX.h"
 #include "ArduiPi_OLED.h"
+#ifdef CAPTURE_BMP
 #include "bmpfile.h"
+#endif
 // clang-format on
 
 ArduiPi_OLED display;
@@ -472,6 +473,8 @@ void drawHorizontalBargraph(int x, int y, int w, int h, int percent) {
     return;
 }
 
+#ifdef CAPTURE_BMP
+
 bool snapOn = false;
 void setSnapOn(void) { snapOn = true; }
 void setSnapOff(void) { snapOn = false; }
@@ -516,8 +519,10 @@ void shotAndDisplay(void) {
     display.display();
 }
 
-//void refreshDisplay(void) { shotAndDisplay(); }
+void refreshDisplay(void) { shotAndDisplay(); }
+#else
 void refreshDisplay(void) { display.display(); }
+#endif
 
 void refreshDisplayScroller(void) {
     for (int line = 0; line < MAX_LINES; line++) {

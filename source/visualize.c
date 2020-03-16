@@ -65,7 +65,8 @@ void visualize(struct vissy_meter_t *vissy_meter) {
             if (strncmp(vis_mode, MODE_VU, 2) == 0)
                 stereoVU(vissy_meter);
             else
-                stereoPeakH(vissy_meter);
+                if (strncmp(vis_mode, MODE_PK, 2) == 0)
+                    stereoPeakH(vissy_meter);
         }
         else 
             if (strncmp(vis_mode,vissy_meter->meter_type,2) == 0)
@@ -75,6 +76,7 @@ void visualize(struct vissy_meter_t *vissy_meter) {
 
     // stream is too fast for display - a 1:20 consumption ratio plays happy w/ display
     // routine VU routine checks for change so we may be Ok, parameterize and push limits
+    // is worse still on pi3 build...
     visgood++;
 
     if (visgood > 19) // sweet spot for SA

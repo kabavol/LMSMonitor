@@ -4,9 +4,10 @@
  *	(c) 2015 László TÓTH
  *	(c) 2020 Stuart Hunter
  *
- *	Todo:	Done - Automatic server discovery
- *			Done - Get playerID automatically
- *			Reconnect to server
+ *	TODO:
+ *          Done - Automatic server discovery
+ *          Done - Get playerID automatically
+ *          Reconnect to server
  *
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -53,7 +54,9 @@
 #include "Adafruit_GFX.h"
 #include "ArduiPi_OLED.h"
 #include "display.h"
+#ifdef SSE_VIZDATA
 #include "vizsse.h"
+#endif
 #include "vizshmem.h"
 #include "visualize.h"
 #include "timer.h"
@@ -90,18 +93,23 @@ tagtypes_t layout[LINE_NUM][3] = {
 };
 // clang-format on
 
-
+bool freed = false;
 // free and cleanup here
 void before_exit(void) {
     printf("\nCleanup and shutdown\n");
-    closeSliminfo();
+    if (!freed) {
+        freed = true;
+        closeSliminfo();
 #ifdef __arm__
-    clearDisplay();
-    closeDisplay();
-    vissySSEFinalize();
-    vissySHMEMFinalize();
-    timer_finalize(); // should be all set ???
+        clearDisplay();
+        closeDisplay();
+#ifdef SSE_VIZDATA
+        vissySSEFinalize();
 #endif
+        vissySHMEMFinalize();
+        timer_finalize(); // should be all set ???
+#endif
+    }
     printf("All Done\nBye Bye.\n");
 }
 
@@ -257,7 +265,9 @@ int main(int argc, char *argv[]) {
     char lastTime[6] = "XX:XX"; // non-matching time digits (we compare one by one)!
 
 #ifdef __arm__
+#ifdef SSE_VIZDATA
     Options opt;
+#endif
 #endif
 
     opterr = 0;
@@ -272,7 +282,11 @@ int main(int argc, char *argv[]) {
             case 'i': incVerbose(); break;
 
 #ifdef __arm__
+#ifdef SSE_VIZDATA
             case 'p': sscanf(optarg, "%d", &opt.port); break;
+#else
+            case 'p': printf("SSE not supported\n"); break;
+#endif
 #endif
             case 'v': visualize = true; break;
 
@@ -323,17 +337,21 @@ int main(int argc, char *argv[]) {
     }
 
     // init for visualize mechanism here
-    if (thatMAC != thisMAC) {
+    if (strcmp(thatMAC, thisMAC) != 0) {
         extended = true;
         printf("Extended attrs from LMS enabled, no MIMO!\n");
 #ifdef __arm__
         if (visualize) {
+#ifdef SSE_VIZDATA
             // go SSE for visualizer
             opt.host = getPlayerIP();
-            if(!opt.port)
-                opt.port = 8022;
+            opt.port = 8022;
             opt.endpoint = "/visionon?subscribe=SA-VU";
             visualize = setupSSE(opt);
+#else
+            printf("SSE not supported, deactivating visualizer\n");
+            visualize = false;
+#endif
         }
 #endif
     }
@@ -342,12 +360,10 @@ int main(int argc, char *argv[]) {
     {
         if (visualize) {
             // go SHMEM for visualizer
-            visualize = setupSHMEM(argc, argv);
+            visualize = setupSHMEM();
         }
     }
 
-    if(!visualize)
-        putMSG("Visualization is not active", LL_INFO);
     // if we had a clean setup
     // init visualizer mode and
     // timer toggle
@@ -357,6 +373,11 @@ int main(int argc, char *argv[]) {
         timer_initialize();
         viztimer = timer_start(60*1000, toggleVisualize, TIMER_PERIODIC, (void*)visualize);
     }
+    else
+    {
+        if(!visualize)
+            putMSG("Visualization is not active", LL_INFO);
+    }
 
 #endif
 
@@ -364,11 +385,13 @@ int main(int argc, char *argv[]) {
 #ifdef __arm__
     clearDisplay(); // clear splash if shown
     // bitmap capture
+#ifdef CAPTURE_BMP
     //setSnapOn();
     //setSnapOff();
 #endif
+#endif
 
-    // re-work this so as to "pages" metaphor
+    // re-work this such that it uses the "pages" metaphor
     while (true) {
 
         if (isRefreshed()) {
@@ -576,8 +599,9 @@ int main(int argc, char *argv[]) {
                                (loctm.tm_sec + ((double)tv.tv_usec / 1000000)) /
                                60)));
                     // date
-                    sprintf(buff, "  %d-%02d-%02d  ", loctm.tm_year + 1900,
-                            loctm.tm_mon + 1, loctm.tm_mday);
+                    strftime(buff, sizeof(buff), "%A %Y-%m-%02d", &loctm);
+                    //sprintf(buff, "  %d-%02d-%02d  ", loctm.tm_year + 1900,
+                    //        loctm.tm_mon + 1, loctm.tm_mday);
                     putTextToCenter(54, buff);
 
                     // set changed so we'll repaint on play
