@@ -39,7 +39,7 @@
 #include "visdata.h"
 #include "vision.h"
 
-#include "log.h"
+//#include "log.h"
 
 #define VUMETER_DEFAULT_SAMPLE_WINDOW 1024 * 2
 

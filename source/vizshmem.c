@@ -35,7 +35,7 @@
 #include <time.h>
 
 #include "common.h"
-#include "log.h"
+//#include "log.h"
 #include "visdata.h"
 #include "vision.h"
 #include "visualize.h"
