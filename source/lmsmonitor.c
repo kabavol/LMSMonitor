@@ -240,6 +240,13 @@ void toggleVisualize(size_t timer_id, void *user_data) {
 
 int main(int argc, char *argv[]) {
 
+
+    if (geteuid() != 0)
+    {
+        printf("\nPlease run as root to address OLED and access shared memory\n\n");
+        exit(1);
+    }
+
     attach_signal_handler();
 
     bool visualize = false;
