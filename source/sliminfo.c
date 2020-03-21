@@ -189,7 +189,7 @@ in_addr_t getServerAddress(void) {
                 socklen_t slen = sizeof(s);
                 recvfrom(disc_sock, readbuf, 10, 0, (struct sockaddr *)&s,
                          &slen);
-                sprintf(stb, "LMS (Server) responded:\nServer IP ....: %s:%d\n",
+                sprintf(stb, "LMS (Server) responded:\nServer IP ......: %s:%d\n",
                         inet_ntoa(s.sin_addr), ntohs(s.sin_port));
                 putMSG(stb, LL_INFO);
             }
