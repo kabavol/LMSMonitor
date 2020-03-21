@@ -90,7 +90,8 @@ int discoverPlayer(char *playerName) {
         sscanf(aBuffer, "%*[^A]A%d[^ ]", &playerCount);
         if (playerCount>0) // we haveplayers, find our guy
         {
-            if (strncmp(aBuffer, playerName, strlen(playerName)) == 0) {
+            sprintf(qBuffer,"A%s ",playerName);
+            if (strncmp(aBuffer, qBuffer, strlen(qBuffer)) == 0) {
                 sprintf(aBuffer, "Player specified \"%s\" not found, supply corrected name!", playerName);
                 abortMonitor(aBuffer);
             }
@@ -100,7 +101,7 @@ int discoverPlayer(char *playerName) {
             multi_tok_t mt = multi_tok_init();
             char *player = multi_tok(aBuffer, &mt, pind);
             while (player != NULL) {
-                if (strstr(player, playerName) != 0) {
+                if (strstr(player, qBuffer) != 0) {
                     if (getTag("playerid", player, aBuffer, MAXTAG_DATA))
                         strcpy(playerID, aBuffer);
                     if (getTag("ip", player, aBuffer, MAXTAG_DATA))
