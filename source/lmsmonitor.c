@@ -97,10 +97,11 @@ bool freed = false;
 // free and cleanup here
 void before_exit(void) {
     printf("\nCleanup and shutdown\n");
-    if (!freed) {
+    if (!freed) { // ??? race condition
         freed = true;
         closeSliminfo();
 #ifdef __arm__
+        scrollerPause(); // stop any scrolling prior to clear - no orphans!
         clearDisplay();
         closeDisplay();
 #ifdef SSE_VIZDATA
@@ -410,6 +411,7 @@ int main(int argc, char *argv[]) {
                 if (refreshLMS) {
 #ifdef __arm__
                     resetDisplay(1);
+                    putMSG("refresh display", LL_INFO);
 #endif
                     refreshLMS = false;
                 }

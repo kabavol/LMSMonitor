@@ -74,8 +74,10 @@ int discoverPlayer(char *playerName) {
             abortMonitor("ERROR too long player name!");
         }
 
-        encode(playerName, aBuffer);
-        sprintf(qBuffer, "%s\n", aBuffer);
+        // submitting the player no longer comes back with the correct ID and IP
+        // timing is such that this coincided with the 6.0.0 upgrade
+        // retool: query players long form and loop over to find the one we want
+        sprintf(qBuffer, "players 0 99\n");
         if (write(sockFD, qBuffer, strlen(qBuffer)) < 0) {
             abortMonitor("ERROR writing to socket!");
         }
@@ -84,40 +86,46 @@ int discoverPlayer(char *playerName) {
         }
         aBuffer[bytes] = 0;
 
-        if (strncmp(qBuffer, aBuffer, strlen(aBuffer)) == 0) {
-            sprintf(aBuffer, "Player specified \"%s\" not found, supply corrected name!", playerName);
-            abortMonitor(aBuffer);
-        }
-
-        decode(aBuffer, playerID);
-
-        sprintf(qBuffer, "%s player ip ?\n", playerID);
-        if (write(sockFD, qBuffer, strlen(qBuffer)) < 0) {
-            abortMonitor("ERROR writing to socket");
-        }
-        if ((bytes = read(sockFD, aBuffer, BSIZE - 1)) < 0) {
-            abortMonitor("ERROR reading from socket");
-        }
-        aBuffer[bytes] = 0;
-
-        char *ip;
-        if ((ip = strstr(aBuffer, "%3F ")) != NULL) {
-            char *lc;
-            int tl;
-            ip = strstr(ip, "%3F ") + (4 * sizeof(char));
-            if ((lc = strstr(ip, "%3A")) != NULL) {
-                tl = lc - ip;
-            } else {
-                tl = strlen(ip);
+        int playerCount = -1;
+        sscanf(aBuffer, "%*[^A]A%d[^ ]", &playerCount);
+        if (playerCount>0) // we haveplayers, find our guy
+        {
+            if (strncmp(aBuffer, playerName, strlen(playerName)) == 0) {
+                sprintf(aBuffer, "Player specified \"%s\" not found, supply corrected name!", playerName);
+                abortMonitor(aBuffer);
             }
-            strncpy(playerIP, ip, tl);
+            printf("Player Count ...: %d\n", playerCount);
+            // if playercount > 1 tokenize else just decompose
+            char pind[15] = "playerindex%3A";
+            multi_tok_t mt = multi_tok_init();
+            char *player = multi_tok(aBuffer, &mt, pind);
+            while (player != NULL) {
+                if (strstr(player, playerName) != 0) {
+                    if (getTag("playerid", player, aBuffer, MAXTAG_DATA))
+                        strcpy(playerID, aBuffer);
+                    if (getTag("ip", player, aBuffer, MAXTAG_DATA))
+                    {
+                        int tl;
+                        char *pport;
+                        if ((pport = strstr(aBuffer, ":")) != NULL) {
+                            tl = pport - aBuffer;
+                        } else {
+                            tl = strlen(aBuffer);
+                        }
+                        strncpy(playerIP, aBuffer, tl);
+                    }
+                    break;
+                }
+                player = multi_tok(NULL, &mt, pind);
+            }
+
         }
 
     } else {
         return -1;
     }
 
-    sprintf(stb, "Player Name ..: %s\nPlayer ID ....: %s\nPlayer IP ....: %s\n",
+    sprintf(stb, "Player Name ....: %s\nPlayer ID ......: %s\nPlayer IP ......: %s\n",
             playerName, playerID, playerIP);
     putMSG(stb, LL_INFO);
 

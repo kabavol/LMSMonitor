@@ -100,3 +100,27 @@ char *replaceStr(const char *s, const char *find, const char *replace) {
     result[i] = '\0';
     return result;
 }
+
+
+char *multi_tok(char *input, multi_tok_t *string, char *delimiter) {
+    if (input != NULL)
+        *string = input;
+
+    if (*string == NULL)
+        return *string;
+
+    char *end = strstr(*string, delimiter);
+    if (end == NULL) {
+        char *temp = *string;
+        *string = NULL;
+        return temp;
+    }
+
+    char *temp = *string;
+
+    *end = '\0';
+    *string = end + strlen(delimiter);
+    return temp;
+}
+
+multi_tok_t multi_tok_init() { return NULL; }
