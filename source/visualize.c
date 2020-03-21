@@ -54,11 +54,10 @@ void deactivateVisualizer(void)
     vis_is_active = false;
 }
 
-//int visgood = 0;
+int visgood = 0;
 void visualize(struct vissy_meter_t *vissy_meter) {
 
-    //if ((vis_is_active) && (1 == visgood)){
-    if ((vis_is_active)) { // && (visgood) < 2){
+    if ((vis_is_active) && (visgood < 3)) {
 
         if (strncmp(MODE_VU, vissy_meter->meter_type, 2) == 0) {
             // support vu or pk
@@ -77,9 +76,8 @@ void visualize(struct vissy_meter_t *vissy_meter) {
     // stream is too fast for display - a 1:20 consumption ratio plays happy w/ display
     // routine VU routine checks for change so we may be Ok, parameterize and push limits
     // is worse still on pi3 build...
-    //visgood++;
-    //
-    //if (visgood > 19) // sweet spot for SA
-    //    visgood = 0;
+    visgood++;
+    if (visgood > 19) // sweet spot for SA
+        visgood = 0;
 
 }
