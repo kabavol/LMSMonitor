@@ -31,6 +31,8 @@
 int verbose = 0;
 int textOut = false;
 
+void dodelay(uint16_t d) { usleep(d*1000); }
+
 int incVerbose(void) {
     if (verbose < INT_MAX) {
         verbose++;
@@ -124,3 +126,18 @@ char *multi_tok(char *input, multi_tok_t *string, char *delimiter) {
 }
 
 multi_tok_t multi_tok_init() { return NULL; }
+
+#include <ctype.h>
+// missing under linux
+void strupr(char *s)
+{
+    char *p = s;
+    while (*p) {
+        *p = toupper(*p);
+        ++p;
+    }
+} 
+
+
+
+

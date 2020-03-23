@@ -29,16 +29,17 @@
 #define PEAK_METER_LEVELS_MAX 48  // Number of peak meter intervals
 #define SPECTRUM_POWER_MAP_MAX 32 // Number of spectrum bands
 #define METER_CHANNELS 2          // Number of metered channels.
-#define OVERLOAD_PEAKS 3 // Number of consecutive 0dBFS peaks for overload.
+#define OVERLOAD_PEAKS 3          // Number of consecutive 0dBFS peaks for overload.
 #define X_SCALE_LOG 20
 #define MAX_SAMPLE_WINDOW 1024 * X_SCALE_LOG
 #define MAX_SUBBANDS MAX_SAMPLE_WINDOW / 2 / X_SCALE_LOG
 #define MIN_SUBBANDS 16
 #define MIN_FFT_INPUT_SAMPLES 128
 
-#define MODE_SA "SA"
-#define MODE_VU "VU"
-#define MODE_PK "PK"
+#define MODE_SA "SA" // Spectrum
+#define MODE_VU "VU" // VU meters
+#define MODE_PK "PK" // Peak meter
+#define MODE_RN "RN" // random
 
 struct peak_meter_t {
   uint16_t int_time;  // Integration time (ms).
@@ -62,8 +63,11 @@ struct peak_meter_t {
 };
 
 struct bin_chan_t {int bin[METER_CHANNELS][MAX_SUBBANDS];};
+struct meter_chan_t {int metric[METER_CHANNELS];};
+typedef char vis_type_t[3];
+
 struct vissy_meter_t {
-  char meter_type[3];
+  vis_type_t meter_type;
   char channel_name[METER_CHANNELS][2];
   int is_mono;
   long long sample_accum[METER_CHANNELS]; // VU raw peak values.

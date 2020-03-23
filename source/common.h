@@ -22,10 +22,12 @@
 #ifndef COMMON_H
 #define COMMON_H 1
 
+#include <stdint.h>
+
 #define BSIZE 4096
 
 #define APPNAME "LMSMonitor"
-#define VERSION "0.4.15"
+#define VERSION "0.4.16"
 
 #define LL_QUIET 0
 #define LL_INFO 1
@@ -44,5 +46,11 @@ bool isEmptyStr(const char *s);
 
 char *multi_tok(char *input, multi_tok_t *string, char *delimiter);
 multi_tok_t multi_tok_init();
+
+#include <ctype.h>
+// missing under linux
+void strupr(char *s);
+
+void dodelay(uint16_t d);
 
 #endif

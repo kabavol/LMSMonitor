@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "common.h"
 #include "display.h"
 #include "oledimg.h"
 
@@ -117,22 +118,25 @@ void splashScreen(void) {
     display.clearDisplay();
     display.drawBitmap(0, 0, splash, 128, 64, WHITE);
     display.display();
-    delay(2000);
+    dodelay(2000);
 }
 
-long long last_L = -1000;
-long long last_R = -1000;
+meter_chan_t lastVU = {-1000,-1000};
+meter_chan_t overVU = {0, 0};
 
 void stereoVU(struct vissy_meter_t *vissy_meter) {
     // VU Mode
 
+    // overload : if n # samples > 0dB light overload
+
     // do no work if we don't need to
-    if ((last_L == vissy_meter->rms_scale[0]) &&
-        (last_R == vissy_meter->rms_scale[1]))
+    if ((lastVU.metric[0] == vissy_meter->rms_scale[0]) &&
+        (lastVU.metric[1] == vissy_meter->rms_scale[1]))
+        // check overload irrespective
         return;
 
-    last_L = vissy_meter->rms_scale[0];
-    last_R = vissy_meter->rms_scale[1];
+    lastVU.metric[0] = vissy_meter->rms_scale[0];
+    lastVU.metric[1] = vissy_meter->rms_scale[1];
 
     vumeter2upl();
 
@@ -172,6 +176,7 @@ void stereoVU(struct vissy_meter_t *vissy_meter) {
         display.drawCircle(xpivot[channel], wMeter, r - 2, BLACK);
         display.fillCircle(xpivot[channel], wMeter, r - 4, BLACK);
     }
+
 }
 
 // caps and previous state
@@ -247,9 +252,7 @@ void stereoSpectrum(struct vissy_meter_t *vissy_meter) {
     // track detail scroller...
 }
 
-int last_LdBfs = -1000;
-int last_RdBfs = -1000;
-
+meter_chan_t lastPK = {-1000,-1000};
 void stereoPeakH(struct vissy_meter_t *vissy_meter) {
 
     // intermediate variable so we can easily switch metrics
@@ -257,12 +260,13 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter) {
                                  vissy_meter->rms_scale[1]};
 
     // do no work if we don't need to
-    if ((last_LdBfs == meter[0]) && (last_RdBfs == meter[1]))
+    if ((lastPK.metric[0] == meter[0]) && (lastPK.metric[1] == meter[1]))
         return;
 
-    last_LdBfs = meter[0];
-    last_RdBfs = meter[1];
+    lastPK.metric[0] = meter[0];
+    lastPK.metric[1] = meter[1];
 
+    // how to selectively clear....
     peakMeterH();
 
     // 14, 15 4x11  -> + 84, 15 6x11
@@ -270,7 +274,8 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter) {
     int level[19] = {-36, -30, -20, -17, -13, -10, -8, -7, -6, -5,
                      -4,  -3,  -2,  -1,  0,   2,   3,  5,  8};
     uint8_t xpos = 14; // 19
-    uint8_t ypos[4] = {15, 38, 15, 38}; // {21, 38, 17, 44};
+    ///uint8_t ypos[4] = {15, 38, 15, 38}; // {21, 38, 17, 44};
+    uint8_t ypos[2] = {5, 38};
     size_t ll = sizeof(level) / sizeof(level[0]);
     size_t p = 0;
 
@@ -279,15 +284,12 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter) {
         uint8_t nodew = (*l < 0) ? 4 : 6;
         for (int channel = 0; channel < 2; channel++) {
             // meter value
-            double mv =
+            double mv = -48.00 +
                 (double)meter[channel] * (2 * 36.00) / 48.00;
-            mv -= 48.000; // zero adjust [-3dB->-20dB]
+            //////mv -= 48.000; // zero adjust [-3dB->-20dB]
             if (mv >= (double)*l) {
-                //display.fillRect(xpos, ypos[channel], nodew, 5, WHITE);
-                display.fillRect(xpos, ypos[channel], nodew, 11, WHITE);
-                //if (*l >= 0)
-                //    display.fillRect(xpos, ypos[channel+2], nodew, 3, WHITE);
-
+                //display.fillRect(xpos, ypos[channel], nodew, 11, WHITE);
+                display.fillRect(xpos, ypos[channel], nodew, 20, WHITE);
             }
         }
         xpos += nodeo;
@@ -417,7 +419,7 @@ void *scrollLine(void *input) {
             // deactivate - implement test - check length limits
             // and travel test
         }
-        delay(timer);
+        dodelay(timer);
     }
 }
 

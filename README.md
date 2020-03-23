@@ -10,7 +10,8 @@ OLED information display control program for [piCorePlayer](https://www.picorepl
 -t enable print info to stdout
 -l increment verbose level
 -v activate visualization
--m VU meters and spectrum analysis
+-m VU meters, Spectrum analysis, Peak meters, or Random
+   VU, SA, PK, or RN or a comma delimited list of upto 3 meters
 -r display remaining time rather than track time
 ```
 
@@ -95,16 +96,17 @@ You should see the monitor logo screen appear.  You're pretty much done
 
 If you'd like the monitor to automatically start with your pCP and squeezelite setup goto the *Tweaks* page of the pCP web forms.
 
-Add a *User command*, here for example requesting the Spectrum Analysis visualization
+Add a *User command*, here for example requesting the random visualizations
 
 ```bash
-/mnt/mmcblk0p2/tce/gomonitor sa
+/mnt/mmcblk0p2/tce/gomonitor rn
 ```
 
 ### Coming soon
 - DONE! Audio visualizer support: stereo VU meters
 - DONE! Audio visualizer support: spectrum analyzer
 - DONE! Audio visualizer support: horizontal Peak RMS
+- DONE! Audio visualizer support: random and multiple meters
 - Weather: TBD
 - Dual OLED visualizer mode: TBD
 - Color 128 x 128 color TFT support

@@ -4,10 +4,9 @@
 #include <pthread.h>
 
 #include "jsmn.h"
-#include "log.h"
 
-#include "visualize.h"
-#include "common.h"
+#include "../source/visualize.h"
+#include "../source/common.h"
 #include "vizsse.h"
 
 using namespace httplib;
@@ -94,7 +93,7 @@ static void parseSSEArguments(struct Options opt) {
     }
 
     char info[BSIZE];
-    sprintf(info, "SSE Host .....: %s\nComms Port ...: %d\nEndpoint .....: %s\n",
+    sprintf(info, "SSE Host .......: %s\nComms Port .....: %d\nEndpoint .......: %s\n",
             options.host, options.port, options.endpoint);
     printf("%s",info);
 
@@ -116,8 +115,6 @@ void *vizSSEPolling(void *x_voidptr) {
 
   while(reconnect){
 
-    /////printf("connect...\n");
-    //auto res = cli.Get("/visionon?subscribe=SA-VU", headers, on_sse_callback);
     auto res = cli.Get(options.endpoint, headers, on_sse_callback);
 
     if(res){
@@ -148,7 +145,7 @@ bool setupSSE(struct Options opt) {
     printf("Initializing SSE ...\n");
     if (pthread_create(&vizSSEThread, NULL, vizSSEPolling, NULL) != 0) {
         vissySSEFinalize();
-        toLog(1, "Failed to create SSE Visualization thread!");
+        putMSG("Failed to create SSE Visualization thread!", LL_INFO);
         return false;
     }
     else

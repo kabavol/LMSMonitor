@@ -30,8 +30,8 @@
 #include <ctype.h>
 #include <stdio.h>
 
-#include "vissy.h"
-#include "visdata.h"
+#include "../source/vissy.h"
+#include "../source/visdata.h"
 
 #define MAX_HEADERS 100
 #define RESPONSE_LIMIT  128 * 1024

@@ -66,16 +66,14 @@ int discoverPlayer(char *playerName) {
     char aBuffer[BSIZE];
     int bytes;
 
-    // I've not found this feature in the CLI spec,
-    //	but if you send the player name, the server
-    //  answers with the unique player ID (usually MAC address).
     if (playerName != NULL) {
+
         if (strlen(playerName) > (BSIZE / 3)) {
             abortMonitor("ERROR too long player name!");
         }
 
-        // submitting the player no longer comes back with the correct ID and IP
-        // timing is such that this coincided with the 6.0.0 upgrade
+        // submitting the player name no longer returns the correct ID and IP
+        // timing is such that this coincided with the 6.0.0 upgrade but not 100%
         // retool: query players long form and loop over to find the one we want
         sprintf(qBuffer, "players 0 99\n");
         if (write(sockFD, qBuffer, strlen(qBuffer)) < 0) {
@@ -90,18 +88,18 @@ int discoverPlayer(char *playerName) {
         sscanf(aBuffer, "%*[^A]A%d[^ ]", &playerCount);
         if (playerCount>0) // we haveplayers, find our guy
         {
-            sprintf(qBuffer,"A%s ",playerName);
+            sprintf(qBuffer,"3A%s ",playerName);
             if (strncmp(aBuffer, qBuffer, strlen(qBuffer)) == 0) {
                 sprintf(aBuffer, "Player specified \"%s\" not found, supply corrected name!", playerName);
                 abortMonitor(aBuffer);
             }
             printf("Player Count ...: %d\n", playerCount);
-            // if playercount > 1 tokenize else just decompose
             char pind[15] = "playerindex%3A";
             multi_tok_t mt = multi_tok_init();
             char *player = multi_tok(aBuffer, &mt, pind);
             while (player != NULL) {
                 if (strstr(player, qBuffer) != 0) {
+
                     if (getTag("playerid", player, aBuffer, MAXTAG_DATA))
                         strcpy(playerID, aBuffer);
                     if (getTag("ip", player, aBuffer, MAXTAG_DATA))
@@ -284,13 +282,11 @@ tag *initTagStore(void) {
 
 void *serverPolling(void *x_voidptr) {
 
-    char variousArtist[BSIZE] = "Various Artists";
+    char variousArtist[BSIZE] = "Various Artists"; // not locale agnostic
     char buffer[BSIZE];
     char dbuffer[BSIZE];
     char tagData[BSIZE];
     int rbytes;
-
-int z = 0;
 
     while (true) {
 
@@ -303,20 +299,10 @@ int z = 0;
                 abortMonitor("ERROR reading from socket");
             }
             buffer[rbytes] = 0;
-/*
+
 // works well but incurs good chunk of re-write
 //(?P<name>[^:]*):?( ?(?P<value>.*))?
-if (z < 20) {
-    urldecode2(buffer, dbuffer);
-    strncpy(dbuffer, replaceStr(
-        dbuffer, replaceStr(query, "\n", " "), ""), BSIZE);
-    printf("%s\n%s\n%s\n",
-    buffer, 
-    query, 
-    dbuffer);
-z++;
-}
-*/
+
             for (int i = 0; i < MAXTAG_TYPES; i++) {
 
                 if ((getTag((char *)tagStore[i].name, buffer, tagData,
@@ -331,13 +317,6 @@ z++;
                     tagStore[i].valid = false;
                 }
 
-                if (0 == 1) {
-                    if (ALBUM == i) {
-                        printf("< %d) %s: %s %d %d\n", i,
-                               tagStore[i].displayName, tagStore[i].tagData,
-                               tagStore[i].valid, tagStore[i].changed);
-                    }
-                }
             }
 
             long pTime = getMinute(&tagStore[TIME]);

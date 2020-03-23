@@ -63,16 +63,6 @@
 
 // clang-format on
 
-#include <ctype.h>
-// missing under linux
-void strupr(char *s)
-{
-    char *p = s;
-    while (*p) {
-        *p = toupper(*p);
-        ++p;
-    }
-} 
 #endif
 
 #define SLEEP_TIME 200
@@ -202,6 +192,7 @@ void print_help(char *executable) {
            " -r show remain time rather than track time\n"
            " -c display clock when not playing (Pi only)\n"
            " -v display visualization sequence when playing (Pi only)\n"
+           " -m if visualization on specify one or more meter modes, sa, vu, pk, or rn for random\n"
            " -t enable print info to stdout\n"
            " -z no splash screen\n"
            " -i increment verbose level\n\n",
@@ -225,15 +216,37 @@ void setupPlayMode(void)
 void toggleVisualize(size_t timer_id, void *user_data) {
     if ((bool)user_data) {
         if (playing) {
-                if (isVisualizeActive()) {
-                    deactivateVisualizer();
-                    setupPlayMode();
-                } else {
-                    scrollerPause(); // we need to re-activate too - save state!!!
-                    activateVisualizer();
-                }
-                clearDisplay();
+            if (isVisualizeActive()) {
+                deactivateVisualizer();
+                setupPlayMode();
+            } else {
+                scrollerPause(); // we need to re-activate too - save state!!!
+                activateVisualizer();
             }
+            clearDisplay();
+        }
+    }
+}
+
+void cycleVisualize(size_t timer_id, void *user_data) {
+    if ((bool)user_data) {
+        if (playing) {
+            if (isVisualizeActive()) {
+                //deactivateVisualizer();
+                currentMeter();
+                clearDisplay();
+                //activateVisualizer();
+            }
+            else
+            {
+                currentMeter();
+            }
+        }
+        else
+        {
+            currentMeter();
+        }
+        
     }
 }
 
@@ -251,6 +264,7 @@ int main(int argc, char *argv[]) {
     attach_signal_handler();
 
     bool visualize = false;
+    bool meterMode = false;
     bool clock = false;
     bool extended = false;
     bool remaining = false;
@@ -260,7 +274,7 @@ int main(int argc, char *argv[]) {
     long pTime, dTime, rTime;
     char buff[255];
     char *playerName = NULL;
-    char meterMode[3];
+
     int aName;
     char *thatMAC = NULL;
     char *thisMAC = get_mac_address();
@@ -276,6 +290,7 @@ int main(int argc, char *argv[]) {
 #ifdef SSE_VIZDATA
     Options opt;
 #endif
+    srand(time(0));
 #endif
 
     opterr = 0;
@@ -283,8 +298,12 @@ int main(int argc, char *argv[]) {
         switch (aName) {
             case 'n': playerName = optarg; break;
 
-            case 'm': strncpy(meterMode, optarg, 2); break; // need to support a list
-
+#ifdef __arm__
+            case 'm': 
+                setVisList(optarg); 
+                meterMode = true;
+                break;
+#endif
             case 't': enableTOut(); break;
 
             case 'i': incVerbose(); break;
@@ -314,16 +333,10 @@ int main(int argc, char *argv[]) {
 #ifdef __arm__
 
     if (!(meterMode))
-        strncpy(meterMode, MODE_VU, 2);
-    else
     {
-        strupr(meterMode);
-        // validate and silently assign to default if "bogus"
-        if ((strncmp(meterMode, MODE_VU, 2) != 0) 
-        &&(strncmp(meterMode, MODE_SA, 2) != 0)
-        &&(strncmp(meterMode, MODE_PK, 2) != 0)) {
-            strncpy(meterMode, MODE_VU, 2);
-        }
+        char vinit[3] = {0};
+        strcpy(vinit, MODE_RN); // intermediate - pointers be damned!
+        setVisList(vinit);
     }
     
     // init OLED display
@@ -347,7 +360,6 @@ int main(int argc, char *argv[]) {
     // init for visualize mechanism here
     if (strcmp(thatMAC, thisMAC) != 0) {
         extended = true;
-        printf("Extended attrs from LMS enabled, no MIMO!\n");
 #ifdef __arm__
         if (visualize) {
 #ifdef SSE_VIZDATA
@@ -376,15 +388,16 @@ int main(int argc, char *argv[]) {
     // init visualizer mode and
     // timer toggle
     if (visualize) {
-        setVisMode(meterMode); // need a user specified cycle mode on this
+        sayVisList();
         size_t viztimer;
+        size_t vizcycletimer;
         timer_initialize();
         viztimer = timer_start(60*1000, toggleVisualize, TIMER_PERIODIC, (void*)visualize);
+        vizcycletimer = timer_start(99*1000, cycleVisualize, TIMER_PERIODIC, (void*)visualize);
     }
     else
     {
-        if(!visualize)
-            putMSG("Visualization is not active", LL_INFO);
+        putMSG("Visualization ..: Inactive\n", LL_INFO);        
     }
 
 #endif
@@ -411,7 +424,6 @@ int main(int argc, char *argv[]) {
                 if (refreshLMS) {
 #ifdef __arm__
                     resetDisplay(1);
-                    putMSG("refresh display", LL_INFO);
 #endif
                     refreshLMS = false;
                 }
@@ -636,7 +648,7 @@ int main(int argc, char *argv[]) {
 #ifdef __arm__
 //setSnapOff();
 #endif
-        usleep(SLEEP_TIME);
+        dodelay(SLEEP_TIME);
 
     } // main loop
 

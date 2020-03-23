@@ -24,40 +24,125 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include "common.h"
-#include "visualize.h"
 #include <sys/time.h>
 #include <time.h>
 
+#include "common.h"
+#include "visualize.h"
 #include "visdata.h"
 #include "display.h"
 
+uint8_t cm = -1;
 bool vis_is_active = false;
-char vis_mode[3] = {0};
+vis_type_t vis_mode = {0};
+vis_type_t vis_list[3] =  {{0}, {0}, {0}};
 
-void activateVisualizer(void)
-{
-    vis_is_active = true;
-}
-
-void setVisMode(char *mode)
-{
-    strncpy(vis_mode, mode, 2);
-    // clear display ???
-}
-
+size_t lenVisList(void) { return (sizeof(vis_list)/sizeof(vis_type_t)); }
+void activateVisualizer(void) { vis_is_active = true; }
+void setVisMode(vis_type_t mode) { strncpy(vis_mode, mode, 2); }
+char getVisMode(void) { return *vis_mode; }
 bool isVisualizeActive(void) { return vis_is_active; }
+void deactivateVisualizer(void) { vis_is_active = false; }
 
-void deactivateVisualizer(void)
+void sayVisList(void)
 {
-    vis_is_active = false;
+    int ll = lenVisList();
+    char delim[3] = {0};
+    char stb[BSIZE] = {0};
+    char say[BSIZE] = {0};
+
+    for (int x=0; x < ll; x++)
+    {
+        if (!(isEmptyStr(vis_list[x])))
+        {
+            strcat(say, delim);
+            if (strncmp(vis_list[x], MODE_RN, 2) == 0)
+                strcat(say, "Random");
+            else
+                strcat(say, vis_list[x]);
+            strcpy(delim, ", ");
+        }
+    }
+    if (!(isEmptyStr(say)))
+    {
+        sprintf(stb, "Visualization ..: %s\n", say);
+        putMSG(stb, LL_INFO);
+    }
+}
+
+void setVisList(char *vlist)
+{
+
+    // init...
+    int ll = lenVisList();
+    for (int x=0; x < ll; x++)
+    {
+        vis_list[x][0] = '\0';
+    }    
+    
+    int i = -1;
+    char delim[3] = ",-";
+    char *p = strtok (vlist, delim);
+    while ((p != NULL) && (i+1 < ll))
+    {
+        strupr(p);
+        // validate and silently assign to default if "bogus"
+        if ((strncmp(p, MODE_VU, 2) != 0) 
+        &&(strncmp(p, MODE_SA, 2) != 0)
+        &&(strncmp(p, MODE_RN, 2) != 0)
+        &&(strncmp(p, MODE_PK, 2) != 0)) {
+            strncpy(p, MODE_VU, 2);
+        }
+        i++;
+        strncpy(vis_list[i], p, 2);
+        p = strtok (NULL, delim);
+    }
+    
+}
+
+char currentMeter(void)
+{
+    cm++;
+    if (cm > lenVisList()-1)
+        cm = 0;
+
+    if (isEmptyStr(vis_list[cm]))
+        cm = 0;
+
+    if (strcmp(vis_list[cm],MODE_RN) == 0)
+    {
+        // pick a random visualization
+        int i = rand()%3;
+        switch (i)
+        {
+            case 0: setVisMode(MODE_VU); break;
+            case 1: setVisMode(MODE_SA); break;
+            case 2: setVisMode(MODE_PK); break;
+            default:
+                setVisMode(MODE_VU);
+        }
+    }
+    else
+        setVisMode(vis_list[cm]);
+
+    return getVisMode();
+
 }
 
 int visgood = 0;
 void visualize(struct vissy_meter_t *vissy_meter) {
 
+/*
+char stb[BSIZE];
+sprintf(stb,"(active)%02d (pop)%02d :: (data) %2s -> (active) %2s\n",
+vis_is_active, visgood, vissy_meter->meter_type, vis_mode); 
+putMSG(stb,LL_INFO);
+*/
     if ((vis_is_active) && (visgood < 3)) {
+
+        // bug workaround
+        if (isEmptyStr(vis_mode))
+            currentMeter();
 
         if (strncmp(MODE_VU, vissy_meter->meter_type, 2) == 0) {
             // support vu or pk
