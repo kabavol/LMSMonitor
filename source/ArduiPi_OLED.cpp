@@ -256,6 +256,7 @@ boolean ArduiPi_OLED::oled_is_spi_proto(uint8_t OLED_TYPE)
   {
     case OLED_ADAFRUIT_SPI_128x32:
     case OLED_ADAFRUIT_SPI_128x64:
+    case OLED_SH1106_SPI_128x64:
       return true;
     break;
   }
@@ -313,6 +314,14 @@ boolean ArduiPi_OLED::select_oled(uint8_t OLED_TYPE)
       _i2c_addr = SH1106_I2C_ADDRESS;
     break;
     
+    case OLED_OSA_I2C_128x64:
+      _i2c_addr = OSA_I2C_ADDRESS;
+    break;
+
+    case OLED_SH1106_SPI_128x64:
+    ;
+    break;
+
     // houston, we have a problem
     default:
       return false;
@@ -376,6 +385,37 @@ boolean ArduiPi_OLED::init(int8_t DC, int8_t RST, int8_t CS, uint8_t OLED_TYPE)
 }
 
 // initializer for I2C - we only indicate the reset pin and OLED type !
+boolean ArduiPi_OLED::init(int8_t RST, uint8_t OLED_TYPE, int8_t OLED_ADDR) 
+{
+
+  dc = cs = -1; // DC and chip Select do not exist in I2C
+  rst = RST;
+
+  // Select OLED parameters
+  if (!select_oled(OLED_TYPE))
+    return false;
+
+  // Init & Configure Raspberry PI I2C
+  if (bcm2835_i2c_begin()==0)
+    return false;
+
+  if (0 != OLED_ADDR)
+    _i2c_addr = OLED_ADDR;
+
+  bcm2835_i2c_setSlaveAddress(_i2c_addr) ;
+    
+  // Set clock to 400 KHz
+  // does not seem to work, will check this later
+  bcm2835_i2c_set_baudrate(400000);
+
+  // Setup reset pin direction as output
+  bcm2835_gpio_fsel(rst, BCM2835_GPIO_FSEL_OUTP);
+  
+  return true;
+
+}
+
+// initializer for I2C - we only indicate the reset pin and OLED type !
 boolean ArduiPi_OLED::init(int8_t RST, uint8_t OLED_TYPE) 
 {
   dc = cs = -1; // DC and chip Select do not exist in I2C
@@ -398,7 +438,7 @@ boolean ArduiPi_OLED::init(int8_t RST, uint8_t OLED_TYPE)
   // Setup reset pin direction as output
   bcm2835_gpio_fsel(rst, BCM2835_GPIO_FSEL_OUTP);
   
-  return ( true);
+  return true;
 }
 
 void ArduiPi_OLED::close(void) 
@@ -541,7 +581,8 @@ void ArduiPi_OLED::begin( void )
     grayH= 0xF0;
     grayL= 0x0F;
   }
-  else if (oled_type == OLED_SH1106_I2C_128x64)
+  else if ((oled_type == OLED_SH1106_I2C_128x64)||
+  (oled_type == OLED_OSA_I2C_128x64))
   {
     sendCommand(SSD1306_Set_Lower_Column_Start_Address|0x02); /*set lower column address*/
     sendCommand(SSD1306_Set_Higher_Column_Start_Address);     /*set higher column address*/
@@ -633,7 +674,7 @@ void ArduiPi_OLED::putSeedChar(char C)
         {
             // Character is constructed two pixel at a time using vertical mode from the default 8x8 font
             char c=0x00;
-            char bit1=( seedfont[C-32][i]   >> j) & 0x01;  
+            char bit1=( seedfont[C-32][(uint8_t)i]   >> j) & 0x01;  
             char bit2=( seedfont[C-32][i+1] >> j) & 0x01;
            // Each bit is changed to a nibble
             c|=(bit1)?grayH:0x00;
@@ -690,7 +731,8 @@ void ArduiPi_OLED::sendCommand(uint8_t c)
     
     // Write Data on I2C
     fastI2Cwrite(buff, sizeof(buff))  ;
-  }
+  }  
+  
 }
 
 void ArduiPi_OLED::sendCommand(uint8_t c0, uint8_t c1) 
@@ -872,7 +914,6 @@ void ArduiPi_OLED::sendData(uint8_t c)
 
 void ArduiPi_OLED::display(void) 
 {
-
   if (oled_type == OLED_SEEED_I2C_96x96 )
   {
     sendCommand(SSD1327_Set_Row_Address   , 0x00, 0x5F);
@@ -895,22 +936,44 @@ void ArduiPi_OLED::display(void)
   {
     // Setup D/C line to high to switch to data mode
     bcm2835_gpio_write(dc, HIGH);
-
-    // Send all data to OLED
-    for ( i=0; i<oled_buff_size; i++) 
+    if (oled_type == OLED_SH1106_SPI_128x64)
     {
-      fastSPIwrite(*p++);
-    }
-
-    // I wonder why we have to do this (check datasheet)
-    if (oled_height == 32) 
-    {
-      for (uint16_t i=0; i<oled_buff_size; i++) 
+      char buff[17] ;
+      uint8_t x ;
+      buff[0] = SSD_Data_Mode;
+      for (uint8_t k=0; k<8; k++)
       {
-        fastSPIwrite(0);
+        sendCommand(0xB0+k);//set page addressSSD_Data_Mode;
+        sendCommand(0x02) ;//set lower column address
+        sendCommand(0x10) ;//set higher column address
+        bcm2835_gpio_write(dc, HIGH);
+
+        for( i=0; i<8; i++)
+        {
+          for (x=1; x<=16; x++)
+          buff[x] = *p++;
+
+         fastSPIwrite(&buff[1], 16);
+        }
       }
     }
-    
+    else
+    {
+      // Send all data to OLED
+      for ( i=0; i<oled_buff_size; i++)
+      {
+        fastSPIwrite(*p++);
+      }
+
+      // I wonder why we have to do this (check datasheet)
+      if (oled_height == 32) 
+      {
+        for (uint16_t i=0; i<oled_buff_size; i++) 
+        {
+          fastSPIwrite(0);
+        }
+      }
+    }  
   }
   // I2C
   else 
@@ -920,7 +983,7 @@ void ArduiPi_OLED::display(void)
 
     // Setup D/C to switch to data mode
     buff[0] = SSD_Data_Mode; 
-
+    
     if (oled_type == OLED_SH1106_I2C_128x64)
     {
       for (uint8_t k=0; k<8; k++) 

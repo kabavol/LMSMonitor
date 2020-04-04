@@ -37,7 +37,10 @@
 
 #include "astral.h"
 #include "common.h"
-#include "jsmn.h"
+#ifndef JSMN_STATIC
+#define JSMN_STATIC
+#endif
+#include "../source/jsmn.h"
 
 #include "display.h"
 

@@ -37,11 +37,10 @@
 #define ADAFRUIT_I2C_ADDRESS   0x3C /* 011110+SA0+RW - 0x3C or 0x3D */
 // Address for 128x32 is 0x3C
 // Address for 128x32 is 0x3D (default) or 0x3C (if SA0 is grounded)
-
-#define SEEED_I2C_ADDRESS   0x3C /* 011110+SA0+RW - 0x3C or 0x3D */
-
-#define SH1106_I2C_ADDRESS   0x3C 
-
+#define SEEED_I2C_ADDRESS      0x3C /* 011110+SA0+RW - 0x3C or 0x3D */
+#define SH1106_I2C_ADDRESS     0x3C 
+#define OSA_I2C_ADDRESS        0x7A 
+#define SAS_OSA_I2C_ADDRESS    0x3D 
   
 // Oled supported display
 #define OLED_ADAFRUIT_SPI_128x32  0
@@ -51,9 +50,10 @@
 #define OLED_SEEED_I2C_128x64     4
 #define OLED_SEEED_I2C_96x96      5
 #define OLED_SH1106_I2C_128x64    6
+#define OLED_SH1106_SPI_128x64    7
+#define OLED_OSA_I2C_128x64       8
 
-#define OLED_LAST_OLED            7 /* always last type, used in code to end array */
-
+#define OLED_LAST_OLED            9 /* always last type, used in code to end array */
 
 static const char * oled_type_str[] = {
     "Adafruit SPI 128x32",
@@ -62,7 +62,9 @@ static const char * oled_type_str[] = {
     "Adafruit I2C 128x64",
     "Seeed I2C 128x64",
     "Seeed I2C 96x96",
-    "SH1106 I2C 128x64"
+    "SH1106 I2C 128x64",
+    "SH1106 SPI 128x64",
+    "OSA I2C 128x64"
 };
 
 // Arduino Compatible type

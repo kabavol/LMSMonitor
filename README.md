@@ -5,24 +5,40 @@ OLED information display control program for [piCorePlayer](https://www.picorepl
 
 ### Options
 ```bash
--n Player Name
--c display clock when not playing
--t enable print info to stdout
--l increment verbose level
--v activate visualization
--m VU meters, Spectrum analysis, Peak meters, or Random
-   VU, SA, PK, or RN or a comma delimited list of upto 3 meters
--r display remaining time rather than track time
+ -a all-in-one. One screen to rule them all. Track and visualizer on one screen (pi only)
+ -b automatically set brightness of display at sunset and sunrise (pi only)
+ -c display clock when not playing (Pi only)
+ -d downmix audio and display a single large meter, SA and VU only
+ -i increment verbose level
+ -k show CPU temperature (clock mode)
+ -m if visualization on specify one or more meter modes, sa, vu, pk, or rn for random
+ -o specified OLED "driver" type (see options below)
+ -r show remaining time rather than track time
+ -t enable print info to stdout
+ -v enable visualization sequence when playing (Pi only)
+ -x specify OLED address
+ -z no splash screen
+
+Supported OLED types:
+    1 ...: Adafruit SPI 128x64
+    3 ...: Adafruit I2C 128x64
+    4 ...: Seeed I2C 128x64
+    6* ..: SH1106 I2C 128x64
+    7 ...: OSA I2C 128x64
+    8 ...: SaS OSA I2C 128x64
+* is default
 ```
 
 ### Features
 - Removed static library usage, smaller size, upgrade hardened
-- Removed use of ALSA MIMO, audio attributes provided by LMS used
+- Removed use of ALSA MIMO, audio attributes provided by LMS are used
 - Track details are displayed only when playing
 - Display features independant scrolling of track details.
 - Remaining time can now be displayed
 - Audio attributes, volume, sample depth, and sample rate are displayed
 - A retro clock is displayed when audio paused/stopped.
+- Automatically sets the brightness of the display at dawn and dusk.
+- Multiple audio visualization modes are supported
 
 ### Screen-snaps
 The following images were captured by dumping the display on refresh; it's a tad blocky but the actual screen animations are buttery smooth with a 15 FPS attained.
@@ -33,10 +49,12 @@ At 15 FPS scrolling text is smooth and the visualizer modes very kinetic.
 
 ### Visualizer Modes
 
-Currently two visualizer modes are supported
+Five visualizer modes are supported
 - Stereo VU Meters - dBfs metered
 - Stereo 12-band Spectrum Analysis
 - Stereo Peak Meter - dBfs metered
+- Large Downmix (visual data only) VU meter
+- Large Downmix (visual data only) Spectrum
 
 ### Installation
 
@@ -76,7 +94,7 @@ wget "https://github.com/shunte88/LMSMonitor/blob/master/bin/lmsmonitorpcp.tgz?r
 
 This downloads the monitor archive to pCP and extracts the contents
 
-To ensure smooth running perform the following:
+To ensure smooth running perfform the following:
 
 ```bash
 chmod +x gomonitor
@@ -102,11 +120,32 @@ Add a *User command*, here for example requesting the random visualizations
 /mnt/mmcblk0p2/tce/gomonitor rn
 ```
 
+Additional supported commands may also be specified, here we request a specific visualizaer sequence, the device driver, override the default OLED address, request downmixed visualizers, and automatedbrightness at dawn and dusk
+
+```bash
+/mnt/mmcblk0p2/tce/gomonitor vu,sa,pk -o 6 -x 0x3c -db
+```
+
+the visualization parameter must always be specified firts
+
 ### Coming soon
 - DONE! Audio visualizer support: stereo VU meters
 - DONE! Audio visualizer support: spectrum analyzer
 - DONE! Audio visualizer support: horizontal Peak RMS
 - DONE! Audio visualizer support: random and multiple meters
+- DONE! Set display brightness, day and night modes.
+- DONE! Downmix visual data and display on one large VU meter.
+- DONE! Downmix visual data and display on one large Spectrum.
+- DONE! Make OLED driver user selectable
+- MPD Monitor display layout - all-in-one screen
+- Make OLED I2C address user selectable
 - Weather: TBD
 - Dual OLED visualizer mode: TBD
 - Color 128 x 128 color TFT support
+
+## Credits
+
+OLED interface based on ArduiPI_OLED: <https://github.com/hallard/ArduiPi_OLED>
+(which is based on the Adafruit_SSD1306, Adafruit_GFX, and bcm2835 libraries).
+
+C library for Broadcom BCM 2835: <https://www.airspayce.com/mikem/bcm2835/>

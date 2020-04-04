@@ -31,5 +31,8 @@
 # Debug files
 *.dSYM/
 
+#parked files
+*.safe*
+
 # don't include flex generated files
 digest-sse.c

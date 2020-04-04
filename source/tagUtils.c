@@ -111,6 +111,7 @@ char getASCII(int utf8) {
 }
 
 int decode(const char *s, char *dec) {
+
     char *o;
     const char *end;
     int c;
@@ -197,6 +198,7 @@ void urldecode2(const char *src, char *dst) {
 }
 
 char *getTag(const char *tag, char *input, char *output, int outSize) {
+
     char exactTag[MAXTAGLEN];
     char *foundT;
     char *lastCHR;

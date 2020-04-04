@@ -36,10 +36,11 @@
 #define MIN_SUBBANDS 16
 #define MIN_FFT_INPUT_SAMPLES 128
 
-#define MODE_SA "SA" // Spectrum
-#define MODE_VU "VU" // VU meters
-#define MODE_PK "PK" // Peak meter
-#define MODE_RN "RN" // random
+#define VMODE_NA "NA" // None
+#define VMODE_SA "SA" // Spectrum
+#define VMODE_VU "VU" // VU meters
+#define VMODE_PK "PK" // Peak meter
+#define VMODE_RN "RN" // random
 
 struct peak_meter_t {
   uint16_t int_time;  // Integration time (ms).
@@ -70,12 +71,12 @@ struct vissy_meter_t {
   vis_type_t meter_type;
   char channel_name[METER_CHANNELS][2];
   int is_mono;
-  long long sample_accum[METER_CHANNELS]; // VU raw peak values.
+  int64_t sample_accum[METER_CHANNELS]; // VU raw peak values.
   int8_t floor;                           // Noise floor for meter (dB).
   uint16_t reference;                     // Reference level.
-  long long dBfs[METER_CHANNELS];         // dBfs values.
-  long long dB[METER_CHANNELS];           // dB values.
-  long long linear[METER_CHANNELS];       // linear dB (min->max)
+  int64_t dBfs[METER_CHANNELS];         // dBfs values.
+  int64_t dB[METER_CHANNELS];           // dB values.
+  int64_t linear[METER_CHANNELS];       // linear dB (min->max)
   uint8_t rms_bar[METER_CHANNELS];
   uint8_t rms_levels;
   char rms_charbar[METER_CHANNELS][PEAK_METER_LEVELS_MAX + 1];

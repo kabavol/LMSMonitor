@@ -57,9 +57,7 @@ tag tagStore[MAXTAG_TYPES];
 bool refreshRequ;
 pthread_t sliminfoThread;
 
-char *getPlayerIP(void){
-    return (char *)playerIP;
-}
+char *getPlayerIP(void){ return (char *)playerIP; }
 
 int discoverPlayer(char *playerName) {
     char qBuffer[BSIZE];
@@ -86,7 +84,7 @@ int discoverPlayer(char *playerName) {
 
         int playerCount = -1;
         sscanf(aBuffer, "%*[^A]A%d[^ ]", &playerCount);
-        if (playerCount>0) // we haveplayers, find our guy
+        if (playerCount>0) // we have players, find our guy ...
         {
             sprintf(qBuffer,"3A%s ",playerName);
             if (strncmp(aBuffer, qBuffer, strlen(qBuffer)) == 0) {
@@ -98,7 +96,8 @@ int discoverPlayer(char *playerName) {
             multi_tok_t mt = multi_tok_init();
             char *player = multi_tok(aBuffer, &mt, pind);
             while (player != NULL) {
-                if (strstr(player, qBuffer) != 0) {
+                if ((strstr(player, qBuffer) != 0) || 
+                    (strstr(replaceStr(player, " ", "%20"), replaceStr(qBuffer, " ", "%20")) != 0)) {
 
                     if (getTag("playerid", player, aBuffer, MAXTAG_DATA))
                         strcpy(playerID, aBuffer);

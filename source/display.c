@@ -33,7 +33,9 @@
 #include "display.h"
 #include "oledimg.h"
 
+#ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
+#endif
 #define PI acos(-1.0000)
 
 #ifdef __arm__
@@ -49,29 +51,56 @@
 // clang-format on
 
 ArduiPi_OLED display;
+// default oled type
 int oledType = OLED_SH1106_I2C_128x64;
+int8_t oledAddress = 0x00;
+int8_t icons[NUMNOTES][4];
 
 #endif
 
 sme scroll[MAX_LINES];
 
 int maxCharacter(void) { return 21; } // review when we get scroll working
-
 int maxLine(void) { return MAX_LINES; }
-
 int maxXPixel(void) { return 128; }
-
 int maxYPixel(void) { return 64; }
+double deg2Rad(double angDeg) { return (PI * angDeg / 180.0); }
+double rad2Deg(double angRad) { return (180.0 * angRad / PI); }
 
 #ifdef __arm__
 
-void bigChar(uint8_t cc, int x, int len, int w, int h, const uint8_t font[]) {
+void printOledTypes(void) {
+    printf("Supported OLED types:\n");
+    for (int i = 0; i < OLED_LAST_OLED; i++)
+        if (strstr(oled_type_str[i], "128x64"))
+            if (oledType == i)
+                fprintf(stdout, "    %1d* ..: %s\n", i, oled_type_str[i]);
+            else
+                fprintf(stdout, "    %1d ...: %s\n", i, oled_type_str[i]);
+    printf("* is default\n");
+}
+
+bool setOledType(int ot) {
+    if (ot < 0 || ot >= OLED_LAST_OLED || !strstr(oled_type_str[ot], "128x64"))
+        return false;
+    oledType = ot;
+    return true;
+}
+bool setOledAddress(int8_t oa) {
+    if (oa <= 0 )
+        return false;
+    oledAddress = oa;
+    return true;
+}
+
+void bigChar(uint8_t cc, int x, int len, int w, int h, const uint8_t font[],
+             uint16_t color) {
 
     // need fix for space, and minus sign
     int start = (cc - 48) * len;
     uint8_t dest[len];
     memcpy(dest, font + start, sizeof dest);
-    display.drawBitmap(x, 1, dest, w, h, WHITE);
+    display.drawBitmap(x, 1, dest, w, h, color);
 }
 
 void resetDisplay(int fontSize) {
@@ -82,12 +111,27 @@ void resetDisplay(int fontSize) {
     display.display(); // display it (clear display)
 }
 
+void displayBrightness(int bright) { display.setBrightness(bright); }
+
 int initDisplay(void) {
-    if (!display.init(OLED_I2C_RESET, oledType)) {
-        return EXIT_FAILURE;
+
+    // IIC specific - what about SPI ??
+
+    if (0 != oledAddress)
+    {
+        if (!display.init(OLED_I2C_RESET, oledType, oledAddress)) {
+            return EXIT_FAILURE;
+        }
+    }
+    else
+    {
+        if (!display.init(OLED_I2C_RESET, oledType)) {
+            return EXIT_FAILURE;
+        }
     }
 
     display.begin();
+    display.setBrightness(0);
     resetDisplay(1);
     scrollerInit();
     return 0;
@@ -95,7 +139,7 @@ int initDisplay(void) {
 
 void closeDisplay(void) {
     scrollerFinalize();
-    display.clearDisplay();
+    clearDisplay();
     display.close();
 }
 
@@ -104,13 +148,22 @@ void clearDisplay() {
     display.display();
 }
 
+void softClear(void) {
+    display.fillRect(2, 2, maxXPixel()-4, maxYPixel() - 4, BLACK);
+}
+
 void vumeter2upl(void) {
-    display.clearDisplay();
+    softClear();
     display.drawBitmap(0, 0, vu2up128x64, 128, 64, WHITE);
 }
 
+void vumeterDownmix(void) {
+    softClear();
+    display.drawBitmap(0, 0, vudm128x64, 128, 64, WHITE);
+}
+
 void peakMeterH(void) {
-    display.clearDisplay();
+    softClear();
     display.drawBitmap(0, 0, peak_rms, 128, 64, WHITE);
 }
 
@@ -118,31 +171,100 @@ void splashScreen(void) {
     display.clearDisplay();
     display.drawBitmap(0, 0, splash, 128, 64, WHITE);
     display.display();
-    dodelay(2000);
+    for (int i = 0; i < MAX_BRIGHTNESS; i++) {
+        display.setBrightness(i);
+        dodelay(10);
+    }
+    dodelay(180);
 }
 
-meter_chan_t lastVU = {-1000,-1000};
+meter_chan_t lastVU = {-1000, -1000};
 meter_chan_t overVU = {0, 0};
+meter_chan_t dampVU = {-1000, -1000};
 
-void stereoVU(struct vissy_meter_t *vissy_meter) {
-    // VU Mode
+void downmixVU(struct vissy_meter_t *vissy_meter) {
+
+    vumeterDownmix();
+
+    meter_chan_t thisVU = {
+        vissy_meter->sample_accum[0],
+        vissy_meter->sample_accum[1]};
+
+    double hMeter = (double)maxYPixel() + 2.00;
+    double rMeter = (double)hMeter - 6.00;
+    double wMeter = (double)maxXPixel();
+    double xpivot = wMeter / 2.00;
+    double rad = (180.00 / PI);  // 180/pi
+    int downmix = 0;
+
+    double divisor = 0.00;
+    double mv_downmix = 0.000;   // downmix meter position
+    for (int channel = 0; channel < 2; channel++) {
+        // meter value
+        mv_downmix += (double)thisVU.metric[channel];
+        divisor++;
+    }
+
+    mv_downmix /= divisor;
+    mv_downmix /= 58.000;
+    mv_downmix -= 48.000;
+
+    // damping
+    if (dampVU.metric[downmix] < mv_downmix)
+        dampVU.metric[downmix] = mv_downmix;
+    else
+        dampVU.metric[downmix] -= 10;
+    if (dampVU.metric[downmix] < mv_downmix)
+        dampVU.metric[downmix] = mv_downmix;
+
+    int16_t ax = (int16_t)(xpivot + (sin(dampVU.metric[downmix] / rad) * rMeter));
+    int16_t ay = (int16_t)(hMeter - (cos(dampVU.metric[downmix] / rad) * rMeter));
+
+    // thick needle with definition
+    display.drawLine((int16_t)xpivot - 2, (int16_t)hMeter, ax, ay, BLACK);
+    display.drawLine((int16_t)xpivot - 1, (int16_t)hMeter, ax, ay, WHITE);
+    display.drawLine((int16_t)xpivot,     (int16_t)hMeter, ax, ay, WHITE);
+    display.drawLine((int16_t)xpivot + 1, (int16_t)hMeter, ax, ay, WHITE);
+    display.drawLine((int16_t)xpivot + 2, (int16_t)hMeter, ax, ay, BLACK);
+
+    // finesse
+    display.fillRect((int16_t)xpivot - 3, maxYPixel() - 6, maxXPixel() / 2, 6,
+                     BLACK);
+
+    uint16_t r = 7;
+    display.fillCircle((int16_t)xpivot, (int16_t)hMeter, r, WHITE);
+    display.drawCircle((int16_t)xpivot, (int16_t)hMeter, r - 2, BLACK);
+    display.fillCircle((int16_t)xpivot, (int16_t)hMeter, r - 4, BLACK);
+
+}
+
+void stereoVU(struct vissy_meter_t *vissy_meter, char *downmix) {
+
+    meter_chan_t thisVU = {
+        vissy_meter->sample_accum[0],
+        vissy_meter->sample_accum[1]};
 
     // overload : if n # samples > 0dB light overload
 
     // do no work if we don't need to
-    if ((lastVU.metric[0] == vissy_meter->rms_scale[0]) &&
-        (lastVU.metric[1] == vissy_meter->rms_scale[1]))
-        // check overload irrespective
+    if ((lastVU.metric[0] == thisVU.metric[0]) &&
+        (lastVU.metric[1] == thisVU.metric[1]))
         return;
 
-    lastVU.metric[0] = vissy_meter->rms_scale[0];
-    lastVU.metric[1] = vissy_meter->rms_scale[1];
+    lastVU.metric[0] = thisVU.metric[0];
+    lastVU.metric[1] = thisVU.metric[1];
+
+    // VU Mode
+    if (strncmp(downmix, "N", 1) != 0) {
+        downmixVU(vissy_meter);
+        return;
+    }
 
     vumeter2upl();
 
-    int hMeter = maxYPixel() - 4;
-    int rMeter = hMeter - 3;
-    int16_t wMeter = maxXPixel() / 2;
+    double hMeter = (double)maxYPixel() + 2;
+    double rMeter = (double)hMeter - 8.00;
+    double wMeter = (double)maxXPixel() / 2.00;
     int16_t xpivot[2];
     xpivot[0] = maxXPixel() / 4;
     xpivot[1] = xpivot[0] * 3;
@@ -154,27 +276,36 @@ void stereoVU(struct vissy_meter_t *vissy_meter) {
 
         // meter value
         double mv =
-            (double)vissy_meter->rms_scale[channel] * (2 * 36.00) / 48.00;
+            (double)lastVU.metric[channel] / 58.00;
         mv -= 36.000; // zero adjust [-3dB->-20dB]
 
-        int16_t ax = (xpivot[channel] + (sin(mv / rad) * rMeter));
-        int16_t ay = (wMeter - (cos(mv / rad) * rMeter));
+        // damping
+        if (dampVU.metric[channel] < mv)
+            dampVU.metric[channel] = mv;
+        else
+            dampVU.metric[channel] -= 5;
+        if (dampVU.metric[channel] < mv)
+            dampVU.metric[channel] = mv;
+
+        int16_t ax = (int16_t)(xpivot[channel] + (sin(dampVU.metric[channel] / rad) * rMeter));
+        int16_t ay = (int16_t)(hMeter          - (cos(dampVU.metric[channel] / rad) * rMeter));
 
         // thick needle with definition
-        display.drawLine(xpivot[channel] - 2, wMeter, ax, ay, BLACK);
-        display.drawLine(xpivot[channel] - 1, wMeter, ax, ay, WHITE);
-        display.drawLine(xpivot[channel], wMeter, ax, ay, WHITE);
-        display.drawLine(xpivot[channel] + 1, wMeter, ax, ay, WHITE);
-        display.drawLine(xpivot[channel] + 2, wMeter, ax, ay, BLACK);
+        display.drawLine(xpivot[channel] - 2, (int16_t)hMeter, ax, ay, BLACK);
+        display.drawLine(xpivot[channel] - 1, (int16_t)hMeter, ax, ay, WHITE);
+        display.drawLine(xpivot[channel],     (int16_t)hMeter, ax, ay, WHITE);
+        display.drawLine(xpivot[channel] + 1, (int16_t)hMeter, ax, ay, WHITE);
+        display.drawLine(xpivot[channel] + 2, (int16_t)hMeter, ax, ay, BLACK);
     }
 
     // finesse
     display.fillRect(xpivot[0] - 3, maxYPixel() - 6, maxXPixel() / 2, 6, BLACK);
+
     uint16_t r = 7;
     for (int channel = 0; channel < 2; channel++) {
-        display.fillCircle(xpivot[channel], wMeter, r, WHITE);
-        display.drawCircle(xpivot[channel], wMeter, r - 2, BLACK);
-        display.fillCircle(xpivot[channel], wMeter, r - 4, BLACK);
+        display.fillCircle(xpivot[channel], (int16_t)hMeter, r, WHITE);
+        display.drawCircle(xpivot[channel], (int16_t)hMeter, r - 2, BLACK);
+        display.fillCircle(xpivot[channel], (int16_t)hMeter, r - 4, BLACK);
     }
 
 }
@@ -184,8 +315,94 @@ bin_chan_t caps;
 bin_chan_t last_bin;
 bin_chan_t last_caps;
 
-void stereoSpectrum(struct vissy_meter_t *vissy_meter) {
+void downmixSpectrum(struct vissy_meter_t *vissy_meter) {
+
+    int bins = 12;
+    int wsa = maxXPixel() - 2;
+    int hsa = maxYPixel() - 4;
+
+    double wbin = (double)wsa / (double)(bins + 1); // 12 bar display, downmixed
+    //wbin = 9.00;                                    // fix
+
+    int downmix = 0;
+
+    // SA scaling
+    double multiSA = (double)hsa / 31.00;
+
+    int ofs = int(wbin * 0.75);
+    //ofs = 6; // fix
+
+    for (int bin = 0; bin < bins; bin++) {
+
+        int divisor = 0;
+        double test = 0.00;
+        double lob = (multiSA / 2.00);
+        double oob = (multiSA / 2.00);
+
+        // erase - last and its rounding errors leaving phantoms
+        display.fillRect(ofs -1 + (int)(bin * wbin), 0, (int)wbin + 2, hsa, BLACK);
+
+        if (vissy_meter->is_mono) {
+            test += (double)vissy_meter->sample_bin_chan[0][bin];
+            divisor++;
+        } else {
+            for (int channel = 0; channel < 2; channel++) {
+                if (bin < vissy_meter->numFFT[channel]) {
+                    test += (double)vissy_meter->sample_bin_chan[channel][bin];
+                    divisor++;
+                }
+            }
+        }
+        test /= (double)divisor;
+        oob = (multiSA * test);
+
+        if (last_bin.bin[downmix][bin] > 0)
+            lob = (int)(multiSA * last_bin.bin[downmix][bin]);
+
+        display.fillRect(ofs + (int)(bin * wbin), hsa - (int)lob, (int)wbin - 1, (int)lob,
+                         BLACK);
+        display.fillRect(ofs + (int)(bin * wbin), hsa - (int)oob, (int)wbin - 1, (int)oob,
+                         WHITE);
+        last_bin.bin[downmix][bin] = (int)test;
+
+        if (test >= caps.bin[downmix][bin]) {
+            caps.bin[downmix][bin] = (int)test;
+        } else if (caps.bin[downmix][bin] > 0) {
+            caps.bin[downmix][bin]--;
+            if (caps.bin[downmix][bin] < 0) {
+                caps.bin[downmix][bin] = 0;
+            }
+        }
+
+        int coot = 0;
+        if (last_caps.bin[downmix][bin] > 0) {
+            if (last_bin.bin[downmix][bin] < last_caps.bin[downmix][bin]) {
+                coot = (int)(multiSA * last_caps.bin[downmix][bin]);
+                display.fillRect(ofs + (int)(bin * wbin), hsa - coot, (int)wbin - 1,
+                                 1, BLACK);
+            }
+        }
+        if (caps.bin[downmix][bin] > 0) {
+            coot = (int)(multiSA * caps.bin[downmix][bin]);
+            display.fillRect(ofs + (int)(bin * wbin), hsa - coot, (int)wbin - 1, 1,
+                             WHITE);
+        }
+
+        last_caps.bin[downmix][bin] = caps.bin[downmix][bin];
+    }
+
+    // finesse
+    display.fillRect(0, maxYPixel() - 4, maxXPixel(), 4, BLACK);
+    // track detail scroller...
+}
+
+void stereoSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
+
     // SA mode
+    if (strncmp(downmix, "N", 1) != 0) {
+        downmixSpectrum(vissy_meter);
+        return;
+    }
 
     int bins = 12;
     int wsa = maxXPixel() - 2;
@@ -201,6 +418,7 @@ void stereoSpectrum(struct vissy_meter_t *vissy_meter) {
         (double)hsa / 31.00; // max input is 31 -2 to leaves head-room
 
     for (int channel = 0; channel < 2; channel++) {
+
         //int ofs = int(wbin/2) + 2 + (channel * ((wsa+2) / 2));
         int ofs = int(wbin * 0.75) + (channel * ((wsa + 2) / 2));
         ofs = 2 + (channel * ((wsa + 2) / 2)); // fix
@@ -212,6 +430,7 @@ void stereoSpectrum(struct vissy_meter_t *vissy_meter) {
                 test = (double)vissy_meter->sample_bin_chan[channel][bin];
                 oob = (int)(multiSA * test);
             }
+
             if (last_bin.bin[channel][bin])
                 lob = int(multiSA * last_bin.bin[channel][bin]);
 
@@ -233,9 +452,11 @@ void stereoSpectrum(struct vissy_meter_t *vissy_meter) {
 
             int coot = 0;
             if (last_caps.bin[channel][bin] > 0) {
-                coot = int(multiSA * last_caps.bin[channel][bin]);
-                display.fillRect(ofs + (int)(bin * wbin), hsa - coot, wbin - 1,
-                                 1, BLACK);
+                if (last_bin.bin[channel][bin] < last_caps.bin[channel][bin]) {
+                    coot = int(multiSA * last_caps.bin[channel][bin]);
+                    display.fillRect(ofs + (int)(bin * wbin), hsa - coot,
+                                     wbin - 1, 1, BLACK);
+                }
             }
             if (caps.bin[channel][bin] > 0) {
                 coot = int(multiSA * caps.bin[channel][bin]);
@@ -246,64 +467,77 @@ void stereoSpectrum(struct vissy_meter_t *vissy_meter) {
             last_caps.bin[channel][bin] = caps.bin[channel][bin];
         }
     }
+
     // finesse
     display.fillRect(0, maxYPixel() - 4, maxXPixel(), 4, BLACK);
 
     // track detail scroller...
 }
 
-meter_chan_t lastPK = {-1000,-1000};
-void stereoPeakH(struct vissy_meter_t *vissy_meter) {
+meter_chan_t lastPK = {-1000, -1000};
+void stereoPeakH(struct vissy_meter_t *vissy_meter, char *downmix) {
 
     // intermediate variable so we can easily switch metrics
-    int meter[METER_CHANNELS] = {vissy_meter->rms_scale[0],
-                                 vissy_meter->rms_scale[1]};
+    meter_chan_t meter = {
+        vissy_meter->sample_accum[0],
+        vissy_meter->sample_accum[1]};
 
     // do no work if we don't need to
-    if ((lastPK.metric[0] == meter[0]) && (lastPK.metric[1] == meter[1]))
+    if ((lastPK.metric[0] == meter.metric[0]) && (lastPK.metric[1] == meter.metric[1]))
         return;
 
-    lastPK.metric[0] = meter[0];
-    lastPK.metric[1] = meter[1];
-
-    // how to selectively clear....
     peakMeterH();
 
-    // 14, 15 4x11  -> + 84, 15 6x11
-    // 14, 38 4x11  -> + 84, 38 6x11
     int level[19] = {-36, -30, -20, -17, -13, -10, -8, -7, -6, -5,
                      -4,  -3,  -2,  -1,  0,   2,   3,  5,  8};
+
     uint8_t xpos = 14; // 19
-    ///uint8_t ypos[4] = {15, 38, 15, 38}; // {21, 38, 17, 44};
-    uint8_t ypos[2] = {5, 38};
+    uint8_t ypos[2] = {7, 40};
     size_t ll = sizeof(level) / sizeof(level[0]);
     size_t p = 0;
 
     for (int *l = level; (p < ll); l++) {
-        uint8_t nodeo = (*l < 0) ? 5 : 9;
-        uint8_t nodew = (*l < 0) ? 4 : 6;
+        uint8_t nodeo = (*l < 0) ? 3 : 8;
+        uint8_t nodew = (*l < 0) ? 2 : 5;
         for (int channel = 0; channel < 2; channel++) {
             // meter value
-            double mv = -48.00 +
-                (double)meter[channel] * (2 * 36.00) / 48.00;
-            //////mv -= 48.000; // zero adjust [-3dB->-20dB]
+            double mv = -48.00 + ((double)lastPK.metric[channel] / 48.00);
             if (mv >= (double)*l) {
-                //display.fillRect(xpos, ypos[channel], nodew, 11, WHITE);
-                display.fillRect(xpos, ypos[channel], nodew, 20, WHITE);
+                display.fillRect(xpos, ypos[channel], nodew, 18, BLACK);
             }
         }
         xpos += nodeo;
         p++;
     }
 
+    xpos = 14;
+    p = 0;
+
+    for (int *l = level; (p < ll); l++) {
+        uint8_t nodeo = (*l < 0) ? 3 : 8;
+        uint8_t nodew = (*l < 0) ? 2 : 5;
+        for (int channel = 0; channel < 2; channel++) {
+            // meter value
+            double mv = -48.00 + ((double)meter.metric[channel] / 48.00);
+            if (mv >= (double)*l) {
+                display.fillRect(xpos, ypos[channel], nodew, 18, WHITE);
+            }
+        }
+        xpos += nodeo;
+        p++;
+    }
+
+    lastPK.metric[0] = meter.metric[0];
+    lastPK.metric[1] = meter.metric[1];
+
 }
 
 void drawTimeBlink(uint8_t cc) {
     int x = 2 + (2 * 25);
-    if (32 == cc)
-        display.fillRect(58, 0, 12, display.height() - 16, BLACK);
+    if (32 == cc) // a space - colon off
+        bigChar(':', x, LCD25X44_LEN, 25, 44, lcd25x44, BLACK);
     else
-        bigChar(cc, x, LCD25X44_LEN, 25, 44, lcd25x44);
+        bigChar(cc, x, LCD25X44_LEN, 25, 44, lcd25x44, WHITE);
 }
 
 void putVolume(bool v, char *buff) {
@@ -332,23 +566,27 @@ void drawTimeText(char *buff) {
     // digit walk and "blit"
     int x = 2;
     for (size_t i = 0; i < strlen(buff); i++) {
-        bigChar(buff[i], x, LCD25X44_LEN, 25, 44, lcd25x44);
+        bigChar(buff[i], x, LCD25X44_LEN, 25, 44, lcd25x44, WHITE);
         x += 25;
     }
 }
 
 void scrollerFinalize(void) {
     for (int line = 0; line < MAX_LINES; line++) {
+        pthread_mutex_lock(&scroll[line].scrollox);
         scroll[line].active = false;
         pthread_cancel(scroll[line].scrollThread);
         pthread_join(scroll[line].scrollThread, NULL);
         if (scroll[line].text)
             free(scroll[line].text);
+        pthread_mutex_unlock(&scroll[line].scrollox);
+        pthread_mutex_destroy(&scroll[line].scrollox);
     }
 }
 
 void baselineScroller(Scroller *s) {
     s->active = false;
+    s->initialized = true;
     s->nystagma = true;
     s->lolimit = 1000;
     s->hilimit = -1000;
@@ -359,39 +597,53 @@ void baselineScroller(Scroller *s) {
     s->textPix = 0;
 }
 
-void putScrollable(int line, char *buff) {
-    scroll[line].active = false;
+void clearScrollable(int line) {
+    char buff[255] = {0};
+    putScrollable(line, buff);
+}
+
+bool putScrollable(int line, char *buff) {
+
+    setScrollActive(line, false);
+
     int tlen = strlen(buff);
+    bool ret = true;
     bool goscroll = (maxCharacter() < tlen);
     if (!goscroll) {
         putTextToCenter(scroll[line].ypos, buff);
+        pthread_mutex_lock(&scroll[line].scrollox);
         scroll[line].textPix = -1;
+        pthread_mutex_unlock(&scroll[line].scrollox);
+        ret = false;
     } else {
+        pthread_mutex_lock(&scroll[line].scrollox);
         baselineScroller(&scroll[line]);
         sprintf(scroll[line].text, " %s ", buff); // pad ends
         scroll[line].textPix = tlen * CHAR_WIDTH;
         scroll[line].active = true;
+        pthread_mutex_unlock(&scroll[line].scrollox);
     }
+    return ret;
 }
 
 #define SCAN_TIME 100
 #define PAUSE_TIME 5000
 
+// ?? thread safe ??
 void *scrollLine(void *input) {
     sme *s;
     s = ((struct Scroller *)input);
     int timer = SCAN_TIME;
-    //int testmin = 10000;
-    //int testmax = -10000;
+    display.setTextWrap(false);
     while (true) {
         timer = SCAN_TIME;
+        pthread_mutex_lock(&s->scrollox);
         if (s->active) {
             // cylon sweep
             if (s->forward)
                 s->xpos++;
             else
                 s->xpos--;
-            display.setTextWrap(false);
             clearLine(s->ypos);
             display.setCursor(s->xpos, s->ypos);
             display.print(s->text);
@@ -419,21 +671,36 @@ void *scrollLine(void *input) {
             // deactivate - implement test - check length limits
             // and travel test
         }
+        pthread_mutex_unlock(&s->scrollox);
         dodelay(timer);
     }
 }
 
+void setScrollActive(int line, bool active) {
+    pthread_mutex_lock(&scroll[line].scrollox);
+    if (NULL != scroll[line].text)
+        if (active != scroll[line].active)
+            scroll[line].active = active;
+    pthread_mutex_unlock(&scroll[line].scrollox);
+}
+
 void scrollerPause(void) {
     for (int line = 0; line < MAX_LINES; line++) {
-        scroll[line].active = false;
+        setScrollActive(line, false);
     }
 }
 
 void scrollerInit(void) {
     for (int line = 0; line < MAX_LINES; line++) {
+        if (pthread_mutex_init(&scroll[line].scrollox, NULL) != 0) {
+            closeDisplay();
+            printf("\nscroller[%d] mutex init has failed\n", line);
+            return;
+        }
         if ((scroll[line].text =
                  (char *)malloc(MAXSCROLL_DATA * sizeof(char))) == NULL) {
             closeDisplay();
+            printf("scroller malloc error\n");
             return;
         } else {
             baselineScroller(&scroll[line]);
@@ -451,8 +718,11 @@ void drawTimeText2(char *buff, char *last) {
     for (size_t i = 0; i < strlen(buff); i++) {
         // selective updates, less "blink"
         if (buff[i] != last[i]) {
-            display.fillRect(x, 1, 25, display.height() - 15, BLACK);
-            bigChar(buff[i], x, LCD25X44_LEN, 25, 44, lcd25x44);
+            if ('X' == last[i])
+                display.fillRect(x, 1, 25, display.height() - 15, BLACK);
+            else
+                bigChar(last[i], x, LCD25X44_LEN, 25, 44, lcd25x44, BLACK);
+            bigChar(buff[i], x, LCD25X44_LEN, 25, 44, lcd25x44, WHITE);
         }
         x += 25;
     }
@@ -526,13 +796,23 @@ void refreshDisplay(void) { shotAndDisplay(); }
 void refreshDisplay(void) { display.display(); }
 #endif
 
-void refreshDisplayScroller(void) {
+bool activeScroller(void) {
+    bool ret = false;
     for (int line = 0; line < MAX_LINES; line++) {
+        pthread_mutex_lock(&scroll[line].scrollox);
         if (scroll[line].active) {
-            display.display();
-            break;
+            ret = true;
         }
+        pthread_mutex_unlock(&scroll[line].scrollox);
+        if (ret)
+            break;
     }
+    return ret;
+}
+
+void refreshDisplayScroller(void) {
+    if (activeScroller())
+        display.display();
 }
 
 void putText(int x, int y, char *buff) {
@@ -543,6 +823,17 @@ void putText(int x, int y, char *buff) {
 }
 
 void clearLine(int y) { display.fillRect(0, y, maxXPixel(), CHAR_HEIGHT, 0); }
+
+void putTextCenterColor(int y, char *buff, uint16_t color) {
+    int tlen = strlen(buff);
+    int px =
+        maxCharacter() < tlen ? 0 : (maxXPixel() - (tlen * CHAR_WIDTH)) / 2;
+    clearLine(y);
+    display.setTextColor(color);
+    putText(px, y, buff);
+    if (color != WHITE)
+        display.setTextColor(WHITE);
+}
 
 void putTextToCenter(int y, char *buff) {
     int tlen = strlen(buff);
@@ -564,20 +855,65 @@ void drawRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
     display.drawRect(x, y, w, h, color);
 }
 
-// parked
+// rudimentry screen saver - only kicks in
+// if the user does not specify [c]lock
+
+void nagSaverSetup(void) {
+    srandom(time(NULL));
+
+    // initialize
+    for (uint8_t n = 0; n < NUMNOTES; n++) {
+        icons[n][XPOS] = random() % display.width();
+        icons[n][YPOS] = -1 * (random() % NAGNOTE_HEIGHT);
+        icons[n][DELTAY] = random() % 5 + 1;
+        icons[n][DELTAX] =
+            ((random() % 3 + (1 * (random() % 2)) == 1) ? -1 : 1);
+    }
+}
+
+void nagSaverNotes(void) {
+
+    int w = NAGNOTE_WIDTH;
+    int h = NAGNOTE_HEIGHT;
+
+    for (uint8_t n = 0; n < NUMNOTES; n++) {
+        display.drawBitmap(icons[n][XPOS], icons[n][YPOS], nag_notes, w, h,
+                           WHITE);
+    }
+
+    display.display();
+    usleep(200);
+
+    for (uint8_t n = 0; n < NUMNOTES; n++) {
+        display.drawBitmap(icons[n][XPOS], icons[n][YPOS], nag_notes, w, h,
+                           BLACK);
+
+        icons[n][XPOS] += icons[n][DELTAX];
+        icons[n][YPOS] += icons[n][DELTAY];
+        if (icons[n][YPOS] > display.height()) {
+            icons[n][XPOS] = random() % display.width();
+            icons[n][YPOS] = -1 * (random() % NAGNOTE_HEIGHT);
+            icons[n][DELTAY] = random() % 5 + 1;
+            icons[n][DELTAX] =
+                ((random() % 3 + (1 * (random() % 2)) == 1) ? -1 : 1);
+        }
+    }
+}
+
+// parked - want this to work like iPeng!!!
 void *scrollLineUgh(void *input) {
     sme *s;
     s = ((struct Scroller *)input);
     int timer = SCAN_TIME;
 
+    display.setTextWrap(false);
     while (true) {
         timer = SCAN_TIME;
-
+        pthread_mutex_lock(&s->scrollox);
         if (s->active) {
             s->xpos--;
             if (s->xpos + s->textPix <= maxXPixel())
                 s->xpos += s->textPix;
-            display.setTextWrap(false);
             clearLine(s->ypos);
             // should appear to marquee - but sadly it does not???
             if (s->xpos > 0)
@@ -597,6 +933,7 @@ void *scrollLineUgh(void *input) {
                 timer = 5000;
             }
         }
+        pthread_mutex_unlock(&s->scrollox);
         usleep(timer);
     }
 }

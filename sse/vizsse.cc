@@ -3,11 +3,19 @@
 #include <chrono>
 #include <pthread.h>
 
-#include "jsmn.h"
-
+#include "../source/jsmn.h"
 #include "../source/visualize.h"
 #include "../source/common.h"
+
 #include "vizsse.h"
+
+static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
+    if (tok->type == JSMN_STRING && (int)strlen(s) == tok->end - tok->start &&
+        strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
+        return 0;
+    }
+    return -1;
+}
 
 using namespace httplib;
 
@@ -158,14 +166,6 @@ bool setupSSE(struct Options opt) {
 void vissySSEFinalize(void) {
     pthread_cancel(vizSSEThread);
     pthread_join(vizSSEThread, NULL);
-}
-
-static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
-    if (tok->type == JSMN_STRING && (int)strlen(s) == tok->end - tok->start &&
-        strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
-        return 0;
-    }
-    return -1;
 }
 
 void parse_visualize(char *data, struct vissy_meter_t *vissy_meter) {

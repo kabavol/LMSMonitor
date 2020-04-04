@@ -51,7 +51,7 @@ void vissySHMEMFinalize(void) {
 }
 
 static const char *payload_mode(bool samode) {
-    return (samode) ? MODE_SA : MODE_VU;
+    return (samode) ? VMODE_SA : VMODE_VU;
 }
 
 void zero_payload(size_t timer_id, void *user_data) {
@@ -59,7 +59,7 @@ void zero_payload(size_t timer_id, void *user_data) {
     struct vissy_meter_t vissy_meter = {
         .meter_type = {0},
         .channel_name = {"L", "R"},
-        .is_mono = 0,
+        .is_mono = false,
         .sample_accum = {0, 0},
         .dBfs = {-1000,-1000},
         .dB = {-1000,-1000},
@@ -145,15 +145,18 @@ void *vizSHMEMPolling(void *x_voidptr) {
                 // vissy_meter.rms_charbar[channel][i] = 0;
             }
 
-            // push to visualize here
             strncpy(vissy_meter.meter_type, payload_mode(samode), 2);
+
+            // push to visualize here
             visualize(&vissy_meter);
 
             // cleanup (zero meter) timer - when the toons stop we zero
             timer_stop(ztimer);
             ztimer = timer_start(5000, zero_payload, TIMER_SINGLE_SHOT, NULL);
+            
             // modal dataset
             samode = !samode;
+
         }
 
         usleep(METER_DELAY);

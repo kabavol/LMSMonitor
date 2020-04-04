@@ -23,11 +23,12 @@
 #define COMMON_H 1
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #define BSIZE 4096
 
 #define APPNAME "LMSMonitor"
-#define VERSION "0.4.16"
+#define VERSION "0.4.22"
 
 #define LL_QUIET 0
 #define LL_INFO 1
@@ -51,6 +52,11 @@ multi_tok_t multi_tok_init();
 // missing under linux
 void strupr(char *s);
 
+int piVersion(void);
+
 void dodelay(uint16_t d);
+
+
+void leftRotatebyOne(char *arr);
 
 #endif

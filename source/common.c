@@ -138,6 +138,19 @@ void strupr(char *s)
     }
 } 
 
+int piVersion(void)
+{
+    int ret = 2;
+    ////cat /sys/firmware/devicetree/base/model
+    return ret;
+}
 
-
-
+void leftRotate(char *rm) 
+{ 
+    int n = strlen(rm);
+	uint8_t temp = rm[0];
+    int i; 
+	for (i = 0; i < n - 1; i++) 
+		rm[i] = rm[i+1]; 
+	rm[i] = temp; 
+}

@@ -24,13 +24,14 @@
 #include "visdata.h"
 
 void setVisList(char *vlist);
-void setVisMode(vis_type_t mode);
-char getVisMode(void);
+bool setVisMode(vis_type_t mode);
+char *getVisMode(void);
 void sayVisList(void);
+void setDownmix(int samplesize, float samplerate);
 
 void visualize(struct vissy_meter_t *vissy_meter);
 bool isVisualizeActive(void);
-char currentMeter(void);
+char *currentMeter(void);
 
 void activateVisualizer(void);
 void deactivateVisualizer(void);
