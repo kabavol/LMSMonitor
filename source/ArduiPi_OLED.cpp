@@ -326,6 +326,7 @@ boolean ArduiPi_OLED::select_oled(uint8_t OLED_TYPE)
     default:
       return false;
     break;
+
   }
   
   // Buffer size differ from OLED type, 1 pixel is one bit 

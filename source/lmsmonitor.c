@@ -219,6 +219,7 @@ void print_help(char *executable) {
            " -r show remaining time rather than track time\n"
            " -t enable print info to stdout\n"
            " -v enable visualization sequence when playing (Pi only)\n"
+           " -x specify OLED address if default does not work - use i2cdetect to find address (Pi only)\n"
            " -z no splash screen\n\n",
            APPNAME, VERSION);
 #ifdef __arm__
@@ -354,7 +355,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     opterr = 0;
-    while ((aName = getopt(argc, argv, "n:o:m:abcdhikprtvxz")) != -1) {
+    while ((aName = getopt(argc, argv, "n:o:m:x:B:abcdhikprtvz")) != -1) {
         switch (aName) {
             case 'n': playerName = optarg; break;
 
@@ -406,6 +407,9 @@ int main(int argc, char *argv[]) {
                 setOledAddress(lmsopt.oledAddrL);
                 break;
             case 'z': lmsopt.splash = false; break;
+
+            case 'B': printf("TODO\n"); break;
+
 #endif
 
             case 'h':
