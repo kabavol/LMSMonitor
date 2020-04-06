@@ -516,7 +516,7 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter, char *downmix) {
     size_t ll = sizeof(level) / sizeof(level[0]);
     size_t p = 0;
 
-    peakMeterH(false);
+    peakMeterH(false); // 🎵
 
     for (int *l = level; (p < ll); l++) {
         uint8_t nodeo = (*l < 0) ? 5 : 7;
@@ -907,6 +907,7 @@ void nagSaverNotes(void) {
     }
 }
 
+/*
 // parked - want this to work like iPeng!!!
 void *scrollLineUgh(void *input) {
     sme *s;
@@ -947,5 +948,6 @@ void *scrollLineUgh(void *input) {
         usleep(timer);
     }
 }
+*/
 
 #endif

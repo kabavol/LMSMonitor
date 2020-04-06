@@ -277,7 +277,6 @@ void cycleVisualize(size_t timer_id, void *user_data) {
                 if (strcmp(current, updated) != 0)
                 {
                     lmsopt->refreshLMS = true;
-                    //lmsopt->refresClock = true;
                     clearDisplay();
                 }
             } else {

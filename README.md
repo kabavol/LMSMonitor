@@ -5,6 +5,9 @@ OLED information display control program for [piCorePlayer](https://www.picorepl
 
 ### Options
 ```bash
+Usage -n "player name" [options]
+
+options:
  -a all-in-one. One screen to rule them all. Track and visualizer on one screen (pi only)
  -b automatically set brightness of display at sunset and sunrise (pi only)
  -c display clock when not playing (Pi only)
@@ -16,7 +19,7 @@ OLED information display control program for [piCorePlayer](https://www.picorepl
  -r show remaining time rather than track time
  -t enable print info to stdout
  -v enable visualization sequence when playing (Pi only)
- -x specify OLED address
+ -x specify OLED address if default does not work - use i2cdetect to find address (Pi only)
  -z no splash screen
 
 Supported OLED types:
@@ -24,9 +27,9 @@ Supported OLED types:
     3 ...: Adafruit I2C 128x64
     4 ...: Seeed I2C 128x64
     6* ..: SH1106 I2C 128x64
-    7 ...: OSA I2C 128x64
-    8 ...: SaS OSA I2C 128x64
+    7 ...: SH1106 SPI 128x64
 * is default
+
 ```
 
 ### Features
