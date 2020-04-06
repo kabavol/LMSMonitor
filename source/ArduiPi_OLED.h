@@ -30,7 +30,6 @@ All text above, and the splash screen must be included in any redistribution
 #define _ArduiPi_OLED_H
 
 #include "./Adafruit_GFX.h"
-#include <stdint.h>
 
 #define BLACK 0
 #define WHITE 1
@@ -151,14 +150,14 @@ class ArduiPi_OLED : public Adafruit_GFX
   ArduiPi_OLED();
 
   // SPI Init
-  boolean init(int8_t DC, int8_t RST, int8_t CS, uint8_t OLED_TYPE);
+  bool init(int8_t DC, int8_t RST, int8_t CS, uint8_t OLED_TYPE);
   
   // I2C Init
-  boolean init(int8_t RST, uint8_t OLED_TYPE, int8_t OLED_ADDR);
-  boolean init(int8_t RST, uint8_t OLED_TYPE);
+  bool init(int8_t RST, uint8_t OLED_TYPE, int8_t i2c_addr);
+  bool init(int8_t RST, uint8_t OLED_TYPE);
 
-  boolean oled_is_spi_proto(uint8_t OLED_TYPE); /* to know protocol before init */
-  boolean select_oled(uint8_t OLED_TYPE) ;
+  bool oled_is_spi_proto(uint8_t OLED_TYPE); /* to know protocol before init */
+  bool select_oled(uint8_t OLED_TYPE, int8_t i2c_addr=0);
   
   void begin(void);
   void close(void);
@@ -191,7 +190,6 @@ class ArduiPi_OLED : public Adafruit_GFX
   void stopscroll(void);
 
   void drawPixel(int16_t x, int16_t y, uint16_t color);
-  bool readPixel(int16_t x, int16_t y);
 
   private:
   uint8_t *poledbuff; // Pointer to OLED data buffer in memory
@@ -202,8 +200,8 @@ class ArduiPi_OLED : public Adafruit_GFX
   uint8_t oled_type;
   uint8_t grayH, grayL;
   
-  inline boolean isI2C(void);
-  inline boolean isSPI(void);
+  inline bool isI2C(void);
+  inline bool isSPI(void);
   void fastSPIwrite(uint8_t c);
   void fastSPIwrite(char* tbuf, uint32_t len);
   void fastI2Cwrite(uint8_t c);

@@ -62,6 +62,7 @@
 #include "timer.h"
 #include "metrics.h"
 #include "astral.h"
+#include "lmsmonitor.h"
 // clang-format on
 
 #endif
@@ -75,6 +76,7 @@
 char stbl[BSIZE];
 tag *tags;
 bool playing = false;
+bool softlySoftly = false;
 
 // clang-format off
 tagtypes_t layout[LINE_NUM][3] = {
@@ -94,7 +96,7 @@ void before_exit(void) {
         freed = true;
         closeSliminfo();
 #ifdef __arm__
-        scrollerPause(); // stop any scrolling prior to clear - no orphans!
+        //scrollerPause(); // stop any scrolling prior to clear - no orphans!
         clearDisplay();
         closeDisplay();
 #ifdef SSE_VIZDATA
@@ -240,6 +242,8 @@ void setupPlayMode(void) {
     }
 }
 
+bool isPlaying(void) { return playing; }
+
 void toggleVisualize(size_t timer_id, void *user_data) {
 
     MonitorAttrs *lmsopt = user_data;
@@ -247,11 +251,9 @@ void toggleVisualize(size_t timer_id, void *user_data) {
         if (playing) {
             if (isVisualizeActive()) {
                 deactivateVisualizer();
-                lmsopt->refreshLMS = true;
-                lmsopt->refreshClock = true;
-                setupPlayMode();
+                softlySoftly = true;
             } else {
-                scrollerPause();
+                resetDisplay(1);
                 activateVisualizer();
             }
             clearDisplay();
@@ -515,6 +517,15 @@ int main(int argc, char *argv[]) {
 
     while (true) {
 
+#ifdef __arm__
+        if (softlySoftly) {
+            softlySoftly = false;
+            lmsopt.refreshLMS = true;
+            lmsopt.refreshClock = true;
+            clearDisplay();
+        }
+#endif
+
         if (isRefreshed()) {
 
             playing = (strcmp("play", tags[MODE].tagData) == 0);
@@ -522,13 +533,16 @@ int main(int argc, char *argv[]) {
             if (playing) {
 
 #ifdef __arm__
-                playingPage(&lmsopt);
+                if (!isVisualizeActive())
+                    playingPage(&lmsopt);
+                else
+                    setupPlayMode();
 #else
                 playingPage();
 #endif
             } else {
 #ifdef __arm__
-                scrollerPause(); // we need to re-activate too - save state!!!
+                //scrollerPause(); // we need to re-activate too - save state!!!
                 if (lmsopt.clock)
                     clockPage(&lmsopt);
                 else
@@ -684,7 +698,6 @@ void playingPage(void)
         setDownmix(0, 0);
 
     if ((lmsopt->visualize) && (isVisualizeActive())) {
-        scrollerPause(); // we need to re-activate too - save state!!!
         lmsopt->lastVolume = -1;
         lmsopt->lastBits[0] = 0;
         lmsopt->sleepTime = SLEEP_TIME_SHORT;
@@ -762,8 +775,7 @@ void playingPage(void)
         }
 
 #ifdef __arm__
-        if (activeScroller())
-            lmsopt->sleepTime = SLEEP_TIME_SHORT;
+        lmsopt->sleepTime = SLEEP_TIME_SHORT;
 #endif
 
         pTime = (tags[TIME].valid) ? strtol(tags[TIME].tagData, NULL, 10) : 0;
@@ -797,13 +809,13 @@ void playingPage(void)
 
         drawHorizontalBargraph(2, 51, maxXPixel() - 4, 4,
                                (pTime * 100) / (dTime == 0 ? 1 : dTime));
-#else
+#endif
+
     sprintf(buff, "%3ld:%02ld  %5s  %3ld:%02ld", pTime / 60, pTime % 60,
             (tags[MODE].valid) ? tags[MODE].tagData : "", dTime / 60,
             dTime % 60);
     sprintf(stbl, "%s\n\n", buff);
     tOut(stbl);
-#endif
 
 #ifdef __arm__
     }

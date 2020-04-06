@@ -91,8 +91,6 @@ typedef struct Scroller {
     int lolimit;
     int hilimit;
     bool forward;
-    bool active;
-    bool pause;
     void *(*scrollMe)(void *input);
 } sme;
 
@@ -159,5 +157,7 @@ void shotAndDisplay(void);
 
 void nagSaverSetup(void);
 void nagSaverNotes(void);
+
+bool scrollerActive(void);
 
 #endif

@@ -143,10 +143,10 @@ const unsigned char seedfont[][8] =
 };
 
 
-inline boolean ArduiPi_OLED::isSPI(void) {
+inline bool ArduiPi_OLED::isSPI(void) {
   return (cs != -1 ? true : false);
 }
-inline boolean ArduiPi_OLED::isI2C(void) {
+inline bool ArduiPi_OLED::isI2C(void) {
   return (cs == -1 ? true : false);
 }
 // Low level I2C and SPI Write function
@@ -168,7 +168,7 @@ void ArduiPi_OLED::drawPixel(int16_t x, int16_t y, uint16_t color)
 {
   uint8_t * p = poledbuff ;
   uint8_t c;
-
+  
   if ((x < 0) || (x >= width()) || (y < 0) || (y >= height()))
     return;
 
@@ -228,7 +228,6 @@ void ArduiPi_OLED::drawPixel(int16_t x, int16_t y, uint16_t color)
   }
 }
 
-
 // Display instantiation
 ArduiPi_OLED::ArduiPi_OLED() 
 {
@@ -250,7 +249,7 @@ ArduiPi_OLED::ArduiPi_OLED()
 // When not initialized program using this library may
 // know protocol for correct init call, he could just know
 // oled number in driver list
-boolean ArduiPi_OLED::oled_is_spi_proto(uint8_t OLED_TYPE) 
+bool ArduiPi_OLED::oled_is_spi_proto(uint8_t OLED_TYPE) 
 {
   switch (OLED_TYPE)
   {
@@ -267,7 +266,7 @@ boolean ArduiPi_OLED::oled_is_spi_proto(uint8_t OLED_TYPE)
 }
 
 // initializer for OLED Type
-boolean ArduiPi_OLED::select_oled(uint8_t OLED_TYPE) 
+bool ArduiPi_OLED::select_oled(uint8_t OLED_TYPE, int8_t i2c_addr)
 {
   // Default type
   oled_width  = 128;
@@ -314,20 +313,19 @@ boolean ArduiPi_OLED::select_oled(uint8_t OLED_TYPE)
       _i2c_addr = SH1106_I2C_ADDRESS;
     break;
     
-    case OLED_OSA_I2C_128x64:
-      _i2c_addr = OSA_I2C_ADDRESS;
-    break;
-
     case OLED_SH1106_SPI_128x64:
-    ;
+      ;
     break;
 
     // houston, we have a problem
     default:
       return false;
     break;
-
   }
+
+  // Override address if necessary
+  if(i2c_addr != 0)
+    _i2c_addr = i2c_addr;
   
   // Buffer size differ from OLED type, 1 pixel is one bit 
   // execpt for 96x96 seed, 1 pixel is 1 nible
@@ -358,7 +356,7 @@ boolean ArduiPi_OLED::select_oled(uint8_t OLED_TYPE)
 
 // initializer for SPI - we indicate the pins used and OLED type
 //
-boolean ArduiPi_OLED::init(int8_t DC, int8_t RST, int8_t CS, uint8_t OLED_TYPE) 
+bool ArduiPi_OLED::init(int8_t DC, int8_t RST, int8_t CS, uint8_t OLED_TYPE) 
 {
   rst = RST;  // Reset Pin
   dc = DC;    // Data / command Pin
@@ -369,10 +367,11 @@ boolean ArduiPi_OLED::init(int8_t DC, int8_t RST, int8_t CS, uint8_t OLED_TYPE)
     return false;
 
   // Init & Configure Raspberry PI SPI
-  bcm2835_spi_begin(); //cs);
+  bcm2835_spi_begin();
   bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);      
   bcm2835_spi_setDataMode(BCM2835_SPI_MODE0);                
-  
+  bcm2835_spi_chipSelect(cs);
+
   // 16 MHz SPI bus, but Worked at 62 MHz also  
   bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_16); 
 
@@ -386,28 +385,24 @@ boolean ArduiPi_OLED::init(int8_t DC, int8_t RST, int8_t CS, uint8_t OLED_TYPE)
 }
 
 // initializer for I2C - we only indicate the reset pin and OLED type !
-boolean ArduiPi_OLED::init(int8_t RST, uint8_t OLED_TYPE, int8_t OLED_ADDR) 
+bool ArduiPi_OLED::init(int8_t RST, uint8_t OLED_TYPE, int8_t i2c_addr)
 {
-
   dc = cs = -1; // DC and chip Select do not exist in I2C
   rst = RST;
 
   // Select OLED parameters
-  if (!select_oled(OLED_TYPE))
+  if (!select_oled(OLED_TYPE, i2c_addr))
     return false;
 
   // Init & Configure Raspberry PI I2C
   if (bcm2835_i2c_begin()==0)
     return false;
-
-  if (0 != OLED_ADDR)
-    _i2c_addr = OLED_ADDR;
-
+    
   bcm2835_i2c_setSlaveAddress(_i2c_addr) ;
     
   // Set clock to 400 KHz
   // does not seem to work, will check this later
-  bcm2835_i2c_set_baudrate(400000);
+  //bcm2835_i2c_set_baudrate(400000);
 
   // Setup reset pin direction as output
   bcm2835_gpio_fsel(rst, BCM2835_GPIO_FSEL_OUTP);
@@ -416,30 +411,9 @@ boolean ArduiPi_OLED::init(int8_t RST, uint8_t OLED_TYPE, int8_t OLED_ADDR)
 
 }
 
-// initializer for I2C - we only indicate the reset pin and OLED type !
-boolean ArduiPi_OLED::init(int8_t RST, uint8_t OLED_TYPE) 
+bool ArduiPi_OLED::init(int8_t RST, uint8_t OLED_TYPE)
 {
-  dc = cs = -1; // DC and chip Select do not exist in I2C
-  rst = RST;
-
-  // Select OLED parameters
-  if (!select_oled(OLED_TYPE))
-    return false;
-
-  // Init & Configure Raspberry PI I2C
-  if (bcm2835_i2c_begin()==0)
-    return false;
-    
-  bcm2835_i2c_setSlaveAddress(_i2c_addr) ;
-    
-  // Set clock to 400 KHz
-  // does not seem to work, will check this later
-  bcm2835_i2c_set_baudrate(400000);
-
-  // Setup reset pin direction as output
-  bcm2835_gpio_fsel(rst, BCM2835_GPIO_FSEL_OUTP);
-  
-  return true;
+  return init(RST, OLED_TYPE, 0);
 }
 
 void ArduiPi_OLED::close(void) 
@@ -460,6 +434,7 @@ void ArduiPi_OLED::close(void)
 
   // Release Raspberry I/O control
   bcm2835_close();
+
 }
 
   
@@ -582,8 +557,7 @@ void ArduiPi_OLED::begin( void )
     grayH= 0xF0;
     grayL= 0x0F;
   }
-  else if ((oled_type == OLED_SH1106_I2C_128x64)||
-  (oled_type == OLED_OSA_I2C_128x64))
+  else if (oled_type == OLED_SH1106_I2C_128x64)
   {
     sendCommand(SSD1306_Set_Lower_Column_Start_Address|0x02); /*set lower column address*/
     sendCommand(SSD1306_Set_Higher_Column_Start_Address);     /*set higher column address*/
@@ -675,7 +649,8 @@ void ArduiPi_OLED::putSeedChar(char C)
         {
             // Character is constructed two pixel at a time using vertical mode from the default 8x8 font
             char c=0x00;
-            char bit1=( seedfont[C-32][(uint8_t)i]   >> j) & 0x01;  
+	    // Cast i to unsigned char to avoid warning
+            char bit1=( seedfont[C-32][(unsigned char)i]   >> j) & 0x01;  
             char bit2=( seedfont[C-32][i+1] >> j) & 0x01;
            // Each bit is changed to a nibble
             c|=(bit1)?grayH:0x00;
@@ -732,8 +707,7 @@ void ArduiPi_OLED::sendCommand(uint8_t c)
     
     // Write Data on I2C
     fastI2Cwrite(buff, sizeof(buff))  ;
-  }  
-  
+  }
 }
 
 void ArduiPi_OLED::sendCommand(uint8_t c0, uint8_t c1) 
@@ -915,6 +889,7 @@ void ArduiPi_OLED::sendData(uint8_t c)
 
 void ArduiPi_OLED::display(void) 
 {
+
   if (oled_type == OLED_SEEED_I2C_96x96 )
   {
     sendCommand(SSD1327_Set_Row_Address   , 0x00, 0x5F);
@@ -1023,20 +998,5 @@ void ArduiPi_OLED::clearDisplay(void)
   memset(poledbuff, 0, oled_buff_size);
 }
 
-// readPixel - return true if pixel lit
-bool ArduiPi_OLED::readPixel(int16_t x, int16_t y)
-{
-
-  if ((x < 0) || (x >= width()) || (y < 0) || (y >= height()))
-    return false;
-
-  // not seeed compliant
-  uint8_t * p = poledbuff ;
-  p = poledbuff + (x + (y/8)*oled_width );
-  return poledbuff[(x + (y/8)*width())] & (1 << (y&7));
-
-  //return (0 != _BV(y%8));
-
-}
 
 

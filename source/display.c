@@ -32,11 +32,13 @@
 #include "common.h"
 #include "display.h"
 #include "oledimg.h"
+#include "visualize.h"
 
 #ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
 #endif
 #define PI acos(-1.0000)
+#define DOWNMIX 0
 
 #ifdef __arm__
 
@@ -45,6 +47,7 @@
 #include "ArduiPi_OLED_lib.h"
 #include "Adafruit_GFX.h"
 #include "ArduiPi_OLED.h"
+#include "lmsmonitor.h"
 #ifdef CAPTURE_BMP
 #include "bmpfile.h"
 #endif
@@ -117,6 +120,7 @@ int initDisplay(void) {
 
     // IIC specific - what about SPI ??
 
+    // if strstr(SPI) else
     if (0 != oledAddress)
     {
         if (!display.init(OLED_I2C_RESET, oledType, oledAddress)) {
@@ -148,23 +152,23 @@ void clearDisplay() {
     display.display();
 }
 
-void softClear(void) {
-    display.fillRect(2, 2, maxXPixel()-4, maxYPixel() - 4, BLACK);
-}
-
 void vumeter2upl(void) {
-    softClear();
+    display.fillScreen(BLACK);
     display.drawBitmap(0, 0, vu2up128x64, 128, 64, WHITE);
 }
 
-void vumeterDownmix(void) {
-    softClear();
-    display.drawBitmap(0, 0, vudm128x64, 128, 64, WHITE);
+void vumeterDownmix(bool inv) {
+    if (inv)
+        display.drawBitmap(0, 0, vudm128x64, 128, 64, BLACK);
+    else
+        display.drawBitmap(0, 0, vudm128x64, 128, 64, WHITE);
 }
 
-void peakMeterH(void) {
-    softClear();
-    display.drawBitmap(0, 0, peak_rms, 128, 64, WHITE);
+void peakMeterH(bool inv) {
+    if (inv)
+        display.drawBitmap(0, 0, peak_rms, 128, 64, BLACK);
+    else
+        display.drawBitmap(0, 0, peak_rms, 128, 64, WHITE);
 }
 
 void splashScreen(void) {
@@ -184,21 +188,35 @@ meter_chan_t dampVU = {-1000, -1000};
 
 void downmixVU(struct vissy_meter_t *vissy_meter) {
 
-    vumeterDownmix();
+    vumeterDownmix(true);
+
+    double hMeter = (double)maxYPixel() + 2.00;
+    double rMeter = (double)hMeter - 5.00;
+    double wMeter = (double)maxXPixel();
+    double xpivot = wMeter / 2.00;
+    double rad = (180.00 / PI);  // 180/pi
+    double divisor = 0.00;
+    double mv_downmix = 0.000;   // downmix meter position
+
+    int16_t ax;
+    int16_t ay;
+
+    if (dampVU.metric[DOWNMIX] > -1000)
+    {
+        ax = (int16_t)(xpivot + (sin(dampVU.metric[DOWNMIX] / rad) * rMeter));
+        ay = (int16_t)(hMeter - (cos(dampVU.metric[DOWNMIX] / rad) * rMeter));
+
+        display.drawLine((int16_t)xpivot - 1, (int16_t)hMeter, ax, ay, BLACK);
+        display.drawLine((int16_t)xpivot,     (int16_t)hMeter, ax, ay, BLACK);
+        display.drawLine((int16_t)xpivot + 1, (int16_t)hMeter, ax, ay, BLACK);
+    }
+
+    vumeterDownmix(false);
 
     meter_chan_t thisVU = {
         vissy_meter->sample_accum[0],
         vissy_meter->sample_accum[1]};
 
-    double hMeter = (double)maxYPixel() + 2.00;
-    double rMeter = (double)hMeter - 6.00;
-    double wMeter = (double)maxXPixel();
-    double xpivot = wMeter / 2.00;
-    double rad = (180.00 / PI);  // 180/pi
-    int downmix = 0;
-
-    double divisor = 0.00;
-    double mv_downmix = 0.000;   // downmix meter position
     for (int channel = 0; channel < 2; channel++) {
         // meter value
         mv_downmix += (double)thisVU.metric[channel];
@@ -210,15 +228,15 @@ void downmixVU(struct vissy_meter_t *vissy_meter) {
     mv_downmix -= 48.000;
 
     // damping
-    if (dampVU.metric[downmix] < mv_downmix)
-        dampVU.metric[downmix] = mv_downmix;
+    if (dampVU.metric[DOWNMIX] <= mv_downmix)
+        dampVU.metric[DOWNMIX] = mv_downmix;
     else
-        dampVU.metric[downmix] -= 10;
-    if (dampVU.metric[downmix] < mv_downmix)
-        dampVU.metric[downmix] = mv_downmix;
+        dampVU.metric[DOWNMIX] -= 4;
+    if (dampVU.metric[DOWNMIX] < mv_downmix)
+        dampVU.metric[DOWNMIX] = mv_downmix;
 
-    int16_t ax = (int16_t)(xpivot + (sin(dampVU.metric[downmix] / rad) * rMeter));
-    int16_t ay = (int16_t)(hMeter - (cos(dampVU.metric[downmix] / rad) * rMeter));
+    ax = (int16_t)(xpivot + (sin(dampVU.metric[DOWNMIX] / rad) * rMeter));
+    ay = (int16_t)(hMeter - (cos(dampVU.metric[DOWNMIX] / rad) * rMeter));
 
     // thick needle with definition
     display.drawLine((int16_t)xpivot - 2, (int16_t)hMeter, ax, ay, BLACK);
@@ -280,10 +298,10 @@ void stereoVU(struct vissy_meter_t *vissy_meter, char *downmix) {
         mv -= 36.000; // zero adjust [-3dB->-20dB]
 
         // damping
-        if (dampVU.metric[channel] < mv)
+        if (dampVU.metric[channel] <= mv)
             dampVU.metric[channel] = mv;
         else
-            dampVU.metric[channel] -= 5;
+            dampVU.metric[channel] -= 2;
         if (dampVU.metric[channel] < mv)
             dampVU.metric[channel] = mv;
 
@@ -324,7 +342,8 @@ void downmixSpectrum(struct vissy_meter_t *vissy_meter) {
     double wbin = (double)wsa / (double)(bins + 1); // 12 bar display, downmixed
     //wbin = 9.00;                                    // fix
 
-    int downmix = 0;
+    display.fillRect(1, 1, (int)wbin, hsa, BLACK);
+    display.fillRect(wsa-6, 1, (int)wbin, hsa, BLACK);
 
     // SA scaling
     double multiSA = (double)hsa / 31.00;
@@ -356,39 +375,39 @@ void downmixSpectrum(struct vissy_meter_t *vissy_meter) {
         test /= (double)divisor;
         oob = (multiSA * test);
 
-        if (last_bin.bin[downmix][bin] > 0)
-            lob = (int)(multiSA * last_bin.bin[downmix][bin]);
+        if (last_bin.bin[DOWNMIX][bin] > 0)
+            lob = (int)(multiSA * last_bin.bin[DOWNMIX][bin]);
 
         display.fillRect(ofs + (int)(bin * wbin), hsa - (int)lob, (int)wbin - 1, (int)lob,
                          BLACK);
         display.fillRect(ofs + (int)(bin * wbin), hsa - (int)oob, (int)wbin - 1, (int)oob,
                          WHITE);
-        last_bin.bin[downmix][bin] = (int)test;
+        last_bin.bin[DOWNMIX][bin] = (int)test;
 
-        if (test >= caps.bin[downmix][bin]) {
-            caps.bin[downmix][bin] = (int)test;
-        } else if (caps.bin[downmix][bin] > 0) {
-            caps.bin[downmix][bin]--;
-            if (caps.bin[downmix][bin] < 0) {
-                caps.bin[downmix][bin] = 0;
+        if (test >= caps.bin[DOWNMIX][bin]) {
+            caps.bin[DOWNMIX][bin] = (int)test;
+        } else if (caps.bin[DOWNMIX][bin] > 0) {
+            caps.bin[DOWNMIX][bin]--;
+            if (caps.bin[DOWNMIX][bin] < 0) {
+                caps.bin[DOWNMIX][bin] = 0;
             }
         }
 
         int coot = 0;
-        if (last_caps.bin[downmix][bin] > 0) {
-            if (last_bin.bin[downmix][bin] < last_caps.bin[downmix][bin]) {
-                coot = (int)(multiSA * last_caps.bin[downmix][bin]);
+        if (last_caps.bin[DOWNMIX][bin] > 0) {
+            if (last_bin.bin[DOWNMIX][bin] < last_caps.bin[DOWNMIX][bin]) {
+                coot = (int)(multiSA * last_caps.bin[DOWNMIX][bin]);
                 display.fillRect(ofs + (int)(bin * wbin), hsa - coot, (int)wbin - 1,
                                  1, BLACK);
             }
         }
-        if (caps.bin[downmix][bin] > 0) {
-            coot = (int)(multiSA * caps.bin[downmix][bin]);
+        if (caps.bin[DOWNMIX][bin] > 0) {
+            coot = (int)(multiSA * caps.bin[DOWNMIX][bin]);
             display.fillRect(ofs + (int)(bin * wbin), hsa - coot, (int)wbin - 1, 1,
                              WHITE);
         }
 
-        last_caps.bin[downmix][bin] = caps.bin[downmix][bin];
+        last_caps.bin[DOWNMIX][bin] = caps.bin[DOWNMIX][bin];
     }
 
     // finesse
@@ -486,23 +505,26 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter, char *downmix) {
     if ((lastPK.metric[0] == meter.metric[0]) && (lastPK.metric[1] == meter.metric[1]))
         return;
 
-    peakMeterH();
+    peakMeterH(true);
 
     int level[19] = {-36, -30, -20, -17, -13, -10, -8, -7, -6, -5,
                      -4,  -3,  -2,  -1,  0,   2,   3,  5,  8};
 
-    uint8_t xpos = 14; // 19
+    uint8_t zpos = 16;
+    uint8_t xpos = zpos;
     uint8_t ypos[2] = {7, 40};
     size_t ll = sizeof(level) / sizeof(level[0]);
     size_t p = 0;
 
+    peakMeterH(false);
+
     for (int *l = level; (p < ll); l++) {
-        uint8_t nodeo = (*l < 0) ? 3 : 8;
-        uint8_t nodew = (*l < 0) ? 2 : 5;
+        uint8_t nodeo = (*l < 0) ? 5 : 7;
+        uint8_t nodew = (*l < 0) ? 2 : 4;
         for (int channel = 0; channel < 2; channel++) {
             // meter value
             double mv = -48.00 + ((double)lastPK.metric[channel] / 48.00);
-            if (mv >= (double)*l) {
+            if ((mv >= (double)*l) && (lastPK.metric[channel] > meter.metric[channel])){
                 display.fillRect(xpos, ypos[channel], nodew, 18, BLACK);
             }
         }
@@ -510,12 +532,12 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter, char *downmix) {
         p++;
     }
 
-    xpos = 14;
+    xpos = zpos;
     p = 0;
 
     for (int *l = level; (p < ll); l++) {
-        uint8_t nodeo = (*l < 0) ? 3 : 8;
-        uint8_t nodew = (*l < 0) ? 2 : 5;
+        uint8_t nodeo = (*l < 0) ? 5 : 7;
+        uint8_t nodew = (*l < 0) ? 2 : 4;
         for (int channel = 0; channel < 2; channel++) {
             // meter value
             double mv = -48.00 + ((double)meter.metric[channel] / 48.00);
@@ -574,7 +596,6 @@ void drawTimeText(char *buff) {
 void scrollerFinalize(void) {
     for (int line = 0; line < MAX_LINES; line++) {
         pthread_mutex_lock(&scroll[line].scrollox);
-        scroll[line].active = false;
         pthread_cancel(scroll[line].scrollThread);
         pthread_join(scroll[line].scrollThread, NULL);
         if (scroll[line].text)
@@ -585,15 +606,14 @@ void scrollerFinalize(void) {
 }
 
 void baselineScroller(Scroller *s) {
-    s->active = false;
     s->initialized = true;
     s->nystagma = true;
     s->lolimit = 1000;
     s->hilimit = -1000;
-    strcpy(s->text, "");
+    if (NULL != s->text)
+        strcpy(s->text, "");
     s->xpos = maxXPixel();
     s->forward = false;
-    s->pause = false;
     s->textPix = 0;
 }
 
@@ -604,14 +624,13 @@ void clearScrollable(int line) {
 
 bool putScrollable(int line, char *buff) {
 
-    setScrollActive(line, false);
-
     int tlen = strlen(buff);
     bool ret = true;
     bool goscroll = (maxCharacter() < tlen);
     if (!goscroll) {
         putTextToCenter(scroll[line].ypos, buff);
         pthread_mutex_lock(&scroll[line].scrollox);
+        strcpy(scroll[line].text, "");
         scroll[line].textPix = -1;
         pthread_mutex_unlock(&scroll[line].scrollox);
         ret = false;
@@ -620,7 +639,6 @@ bool putScrollable(int line, char *buff) {
         baselineScroller(&scroll[line]);
         sprintf(scroll[line].text, " %s ", buff); // pad ends
         scroll[line].textPix = tlen * CHAR_WIDTH;
-        scroll[line].active = true;
         pthread_mutex_unlock(&scroll[line].scrollox);
     }
     return ret;
@@ -631,6 +649,7 @@ bool putScrollable(int line, char *buff) {
 
 // ?? thread safe ??
 void *scrollLine(void *input) {
+
     sme *s;
     s = ((struct Scroller *)input);
     int timer = SCAN_TIME;
@@ -638,7 +657,10 @@ void *scrollLine(void *input) {
     while (true) {
         timer = SCAN_TIME;
         pthread_mutex_lock(&s->scrollox);
-        if (s->active) {
+
+        if (scrollerActive() && 
+            ((int)strlen(s->text) > maxCharacter())) {
+
             // cylon sweep
             if (s->forward)
                 s->xpos++;
@@ -677,17 +699,11 @@ void *scrollLine(void *input) {
 }
 
 void setScrollActive(int line, bool active) {
-    pthread_mutex_lock(&scroll[line].scrollox);
-    if (NULL != scroll[line].text)
-        if (active != scroll[line].active)
-            scroll[line].active = active;
-    pthread_mutex_unlock(&scroll[line].scrollox);
+    return;
 }
 
 void scrollerPause(void) {
-    for (int line = 0; line < MAX_LINES; line++) {
-        setScrollActive(line, false);
-    }
+    return;
 }
 
 void scrollerInit(void) {
@@ -796,22 +812,13 @@ void refreshDisplay(void) { shotAndDisplay(); }
 void refreshDisplay(void) { display.display(); }
 #endif
 
-bool activeScroller(void) {
-    bool ret = false;
-    for (int line = 0; line < MAX_LINES; line++) {
-        pthread_mutex_lock(&scroll[line].scrollox);
-        if (scroll[line].active) {
-            ret = true;
-        }
-        pthread_mutex_unlock(&scroll[line].scrollox);
-        if (ret)
-            break;
-    }
-    return ret;
+bool scrollerActive(void) {
+
+    return ((!isVisualizeActive())&&(isPlaying()));
 }
 
 void refreshDisplayScroller(void) {
-    if (activeScroller())
+    if (scrollerActive())
         display.display();
 }
 
@@ -910,7 +917,10 @@ void *scrollLineUgh(void *input) {
     while (true) {
         timer = SCAN_TIME;
         pthread_mutex_lock(&s->scrollox);
-        if (s->active) {
+
+// PARKED CODE HERE
+        if (scrollerActive() && 
+            ((int)strlen(s->text) > maxCharacter())) {
             s->xpos--;
             if (s->xpos + s->textPix <= maxXPixel())
                 s->xpos += s->textPix;

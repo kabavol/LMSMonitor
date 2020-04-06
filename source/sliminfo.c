@@ -347,10 +347,25 @@ void *serverPolling(void *x_voidptr) {
                             tagStore[ARTIST].tagData, MAXTAG_DATA);
                     tagStore[ALBUMARTIST].valid = true;
                     tagStore[ALBUMARTIST].changed = true;
+                }else{
+                    strncpy(tagStore[ALBUMARTIST].tagData,
+                            tagStore[CONDUCTOR].tagData, MAXTAG_DATA);
+                    tagStore[ALBUMARTIST].valid = true;
+                    tagStore[ALBUMARTIST].changed = true;
                 }
             } else if (strcmp(variousArtist, tagStore[ALBUMARTIST].tagData) ==
                        0) {
+                strncpy(tagStore[ALBUMARTIST].tagData,
+                            tagStore[ARTIST].tagData, MAXTAG_DATA);
                 tagStore[ALBUMARTIST].valid = true;
+                tagStore[ALBUMARTIST].changed = true;
+            }
+
+            if (isEmptyStr(tagStore[ALBUMARTIST].tagData)) {
+                strncpy(tagStore[ALBUMARTIST].tagData,
+                        tagStore[ARTIST].tagData, MAXTAG_DATA);
+                tagStore[ALBUMARTIST].valid = true;
+                tagStore[ALBUMARTIST].changed = true;
             }
 
             refreshed();

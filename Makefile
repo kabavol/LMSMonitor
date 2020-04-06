@@ -26,8 +26,7 @@ default: $(TARGET)
 
 all: std default
 
-
-OBJECTS = $(patsubst %.c, %.o, $(wildcard ./source/*.cpp)) $(patsubst %.c, %.o, $(wildcard ./source/*.c))
+OBJECTS = $(patsubst %.cpp, %.o, $(wildcard ./source/*.cpp)) $(patsubst %.cc, %.o, $(wildcard ./source/*.cc)) $(patsubst %.c, %.o, $(wildcard ./source/*.c))
 OBJECTSCC = $(OBJECTS) $(patsubst %.cc, %.o, $(wildcard ./sse/*.cc)) $(patsubst %.c, %.o, $(wildcard ./sse/*.c))
 HEADERS = $(wildcard ./source/*.h)
 HEADERSCC = $(HEADERS) $(wildcard ./sse/*.h)

@@ -151,50 +151,37 @@ char *currentMeter(void)
 }
 
 int visgood = 0;
+bool lastTest = false;
 void visualize(struct vissy_meter_t *vissy_meter) {
 
-/*
-char stb[BSIZE];
-sprintf(stb,"(active)%02d (pop)%02d :: (data) %2s -> (active) %2s\n",
-vis_is_active, visgood, vissy_meter->meter_type, vis_mode); 
-putMSG(stb,LL_INFO);
-*/
-    if ((vis_is_active) && (visgood < 4)) {
+    if (vis_is_active) {
+        if (visgood < 4) {
 
-        if (isEmptyStr(downmix))
-            strcpy(downmix, "N");
+            if (isEmptyStr(downmix))
+                strcpy(downmix, "N");
 
-        // bug workaround
-        if (isEmptyStr(vis_mode))
-            currentMeter();
+            // bug workaround
+            if (isEmptyStr(vis_mode))
+                currentMeter();
 
-        if (strncmp(VMODE_VU, vissy_meter->meter_type, 2) == 0) {
-            // support vu or pk
-            /*
-printf("%s-%s processing ...\n",vis_mode, vissy_meter->meter_type);
-                printf ("%2s: %1s -> %6d %6d %6d, ", 
-                    vissy_meter->meter_type,
-                    vissy_meter->channel_name[0], 
-                    (int)vissy_meter->sample_accum[0], 
-                    (int)vissy_meter->rms_bar[0], 
-                    (int)vissy_meter->dBfs[0]);
-                printf ("%1s -> %6d %6d %6d\n", 
-                    vissy_meter->channel_name[1], 
-                    (int)vissy_meter->sample_accum[1], 
-                    (int)vissy_meter->rms_bar[1], 
-                    (int)vissy_meter->dBfs[1]);
+            if (strncmp(VMODE_VU, vissy_meter->meter_type, 2) == 0) {
+                // support vu or pk
+                if (strncmp(vis_mode, VMODE_VU, 2) == 0)
+                    stereoVU(vissy_meter, downmix);
+                else
+                    if (strncmp(vis_mode, VMODE_PK, 2) == 0)
+                        stereoPeakH(vissy_meter, downmix);
+            }
+            else 
+                if (strncmp(vis_mode,vissy_meter->meter_type,2) == 0)
+                    stereoSpectrum(vissy_meter, downmix);
 
-*/
-            if (strncmp(vis_mode, VMODE_VU, 2) == 0)
-                stereoVU(vissy_meter, downmix);
-            else
-                if (strncmp(vis_mode, VMODE_PK, 2) == 0)
-                    stereoPeakH(vissy_meter, downmix);
         }
-        else 
-            if (strncmp(vis_mode,vissy_meter->meter_type,2) == 0)
-                stereoSpectrum(vissy_meter, downmix);
-
+        lastTest = true;
+    } else {
+        if (lastTest) // transition
+            clearDisplay();
+        lastTest = false;
     }
 
     // stream is too fast for display - a 1:20 consumption ratio plays happy w/ display
