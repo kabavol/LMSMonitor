@@ -40,7 +40,7 @@
 #ifndef JSMN_STATIC
 #define JSMN_STATIC
 #endif
-#include "../source/jsmn.h"
+#include "../src/jsmn.h"
 
 #include "display.h"
 
@@ -269,7 +269,7 @@ void brightnessEvent(void) {
     if (isp_locale.brightness < 0)
     {
         strftime(buffer, 30, "%m-%d-%Y %T", localtime(&seconds));
-        sprintf(stb, "Sunrise ........: %s\n", buffer);
+        sprintf(stb, "%s %s\n", labelIt("Sunrise", LABEL_WIDTH, "."), buffer);
         putMSG(stb, LL_INFO);
     }
 
@@ -282,7 +282,7 @@ void brightnessEvent(void) {
     if (isp_locale.brightness < 0)
     {
         strftime(buffer, 30, "%m-%d-%Y %T", localtime(&seconds));
-        sprintf(stb, "Sunset .........: %s\n", buffer);
+        sprintf(stb, "%s %s\n", labelIt("Sunset", LABEL_WIDTH, "."), buffer);
         putMSG(stb, LL_INFO);
     }
 
@@ -312,9 +312,10 @@ void brightnessEvent(void) {
     if (current != isp_locale.brightness)
     {
         if (isp_locale.brightness == isp_locale.nightbright)
-            putMSG("Set Display ....: Night Mode\n", LL_INFO);
+            sprintf(stb, "%s Night Mode\n", labelIt("Set Display", LABEL_WIDTH, "."));
         else
-            putMSG("Set Display ....: Day Mode\n", LL_INFO);
+            sprintf(stb, "%s Day Mode\n", labelIt("Set Display", LABEL_WIDTH, "."));
+        putMSG(stb, LL_INFO);
         displayBrightness(isp_locale.brightness);
     }
 }
@@ -572,7 +573,10 @@ bool initAstral(void) {
 
     if (http_get(host, port, uri, (char *)lookupIP)) {
         if (!isEmptyStr(lookupIP)) {
-            sprintf(stb, "Provider IP ....: %s\n", lookupIP);
+
+            sprintf(stb, "%s %s\n", 
+                labelIt("Provider IP", LABEL_WIDTH, "."), 
+                lookupIP);
             putMSG(stb, LL_INFO);
 
             // now for provider details, inclusive lat/lon
@@ -581,14 +585,21 @@ bool initAstral(void) {
             char jsonData[4096] = {0};
 
             if (http_get(host, port, uri, (char *)jsonData)) {
+
                 // parse
                 parseISP(jsonData, &isp_locale);
+
                 sprintf(stb,
-                        "Reported TZ ....: %s\n"
-                        "Longitude ......: %9.4f\n"
-                        "Latitude .......: %9.4f\n",
-                        isp_locale.Timezone, isp_locale.Longitude,
-                        isp_locale.Latitude);
+                    "%s %s\n"
+                    "%s %9.4f\n"
+                    "%s %9.4f\n",
+                    labelIt("Reported TZ", LABEL_WIDTH, "."), 
+                    isp_locale.Timezone,
+                    labelIt("Longitude", LABEL_WIDTH, "."), 
+                    isp_locale.Longitude,
+                    labelIt("Latitude", LABEL_WIDTH, "."), 
+                    isp_locale.Latitude);
+
                 putMSG(stb, LL_INFO);
 
                 isp_locale.daybright = MAX_BRIGHTNESS;

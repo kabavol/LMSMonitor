@@ -72,6 +72,20 @@ double rad2Deg(double angRad) { return (180.0 * angRad / PI); }
 
 #ifdef __arm__
 
+void printOledSetup(void)
+{
+    char stb[BSIZE] = {0};
+    if (0 == oledAddress)
+        oledAddress = display.getOledAddress();
+    sprintf(stb, "%s (%d) %s\n%s 0x%x\n", 
+        labelIt("OLED Driver", LABEL_WIDTH, "."), 
+        oledType,
+        oled_type_str[oledType],
+        labelIt("OLED Address", LABEL_WIDTH, "."), 
+        oledAddress);
+    putMSG(stb, LL_INFO);
+}
+
 void printOledTypes(void) {
     printf("Supported OLED types:\n");
     for (int i = 0; i < OLED_LAST_OLED; i++)
@@ -80,7 +94,7 @@ void printOledTypes(void) {
                 fprintf(stdout, "    %1d* ..: %s\n", i, oled_type_str[i]);
             else
                 fprintf(stdout, "    %1d ...: %s\n", i, oled_type_str[i]);
-    printf("* is default\n");
+    printf("\n* is default\n");
 }
 
 bool setOledType(int ot) {
@@ -89,6 +103,7 @@ bool setOledType(int ot) {
     oledType = ot;
     return true;
 }
+
 bool setOledAddress(int8_t oa) {
     if (oa <= 0 )
         return false;

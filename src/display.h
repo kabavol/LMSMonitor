@@ -94,6 +94,7 @@ typedef struct Scroller {
     void *(*scrollMe)(void *input);
 } sme;
 
+void printOledSetup(void);
 void printOledTypes(void);
 bool setOledType(int ot);
 bool setOledAddress(int8_t oa);

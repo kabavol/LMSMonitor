@@ -5,14 +5,14 @@ CC = g++
 
 CFLAGS4 = -g -Wall -Ofast -lrt -fPIC -fno-rtti -mfpu=neon-vfpv4 -fpermissive \
 -Wstringop-truncation -Wno-unused-variable -Wno-unused-parameter \
--mfloat-abi=hard -march=armv7-a -mtune=cortex-a7 -ffast-math -pipe -I. -I./source
+-mfloat-abi=hard -march=armv7-a -mtune=cortex-a7 -ffast-math -pipe -I. -I./src
 
 CFLAGS3 = -g -Wall -Ofast -lrt -fPIC -fno-rtti -fpermissive -Wno-unused-variable \
 -Wno-unused-parameter -Wstringop-truncation -mfpu=vfp -mfloat-abi=hard \
--march=armv6zk -mtune=arm1176jzf-s -funsafe-math-optimizations -ffast-math -pipe -I. -I./source
+-march=armv6zk -mtune=arm1176jzf-s -funsafe-math-optimizations -ffast-math -pipe -I. -I./src
 
-CAPTURE_BMP = -DCAPTURE_BMP -I./source -I./capture
-SSE_VIZDATA = -DSSE_VIZDATA -I./source -I./sse
+CAPTURE_BMP = -DCAPTURE_BMP -I./src -I./capture
+SSE_VIZDATA = -DSSE_VIZDATA -I./src -I./sse
 
 
 bin:
@@ -26,9 +26,9 @@ default: $(TARGET)
 
 all: std default
 
-OBJECTS = $(patsubst %.cpp, %.o, $(wildcard ./source/*.cpp)) $(patsubst %.cc, %.o, $(wildcard ./source/*.cc)) $(patsubst %.c, %.o, $(wildcard ./source/*.c))
+OBJECTS = $(patsubst %.cpp, %.o, $(wildcard ./src/*.cpp)) $(patsubst %.cc, %.o, $(wildcard ./src/*.cc)) $(patsubst %.c, %.o, $(wildcard ./src/*.c))
 OBJECTSCC = $(OBJECTS) $(patsubst %.cc, %.o, $(wildcard ./sse/*.cc)) $(patsubst %.c, %.o, $(wildcard ./sse/*.c))
-HEADERS = $(wildcard ./source/*.h)
+HEADERS = $(wildcard ./src/*.h)
 HEADERSCC = $(HEADERS) $(wildcard ./sse/*.h)
 
 %.o: %cc $(HEADERSCC)
@@ -56,13 +56,13 @@ $(TARGETSSE): coresse $(HEADERSCC) $(OBJECTSCC)
 
 clean:
 	-rm -f capture/*.o
-	-rm -f source/*.o
+	-rm -f src/*.o
 	-rm -f *.o
 	-rm -f $(TARGET)
 
 cleansse:
 	-rm -f sse/digest-sse.c
-	-rm -f source/*.o
+	-rm -f src/*.o
 	-rm -f sse/*.o
 	-rm -f *.o
 	-rm -f $(TARGETSSE)

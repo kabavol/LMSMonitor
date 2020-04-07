@@ -37,11 +37,11 @@ All text above, and the splash screen below must be included in any redistributi
 #include "./Adafruit_GFX.h"
 #include "./ArduiPi_OLED.h"
 
-  // 8x8 Font ASCII 32 - 127 Implemented
-// Users can modify this to support more characters(glyphs)
+// 8x8 Font ASCII 32 - 127 Implemented
+// Users can modify this to support more characters (glyphs)
 // BasicFont is placed in code memory.
 
-// This font can be freely used without any restriction(It is placed in public domain)
+// This font can be freely used without any restriction (It is placed in public domain)
 const unsigned char seedfont[][8] =
 {
   {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},
@@ -321,6 +321,7 @@ bool ArduiPi_OLED::select_oled(uint8_t OLED_TYPE, int8_t i2c_addr)
     default:
       return false;
     break;
+
   }
 
   // Override address if necessary
@@ -410,6 +411,12 @@ bool ArduiPi_OLED::init(int8_t RST, uint8_t OLED_TYPE, int8_t i2c_addr)
   return true;
 
 }
+
+int8_t ArduiPi_OLED::getOledAddress(void)
+{
+  return _i2c_addr;
+}
+
 
 bool ArduiPi_OLED::init(int8_t RST, uint8_t OLED_TYPE)
 {
@@ -675,7 +682,6 @@ void ArduiPi_OLED::setBrightness(uint8_t Brightness)
    sendCommand(SSD_Set_ContrastLevel);
    sendCommand(Brightness);
 }
-
 
 void ArduiPi_OLED::invertDisplay(uint8_t i) 
 {

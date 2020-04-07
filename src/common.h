@@ -24,12 +24,14 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #define BSIZE 4096
 
 #define APPNAME "LMSMonitor"
-#define VERSION "0.4.24"
+#define VERSION "0.4.25"
 
+#define LABEL_WIDTH 22
 #define LL_QUIET 0
 #define LL_INFO 1
 #define LL_DEBUG 2
@@ -55,8 +57,9 @@ void strupr(char *s);
 int piVersion(void);
 
 void dodelay(uint16_t d);
-
-
 void leftRotatebyOne(char *arr);
+
+char *strrep(size_t n, const char *s);
+char *labelIt(const char *label, const size_t len, const char *pad);
 
 #endif

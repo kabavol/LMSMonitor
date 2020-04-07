@@ -441,7 +441,10 @@ int main(int argc, char *argv[]) {
 #endif
 
     signature(argv[0]);
-    thatMAC = player_mac();
+#ifdef __arm__
+    printOledSetup();  // feedback and "debug"
+#endif
+    thatMAC = playerMAC();
 
     // init here - splash delay mucks the refresh flagging
     if ((tags = initSliminfo(playerName)) == NULL) {
@@ -485,6 +488,7 @@ int main(int argc, char *argv[]) {
     // if we had a clean setup
     // init visualizer mode and
     // timer toggle
+
     if (lmsopt.visualize) {
         sayVisList();
         size_t viztimer;
@@ -494,14 +498,16 @@ int main(int argc, char *argv[]) {
                                (void *)&lmsopt);
         vizcycletimer = timer_start(99 * 1000, cycleVisualize, TIMER_PERIODIC,
                                     (void *)&lmsopt);
-    } else {
-        putMSG("Visualization ..: Inactive\n", LL_INFO);
-    }
 
-    char buff[50];
-    sprintf(buff, "Downmix VU+SA ..: %s\n", 
-        ((lmsopt.downmix)?"Yes":"No"));
-    putMSG(buff, LL_INFO);    
+        sprintf(stbl, "%s %s\n", 
+            labelIt("Downmix VU+SA", LABEL_WIDTH, "."), 
+            ((lmsopt.downmix)?"Yes":"No"));
+
+    } else {
+        sprintf(stbl, "%s Inactive\n", 
+            labelIt("Visualization", LABEL_WIDTH, ".")); 
+    }
+    putMSG(stbl, LL_INFO);    
 
 #endif
 

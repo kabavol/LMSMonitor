@@ -180,6 +180,7 @@ class ArduiPi_OLED : public Adafruit_GFX
  
   int16_t getOledWidth(void);
   int16_t getOledHeight(void);
+  int8_t  getOledAddress(void);
 
   void startscrollright(uint8_t start, uint8_t stop);
   void startscrollleft(uint8_t start, uint8_t stop);
@@ -207,9 +208,6 @@ class ArduiPi_OLED : public Adafruit_GFX
   void fastI2Cwrite(uint8_t c);
   void fastI2Cwrite(char* tbuf, uint32_t len);
   void slowSPIwrite(uint8_t c);
-
-
-
 
   //volatile uint8_t *dcport;
   //uint8_t dcpinmask;

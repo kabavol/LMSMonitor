@@ -54,7 +54,7 @@ typedef enum {
 
 void closeSliminfo(void);
 tag *initSliminfo(char *playerName);
-char *player_mac(void);
+char *playerMAC(void);
 char *getPlayerIP(void);
 void error(const char *msg);
 void askRefresh(void);

@@ -87,7 +87,9 @@ void sayVisList(void)
     }
     if (!(isEmptyStr(say)))
     {
-        sprintf(stb, "Visualization ..: %s\n", say);
+        sprintf(stb, "%s %s\n", 
+            labelIt("Visualization", LABEL_WIDTH, "."),
+            say);
         putMSG(stb, LL_INFO);
     }
 }

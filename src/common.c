@@ -33,6 +33,36 @@ int textOut = false;
 
 void dodelay(uint16_t d) { usleep(d*1000); }
 
+char *strrep(size_t n, const char *s) 
+{
+
+  size_t slen = strlen(s);
+  char *dest = malloc(n*slen+1);
+ 
+  char *p = dest;
+  for ( int i=0; i < n; ++i, p += slen ) {
+    memcpy(p, s, slen);
+  }
+  *p = '\0';
+  return dest;
+}
+
+char *labelIt(const char *label, const size_t len, const char *pad)
+{
+
+    size_t l = strlen(label);    
+    if (l > len)
+    {
+        return (char *)label;
+    }
+    else
+    {
+        char *dest = malloc(len+1);
+        sprintf(dest, "%s %s:", label, strrep((len-l)-2, pad));
+        return dest;
+    }
+}
+
 int incVerbose(void) {
     if (verbose < INT_MAX) {
         verbose++;

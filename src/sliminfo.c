@@ -60,6 +60,7 @@ pthread_t sliminfoThread;
 char *getPlayerIP(void){ return (char *)playerIP; }
 
 int discoverPlayer(char *playerName) {
+
     char qBuffer[BSIZE];
     char aBuffer[BSIZE];
     int bytes;
@@ -84,14 +85,16 @@ int discoverPlayer(char *playerName) {
 
         int playerCount = -1;
         sscanf(aBuffer, "%*[^A]A%d[^ ]", &playerCount);
-        if (playerCount>0) // we have players, find our guy ...
+        if (playerCount>0) // we have players, find our guy
         {
             sprintf(qBuffer,"3A%s ",playerName);
             if (strncmp(aBuffer, qBuffer, strlen(qBuffer)) == 0) {
                 sprintf(aBuffer, "Player specified \"%s\" not found, supply corrected name!", playerName);
                 abortMonitor(aBuffer);
             }
-            printf("Player Count ...: %d\n", playerCount);
+            sprintf(stb, "%s %d\n", 
+                labelIt("Player Count", LABEL_WIDTH, "."), playerCount);
+            putMSG(stb, LL_INFO); 
             char pind[15] = "playerindex%3A";
             multi_tok_t mt = multi_tok_init();
             char *player = multi_tok(aBuffer, &mt, pind);
@@ -123,9 +126,14 @@ int discoverPlayer(char *playerName) {
         return -1;
     }
 
-    sprintf(stb, "Player Name ....: %s\nPlayer ID ......: %s\nPlayer IP ......: %s\n",
-            playerName, playerID, playerIP);
-    putMSG(stb, LL_INFO);
+    sprintf(stb, "%s %s\n%s %s\n%s %s\n", 
+        labelIt("Player Name", LABEL_WIDTH, "."), 
+        playerName,
+        labelIt("Player ID", LABEL_WIDTH, "."), 
+        playerID,
+        labelIt("Player IP", LABEL_WIDTH, "."), 
+        playerIP);
+    putMSG(stb, LL_INFO); 
 
     return 0;
 }
@@ -187,10 +195,13 @@ in_addr_t getServerAddress(void) {
                 socklen_t slen = sizeof(s);
                 recvfrom(disc_sock, readbuf, 10, 0, (struct sockaddr *)&s,
                          &slen);
-                sprintf(stb, "LMS (Server) responded:\nServer IP ......: %s:%d\n",
-                        inet_ntoa(s.sin_addr), ntohs(s.sin_port));
+                sprintf(stb, 
+                    "LMS (Server) responded:\n%s %s:%d\n",
+                    labelIt("Server IP", LABEL_WIDTH, "."),
+                    inet_ntoa(s.sin_addr), ntohs(s.sin_port));
                 putMSG(stb, LL_INFO);
             }
+
         } while (s.sin_addr.s_addr == 0);
 
         close(disc_sock);
@@ -199,12 +210,9 @@ in_addr_t getServerAddress(void) {
     return s.sin_addr.s_addr;
 }
 
-char *player_mac(void) { return playerID; }
-
+char *playerMAC(void) { return playerID; }
 void askRefresh(void) { refreshRequ = true; }
-
 bool isRefreshed(void) { return !refreshRequ; }
-
 void refreshed(void) { refreshRequ = false; }
 
 int connectServer(void) {
