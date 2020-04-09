@@ -64,6 +64,7 @@
 #include "astral.h"
 #include "lmsmonitor.h"
 // clang-format on
+struct MonitorAttrs *glopt;
 
 #endif
 
@@ -96,7 +97,7 @@ void before_exit(void) {
         freed = true;
         closeSliminfo();
 #ifdef __arm__
-        //scrollerPause(); // stop any scrolling prior to clear - no orphans!
+        scrollerPause();
         clearDisplay();
         closeDisplay();
 #ifdef SSE_VIZDATA
@@ -144,12 +145,10 @@ void attach_signal_handler(void) {
 }
 
 // "page" definitions, no break-out for visualizer
-#ifdef __arm__
-void playingPage(MonitorAttrs *lmsopt);
-void nagSaverPage(MonitorAttrs *lmsopt);
-void clockPage(MonitorAttrs *lmsopt);
-#else
 void playingPage(void);
+#ifdef __arm__
+void saverPage(void);
+void clockPage(void);
 #endif
 
 static char *get_mac_address() {
@@ -197,33 +196,38 @@ static char *get_mac_address() {
 
 void signature(char *executable) {
     char buff[128] = {0};
-    sprintf(buff,"%s",rindex(executable,'/'));
+    sprintf(buff, "%s", rindex(executable, '/'));
     if (!isEmptyStr(buff))
-        memmove(buff, buff+1, strlen(buff));
+        memmove(buff, buff + 1, strlen(buff));
     else
         strcpy(buff, executable);
-    printf("This is %s (%s) - built %s %s.\n", buff, VERSION, __DATE__, __TIME__);
+    printf("This is %s (%s) - built %s %s.\n", buff, VERSION, __DATE__,
+           __TIME__);
 }
 
 void print_help(char *executable) {
-    printf("%s Ver. %s\n"
-           "Usage -n \"player name\" [options]\n\n"
-           "options:\n"
-           " -a all-in-one. One screen to rule them all. Track and visualizer on one screen (pi only)\n"
-           " -b automatically set brightness of display at sunset and sunrise (pi only)\n"
-           " -c display clock when not playing (Pi only)\n"
-           " -d downmix audio and display a single large meter, SA and VU only\n"
-           " -i increment verbose level\n"
-           " -k show CPU temperature (clock mode)\n"
-           " -m if visualization on specify one or more meter modes, sa, vu, "
-           "pk, or rn for random\n"
-           " -o specified OLED \"driver\" type (see options below)\n"
-           " -r show remaining time rather than track time\n"
-           " -t enable print info to stdout\n"
-           " -v enable visualization sequence when playing (Pi only)\n"
-           " -x specify OLED address if default does not work - use i2cdetect to find address (Pi only)\n"
-           " -z no splash screen\n\n",
-           APPNAME, VERSION);
+    printf(
+        "%s Ver. %s\n"
+        "Usage -n \"player name\" [options]\n\n"
+        "options:\n"
+        " -a all-in-one. One screen to rule them all. Track and visualizer on "
+        "one screen (pi only)\n"
+        " -b automatically set brightness of display at sunset and sunrise (pi "
+        "only)\n"
+        " -c display clock when not playing (Pi only)\n"
+        " -d downmix audio and display a single large meter, SA and VU only\n"
+        " -i increment verbose level\n"
+        " -k show CPU load and temperature (clock mode)\n"
+        " -m if visualization on specify one or more meter modes, sa, vu, "
+        "pk, or rn for random\n"
+        " -o specifies OLED \"driver\" type (see options below)\n"
+        " -r show remaining time rather than track time\n"
+        " -S scrollermode: 0 (cylon), 1 (infinity left), 2 infinity (right)\n"
+        " -v enable visualization sequence when playing (Pi only)\n"
+        " -x specifies OLED address if default does not work - use i2cdetect to "
+        "find address (Pi only)\n"
+        " -z no splash screen\n\n",
+        APPNAME, VERSION);
 #ifdef __arm__
     printOledTypes();
 #endif
@@ -244,18 +248,153 @@ void setupPlayMode(void) {
 
 bool isPlaying(void) { return playing; }
 
+
+bool acquireOptLock(void) 
+{
+
+    char buff[128] = {0};
+    bool ret = true;
+    if (glopt)
+    {
+        uint8_t test = 0;
+        while (pthread_mutex_trylock(&glopt->update) != 0)
+        {
+            if (test>30)
+            {
+                ret = false;
+                strcpy(buff,"options mutex acquire failed\n");
+                putMSG(buff, LL_DEBUG);
+                break;
+            }
+            usleep(10);
+            test++;
+        }
+    }
+    return ret;
+
+}
+
+void softClockRefresh(bool rc=true)
+{
+    if (rc != glopt->refreshClock)
+        if (acquireOptLock()) {
+            glopt->refreshClock = rc;
+            pthread_mutex_unlock(&glopt->update);
+        }
+}
+
+void softPlayRefresh(bool r=true)
+{
+    if (r != glopt->refreshLMS)
+        if (acquireOptLock()) {
+            glopt->refreshLMS = r;
+            pthread_mutex_unlock(&glopt->update);
+        }
+}
+
+void setLastTime(char *tm)
+{
+    if (strcmp(glopt->lastTime, tm) != 0)
+    {
+        if (acquireOptLock()) {
+            drawTimeText2(tm, glopt->lastTime, ((glopt->showTemp) ? -1 : 1));
+            strncpy(glopt->lastTime, tm, 32);
+            pthread_mutex_unlock(&glopt->update);
+        }
+    }
+}
+
+void setSleepTime(int st)
+{
+    if(st != glopt->sleepTime)
+        if (acquireOptLock()) {
+            glopt->sleepTime = st;
+            pthread_mutex_unlock(&glopt->update);
+        }
+}
+
+void putCPUMetrics(int y)
+{
+    if (acquireOptLock()) {
+        sprintf(glopt->lastLoad, "%.0f%%", cpuLoad());
+        sprintf(glopt->lastTemp, "%.1fC", cpuTemp());
+        char buff[BSIZE] = {0};
+        sprintf(buff, "%s %s", glopt->lastLoad, glopt->lastTemp);
+        putTextCenterColor(y, buff, WHITE);
+        pthread_mutex_unlock(&glopt->update);
+    }
+}
+
+void softClockReset(bool cd=true)
+{
+    if (acquireOptLock()) {
+        strcpy(glopt->lastTime, "XX:XX");
+        strcpy(glopt->lastTemp, "00000");
+        strcpy(glopt->lastLoad, "00000");
+        glopt->refreshClock = true;
+        pthread_mutex_unlock(&glopt->update);
+        if (cd)
+            clearDisplay();
+    }
+}
+
+void setLastVolume(int vol)
+{
+    if (vol != glopt->lastVolume)
+        if (acquireOptLock()) {
+            glopt->lastVolume = vol;
+            pthread_mutex_unlock(&glopt->update);
+        }
+}
+
+void setLastBits(char *lb)
+{
+    if (strcmp(lb, glopt->lastBits) !=0)
+        if (acquireOptLock()) {
+            strncpy(glopt->lastBits, lb, 32);
+            pthread_mutex_unlock(&glopt->update);
+        }
+}
+
+void softPlayReset(void)
+{
+    if (acquireOptLock()) {
+        glopt->lastBits[0] = 0;
+        glopt->lastVolume = -1;
+        glopt->refreshLMS = true;
+        pthread_mutex_unlock(&glopt->update);
+    }
+}
+
+void setNagDone(bool refresh=true)
+{
+    if (acquireOptLock()) {
+        if (refresh)
+            glopt->refreshLMS = true;
+        glopt->nagDone = true;
+        pthread_mutex_unlock(&glopt->update);
+    }
+}
+
 void toggleVisualize(size_t timer_id, void *user_data) {
 
-    MonitorAttrs *lmsopt = user_data;
-    if (lmsopt->visualize) {
+    instrument(__LINE__, __FILE__, "toggleVisualize");
+
+    if (glopt->visualize) {
         if (playing) {
+            instrument(__LINE__, __FILE__, "test Visualize");
             if (isVisualizeActive()) {
+                instrument(__LINE__, __FILE__, "deactivate Visualize");
                 deactivateVisualizer();
-                softlySoftly = true;
             } else {
-                resetDisplay(1);
+                instrument(__LINE__, __FILE__, "scroller pause");
+                if (activeScroller()) {
+                    scrollerPause();
+                }
+                instrument(__LINE__, __FILE__, "activate Visualize");
                 activateVisualizer();
             }
+            softlySoftly = true;
             clearDisplay();
         }
     }
@@ -265,18 +404,21 @@ void checkAstral(size_t timer_id, void *user_data) { brightnessEvent(); }
 
 void cycleVisualize(size_t timer_id, void *user_data) {
 
-    MonitorAttrs *lmsopt = user_data;
-    if (lmsopt->visualize) {
+    instrument(__LINE__, __FILE__, "cycleVisualize");
+    if (glopt->visualize) {
+        instrument(__LINE__, __FILE__, "Visualize Is On");
         if (playing) {
-            if (isVisualizeActive()) 
-            {
+            instrument(__LINE__, __FILE__, "isPlaying");
+            if (isVisualizeActive()) {
+                instrument(__LINE__, __FILE__,
+                           "Active Visualization in Progress");
                 vis_type_t current = {0};
                 vis_type_t updated = {0};
                 strncpy(current, getVisMode(), 2);
                 strncpy(updated, currentMeter(), 2);
-                if (strcmp(current, updated) != 0)
-                {
-                    lmsopt->refreshLMS = true;
+                if (strcmp(current, updated) != 0) {
+                    softlySoftly = true;
+                    softClear();
                     clearDisplay();
                 }
             } else {
@@ -293,12 +435,11 @@ void cycleVisualize(size_t timer_id, void *user_data) {
 int main(int argc, char *argv[]) {
 
     // direct path for help
-    if( argc == 2 )
-    {
-        if ((strncmp(argv[1],"-h",2) == 0) ||
-            (strncmp(argv[1],"--h",3) == 0)) {
-                print_help(argv[0]);
-                exit(EXIT_SUCCESS);
+    if (argc == 2) {
+        if ((strncmp(argv[1], "-h", 2) == 0) ||
+            (strncmp(argv[1], "--h", 3) == 0)) {
+            print_help(argv[0]);
+            exit(EXIT_SUCCESS);
         }
     }
 
@@ -306,13 +447,15 @@ int main(int argc, char *argv[]) {
     // should only do this if we have v param
     if (geteuid() != 0) {
         printf("\nPlease run as root (sudo) to "
-        "access shared memory (visualizer)\n\n");
+               "access shared memory (visualizer)\n\n");
         exit(EXIT_FAILURE);
     }
 
     attach_signal_handler();
 
 #ifdef __arm__
+    instrument(__LINE__, __FILE__, "Initialize");
+
     struct MonitorAttrs lmsopt = {
         .oledAddrL = 0x3c,
         .oledAddrR = 0x3c,
@@ -335,15 +478,21 @@ int main(int argc, char *argv[]) {
         .lastVolume = -1,
     };
 
+    if (pthread_mutex_init(&lmsopt.update, NULL) != 0) {
+        closeDisplay();
+        printf("\nLMS Options mutex init has failed\n");
+        exit(EXIT_FAILURE);
+    }
+
     strcpy(lmsopt.lastBits, "LMS");
     strcpy(lmsopt.lastTemp, "00000");
-    strcpy(lmsopt.lastTime, "XX:XX"); // non-matching time digits (we compare one by one)!
+    strcpy(lmsopt.lastTime, "XX:XX");
+
+    glopt = &lmsopt;
 
 #endif
 
     char *playerName = NULL;
-
-    long lastVolume = -10;
     int aName;
     char *thatMAC = NULL;
     char *thisMAC = get_mac_address();
@@ -356,7 +505,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     opterr = 0;
-    while ((aName = getopt(argc, argv, "n:o:m:x:B:abcdhikprtvz")) != -1) {
+    while ((aName = getopt(argc, argv, "n:o:m:x:B:S:abcdhikprtvz")) != -1) {
         switch (aName) {
             case 'n': playerName = optarg; break;
 
@@ -377,12 +526,8 @@ int main(int argc, char *argv[]) {
                     setOledType(oled);
                 }
                 break;
-            case 'a':
-                lmsopt.allInOne = true;
-                break;
-            case 'b':
-                lmsopt.astral = true;
-                break;
+            case 'a': lmsopt.allInOne = true; break;
+            case 'b': lmsopt.astral = true; break;
             case 'm':
                 setVisList(optarg);
                 lmsopt.meterMode = true;
@@ -409,6 +554,11 @@ int main(int argc, char *argv[]) {
                 break;
             case 'z': lmsopt.splash = false; break;
 
+            case 'S':
+                short sm; 
+                sscanf(optarg, "%d", &sm);
+                setScrollMode(sm); 
+                break;
             case 'B': printf("TODO\n"); break;
 
 #endif
@@ -441,8 +591,14 @@ int main(int argc, char *argv[]) {
 #endif
 
     signature(argv[0]);
+
 #ifdef __arm__
-    printOledSetup();  // feedback and "debug"
+    sprintf(stbl, "%s %s\n", 
+        labelIt("Verbosity", LABEL_WIDTH, "."),
+        getVerboseStr());
+    putMSG(stbl, LL_QUIET);
+    printOledSetup(); // feedback and "debug"
+    printScrollerMode(); // feedback and "debug"
 #endif
     thatMAC = playerMAC();
 
@@ -453,7 +609,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef __arm__
     // setup brightness event (sunrise/sunset)
-    if ((lmsopt.astral)&&(initAstral())) {
+    if ((lmsopt.astral) && (initAstral())) {
         size_t astraltimer;
         timer_initialize();
         astraltimer = timer_start(60 * 5 * 1000, checkAstral, TIMER_PERIODIC,
@@ -495,24 +651,21 @@ int main(int argc, char *argv[]) {
         size_t vizcycletimer;
         timer_initialize();
         viztimer = timer_start(60 * 1000, toggleVisualize, TIMER_PERIODIC,
-                               (void *)&lmsopt);
-        vizcycletimer = timer_start(99 * 1000, cycleVisualize, TIMER_PERIODIC,
-                                    (void *)&lmsopt);
+                               (void *)NULL);
+        vizcycletimer = timer_start(99 * 1000, cycleVisualize, TIMER_PERIODIC, 
+                               (void *)NULL);
 
-        sprintf(stbl, "%s %s\n", 
-            labelIt("Downmix VU+SA", LABEL_WIDTH, "."), 
-            ((lmsopt.downmix)?"Yes":"No"));
+        sprintf(stbl, "%s %s\n", labelIt("Downmix VU+SA", LABEL_WIDTH, "."),
+                ((lmsopt.downmix) ? "Yes" : "No"));
 
     } else {
-        sprintf(stbl, "%s Inactive\n", 
-            labelIt("Visualization", LABEL_WIDTH, ".")); 
+        sprintf(stbl, "%s Inactive\n",
+                labelIt("Visualization", LABEL_WIDTH, "."));
     }
-    putMSG(stbl, LL_INFO);    
+    putMSG(stbl, LL_INFO);
 
-#endif
+    clearDisplay(); // clears the  splash if shown
 
-#ifdef __arm__
-    clearDisplay(); // clear splash if shown
     // bitmap capture
 #ifdef CAPTURE_BMP
     //setSnapOn();
@@ -522,24 +675,26 @@ int main(int argc, char *argv[]) {
 
     while (true) {
 
-#ifdef __arm__
-        if (softlySoftly) {
-            softlySoftly = false;
-            lmsopt.refreshLMS = true;
-            lmsopt.refreshClock = true;
-            clearDisplay();
-        }
-#endif
-
         if (isRefreshed()) {
 
+#ifdef __arm__
+            instrument(__LINE__, __FILE__, "isRefreshed");
+            if (softlySoftly) {
+                softlySoftly = false;
+                softPlayReset();
+                softClockReset(false);
+                instrument(__LINE__, __FILE__, "Softly Softly <-");
+                clearDisplay(); // refreshDisplay();
+            }
+#endif
             playing = (strcmp("play", tags[MODE].tagData) == 0);
 
             if (playing) {
 
 #ifdef __arm__
+                instrument(__LINE__, __FILE__, "isPlaying");
                 if (!isVisualizeActive())
-                    playingPage(&lmsopt);
+                    playingPage();
                 else
                     setupPlayMode();
 #else
@@ -547,11 +702,13 @@ int main(int argc, char *argv[]) {
 #endif
             } else {
 #ifdef __arm__
-                //scrollerPause(); // we need to re-activate too - save state!!!
+                if (activeScroller()) {
+                    scrollerPause();
+                }
                 if (lmsopt.clock)
-                    clockPage(&lmsopt);
+                    clockPage();
                 else
-                    nagSaverPage(&lmsopt);
+                    saverPage();
 #endif
             } // playing
 
@@ -569,8 +726,9 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifdef __arm__
+
         if (lmsopt.sleepTime < 1)
-            lmsopt.sleepTime = SLEEP_TIME_LONG;
+            setSleepTime(SLEEP_TIME_LONG);
         dodelay(lmsopt.sleepTime);
 #else
         dodelay(SLEEP_TIME_LONG);
@@ -585,51 +743,38 @@ int main(int argc, char *argv[]) {
 #ifdef __arm__
 
 bool nagSetup = true;
-void nagSaverPage(MonitorAttrs *lmsopt) {
+void saverPage(void) {
 
     // musical notes floater
-    if (!lmsopt->nagDone) {
+    // only show this once at startup (non-clock)
+    if (!glopt->nagDone) {
         if (nagSetup)
             nagSaverSetup();
         nagSetup = false;
         nagSaverNotes();
-        lmsopt->sleepTime = SLEEP_TIME_SAVER;
-        lmsopt->refreshLMS = true;
+        setSleepTime(SLEEP_TIME_SAVER);
+        softPlayReset();
     }
 }
 #endif
 
 #ifdef __arm__
-void clockPage(MonitorAttrs *lmsopt) {
+void clockPage(void) {
 
     char buff[255];
 
-    if (lmsopt->refreshClock) {
-        resetDisplay(1);
-        strncpy(lmsopt->lastTime, "XX:XX", 6); // force, just in case
-        strncpy(lmsopt->lastTemp, "00000", 6); // force
-        lmsopt->refreshClock = false;
+    if (glopt->refreshClock) {
+        softClockReset();
+        softClockRefresh(false);
+        ///clearDisplay();
     }
-    lmsopt->refreshLMS = true;
-    lmsopt->nagDone = true;
 
-    lmsopt->sleepTime = SLEEP_TIME_LONG;
+    setNagDone();
+    softPlayReset();
+    setSleepTime(SLEEP_TIME_LONG);
 
-    if (lmsopt->showTemp)
-    {
-        sprintf(buff, "%.1fC", cpuTemp());
-        if (strcmp(lmsopt->lastTemp, buff) != 0) {
-            int y = 39;
-            if (strcmp(lmsopt->lastTemp, "00000") == 0) {
-                putTextToCenter(y, buff);
-            }
-            else {
-                putTextCenterColor(y, lmsopt->lastTemp, BLACK);
-                putTextCenterColor(y, buff, WHITE);
-            }
-            strncpy(lmsopt->lastTemp, buff, 9);
-        }
-    }
+    if (glopt->showTemp)
+        putCPUMetrics(39);
 
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -638,16 +783,12 @@ void clockPage(MonitorAttrs *lmsopt) {
 
     // time
     sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
-    if (strcmp(lmsopt->lastTime, buff) != 0) {
-        drawTimeText2(buff, lmsopt->lastTime);
-        strncpy(lmsopt->lastTime, buff, 32);
-    }
+    if (strcmp(glopt->lastTime, buff) != 0)
+        setLastTime(buff);
 
     // colon (blink)
-    if (loctm.tm_sec % 2)
-        drawTimeBlink(' ');
-    else
-        drawTimeBlink(':');
+    drawTimeBlink(((loctm.tm_sec % 2) ? ' ' : ':'),
+                  ((glopt->showTemp) ? -1 : 1));
 
     // seconds
     drawHorizontalBargraph(
@@ -659,17 +800,11 @@ void clockPage(MonitorAttrs *lmsopt) {
 
     // set changed so we'll repaint on play
     setupPlayMode();
-    lmsopt->lastVolume = -1;
-    lmsopt->lastBits[0] = 0;
     refreshDisplay();
 }
 #endif
 
-#ifdef __arm__
-void playingPage(MonitorAttrs *lmsopt)
-#else
 void playingPage(void)
-#endif
 {
 
     long actVolume = 0;
@@ -678,16 +813,11 @@ void playingPage(void)
     char buff[255];
 
 #ifdef __arm__
-    if (lmsopt->refreshLMS) {
+
+    if (glopt->refreshLMS) {
         resetDisplay(1);
-        lmsopt->refreshLMS = false;
+        softPlayRefresh(false);
     }
-    lmsopt->refreshClock = true;
-    lmsopt->nagDone = true;
-
-#endif
-
-#ifdef __arm__
 
     // output sample rate and bit depth too, supports DSD nomenclature
     double samplerate = tags[SAMPLERATE].valid
@@ -697,30 +827,41 @@ void playingPage(void)
                          ? strtol(tags[SAMPLESIZE].tagData, NULL, 10)
                          : 16;
 
-    if (lmsopt->downmix)
+    if (glopt->downmix)
         setDownmix(samplesize, samplerate);
     else
         setDownmix(0, 0);
 
-    if ((lmsopt->visualize) && (isVisualizeActive())) {
-        lmsopt->lastVolume = -1;
-        lmsopt->lastBits[0] = 0;
-        lmsopt->sleepTime = SLEEP_TIME_SHORT;
+    if ((glopt->visualize) && (isVisualizeActive())) {
+        if (activeScroller()) {
+            scrollerPause();
+        }
+        instrument(__LINE__, __FILE__, "Modify Option");
+        softPlayReset();
+        softClockReset(false);
+        setNagDone();
+        setSleepTime(SLEEP_TIME_SHORT);
+        instrument(__LINE__, __FILE__, "Active Visualize");
     } else {
 #endif
         sprintf(buff, "________________________\n");
         tOut(buff);
 
 #ifdef __arm__
+
+        setNagDone(false); // do not set refreshLMS
+        softClockReset(false);
+
         actVolume =
             tags[VOLUME].valid ? strtol(tags[VOLUME].tagData, NULL, 10) : 0;
-        if (actVolume != lmsopt->lastVolume) {
+        if (actVolume != glopt->lastVolume) {
             if (0 == actVolume)
                 strncpy(buff, "  mute", 32);
             else
                 sprintf(buff, "  %ld%% ", actVolume);
             putVolume((0 != actVolume), buff);
-            lmsopt->lastVolume = actVolume;
+            instrument(__LINE__, __FILE__, "Modify Option");
+            setLastVolume(actVolume);
         }
 
         audio = 3;
@@ -741,9 +882,10 @@ void playingPage(void)
                 free(foo);
         }
 
-        if (strcmp(lmsopt->lastBits, buff) != 0) {
+        if (strcmp(glopt->lastBits, buff) != 0) {
             putAudio(audio, buff);
-            strncpy(lmsopt->lastBits, buff, 32);
+            instrument(__LINE__, __FILE__, "Modify Option");
+            setLastBits(buff);
         }
 
 #endif
@@ -762,7 +904,7 @@ void playingPage(void)
                         strncpy(buff, tags[*t].tagData, 255);
 #ifdef __arm__
                         if (putScrollable(line, buff)) {
-                            lmsopt->sleepTime = SLEEP_TIME_SHORT;
+                            setSleepTime(SLEEP_TIME_SHORT);
                         }
 #endif
                     }
@@ -773,6 +915,7 @@ void playingPage(void)
             }
 #ifdef __arm__
             if (!filled) {
+printf("------------------------------- clear on %d\n", line);                
                 clearScrollable(line);
                 clearLine(line * 10);
             }
@@ -780,7 +923,7 @@ void playingPage(void)
         }
 
 #ifdef __arm__
-        lmsopt->sleepTime = SLEEP_TIME_SHORT;
+        setSleepTime(SLEEP_TIME_SHORT);
 #endif
 
         pTime = (tags[TIME].valid) ? strtol(tags[TIME].tagData, NULL, 10) : 0;
@@ -798,7 +941,7 @@ void playingPage(void)
         putText(1, 56, buff);
 
         // this is limited to sub hour programing - a stream may be 1+ hours
-        if (lmsopt->remaining)
+        if (glopt->remaining)
             sprintf(buff, "-%02ld:%02ld", rTime / 60, rTime % 60);
         else
             sprintf(buff, "%02ld:%02ld", dTime / 60, dTime % 60);
@@ -816,15 +959,16 @@ void playingPage(void)
                                (pTime * 100) / (dTime == 0 ? 1 : dTime));
 #endif
 
-    sprintf(buff, "%3ld:%02ld  %5s  %3ld:%02ld", pTime / 60, pTime % 60,
-            (tags[MODE].valid) ? tags[MODE].tagData : "", dTime / 60,
-            dTime % 60);
-    sprintf(stbl, "%s\n\n", buff);
-    tOut(stbl);
+        sprintf(buff, "%3ld:%02ld  %5s  %3ld:%02ld", pTime / 60, pTime % 60,
+                (tags[MODE].valid) ? tags[MODE].tagData : "", dTime / 60,
+                dTime % 60);
+        sprintf(stbl, "%s\n\n", buff);
+        tOut(stbl);
 
 #ifdef __arm__
     }
 #endif
+
     for (int i = 0; i < MAXTAG_TYPES; i++) {
         tags[i].changed = false;
     }

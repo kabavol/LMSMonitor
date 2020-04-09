@@ -13,9 +13,9 @@ options:
  -c display clock when not playing (Pi only)
  -d downmix audio and display a single large meter, SA and VU only
  -i increment verbose level
- -k show CPU temperature (clock mode)
+ -k show CPU load and temperature (clock mode)
  -m if visualization on specify one or more meter modes, sa, vu, pk, or rn for random
- -o specified OLED "driver" type (see options below)
+ -o specifies OLED "driver" type (see options below)
  -r show remaining time rather than track time
  -t enable print info to stdout
  -v enable visualization sequence when playing (Pi only)
@@ -76,11 +76,10 @@ And, in the Various Options add *-v*
 
 See the squeezelite page for more details
 
-We also need to install the WiringPi and i2c tools libraries so we can communicate wit the OLED screen
+We also need to install the i2c tools library so we can review setup and communicate with the OLED screen
 
 From the main web form click on Extensions button in the *Additional functions* section
 
-On the page displayed select *wiringpi.tcz* from the dropdown and install
 On the page displayed select *i2c-tools-dev.tcz* from the dropdown and install
 
 ## pCP Install
@@ -140,11 +139,12 @@ the visualization parameter must always be specified firts
 - DONE! Downmix visual data and display on one large VU meter.
 - DONE! Downmix visual data and display on one large Spectrum.
 - DONE! Make OLED driver user selectable
-- MPD Monitor display layout - all-in-one screen
-- Make OLED I2C address user selectable
-- Weather: TBD
+- DONE! Make OLED I2C address user selectable
+- All-In-One display, track details and downmix visualizer in one 
 - Dual OLED visualizer mode: TBD
-- Color 128 x 128 color TFT support
+- 128 x 128 OLED support: TBD
+- Color 128 x 128 color TFT support: TBD
+- Weather: TBD
 
 ## Credits
 

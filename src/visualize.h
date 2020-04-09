@@ -25,12 +25,12 @@
 
 void setVisList(char *vlist);
 bool setVisMode(vis_type_t mode);
-char *getVisMode(void);
+const char *getVisMode(void);
 void sayVisList(void);
 void setDownmix(int samplesize, float samplerate);
 
 void visualize(struct vissy_meter_t *vissy_meter);
-bool isVisualizeActive(void);
+const bool isVisualizeActive(void);
 char *currentMeter(void);
 
 void activateVisualizer(void);

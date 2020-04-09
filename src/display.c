@@ -58,10 +58,10 @@ ArduiPi_OLED display;
 int oledType = OLED_SH1106_I2C_128x64;
 int8_t oledAddress = 0x00;
 int8_t icons[NUMNOTES][4];
+short scrollMode = SCROLL_MODE_CYLON;
+sme scroll[MAX_LINES];
 
 #endif
-
-sme scroll[MAX_LINES];
 
 int maxCharacter(void) { return 21; } // review when we get scroll working
 int maxLine(void) { return MAX_LINES; }
@@ -77,12 +77,23 @@ void printOledSetup(void)
     char stb[BSIZE] = {0};
     if (0 == oledAddress)
         oledAddress = display.getOledAddress();
+    
     sprintf(stb, "%s (%d) %s\n%s 0x%x\n", 
         labelIt("OLED Driver", LABEL_WIDTH, "."), 
         oledType,
         oled_type_str[oledType],
         labelIt("OLED Address", LABEL_WIDTH, "."), 
         oledAddress);
+    putMSG(stb, LL_INFO);
+}
+
+void printScrollerMode(void)
+{
+    char stb[50] = {0};
+    sprintf(stb, "%s (%d) %s\n", 
+        labelIt("Scrolling Mode", LABEL_WIDTH, "."), 
+        scrollMode,
+        scrollerMode[scrollMode]);
     putMSG(stb, LL_INFO);
 }
 
@@ -111,22 +122,31 @@ bool setOledAddress(int8_t oa) {
     return true;
 }
 
-void bigChar(uint8_t cc, int x, int len, int w, int h, const uint8_t font[],
-             uint16_t color) {
+void setScrollMode(short sm)
+{
+    if ((sm >= SCROLL_MODE_CYLON)&&(sm < SCROLL_MODE_MAX))
+        if (sm != scrollMode)
+            scrollMode = sm;
+}
 
+void bigChar(uint8_t cc, int x, int y, int len, int w, int h, const uint8_t font[],
+             uint16_t color) {
     // need fix for space, and minus sign
     int start = (cc - 48) * len;
     uint8_t dest[len];
     memcpy(dest, font + start, sizeof dest);
-    display.drawBitmap(x, 1, dest, w, h, color);
+    display.drawBitmap(x, y, dest, w, h, color); // -1 - breathing room
 }
 
 void resetDisplay(int fontSize) {
-    display.clearDisplay(); // clears the screen  buffer
+    display.fillScreen(BLACK);
     display.setTextSize(fontSize);
     display.setTextColor(WHITE);
     display.setTextWrap(false);
-    display.display(); // display it (clear display)
+}
+
+void softClear(void) {
+    display.fillScreen(BLACK);
 }
 
 void displayBrightness(int bright) { display.setBrightness(bright); }
@@ -168,20 +188,20 @@ void clearDisplay() {
 }
 
 void vumeter2upl(void) {
-    display.fillScreen(BLACK);
+    softClear();
     display.drawBitmap(0, 0, vu2up128x64, 128, 64, WHITE);
 }
 
 void vumeterDownmix(bool inv) {
     if (inv)
-        display.drawBitmap(0, 0, vudm128x64, 128, 64, BLACK);
+        softClear();  // display.drawBitmap(0, 0, vudm128x64, 128, 64, BLACK);
     else
         display.drawBitmap(0, 0, vudm128x64, 128, 64, WHITE);
 }
 
 void peakMeterH(bool inv) {
     if (inv)
-        display.drawBitmap(0, 0, peak_rms, 128, 64, BLACK);
+        softClear();  // display.drawBitmap(0, 0, peak_rms, 128, 64, BLACK);
     else
         display.drawBitmap(0, 0, peak_rms, 128, 64, WHITE);
 }
@@ -569,12 +589,14 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter, char *downmix) {
 
 }
 
-void drawTimeBlink(uint8_t cc) {
-    int x = 2 + (2 * 25);
+void drawTimeBlink(uint8_t cc, int y) {
+    int w = 25;
+    int h = 44;
+    int x = 2 + (2 * w);    
     if (32 == cc) // a space - colon off
-        bigChar(':', x, LCD25X44_LEN, 25, 44, lcd25x44, BLACK);
+        bigChar(':', x, y, LCD25X44_LEN, w, h, lcd25x44, BLACK);
     else
-        bigChar(cc, x, LCD25X44_LEN, 25, 44, lcd25x44, WHITE);
+        bigChar(cc, x, y, LCD25X44_LEN, w, h, lcd25x44, WHITE);
 }
 
 void putVolume(bool v, char *buff) {
@@ -602,59 +624,110 @@ void drawTimeText(char *buff) {
     display.fillRect(0, 0, display.width(), display.height() - 16, BLACK);
     // digit walk and "blit"
     int x = 2;
+    int w = 25;
+    int h = 44;
     for (size_t i = 0; i < strlen(buff); i++) {
-        bigChar(buff[i], x, LCD25X44_LEN, 25, 44, lcd25x44, WHITE);
+        bigChar(buff[i], x, 1, LCD25X44_LEN, w, h, lcd25x44, WHITE);
         x += 25;
     }
 }
 
 void scrollerFinalize(void) {
     for (int line = 0; line < MAX_LINES; line++) {
-        pthread_mutex_lock(&scroll[line].scrollox);
         pthread_cancel(scroll[line].scrollThread);
         pthread_join(scroll[line].scrollThread, NULL);
         if (scroll[line].text)
             free(scroll[line].text);
-        pthread_mutex_unlock(&scroll[line].scrollox);
         pthread_mutex_destroy(&scroll[line].scrollox);
     }
 }
 
 void baselineScroller(Scroller *s) {
+    short sm = scrollMode;
+    if(SCROLL_MODE_RANDOM == scrollMode) {
+        srandom(time(NULL));
+        sm = random() % SCROLL_MODE_MAX;
+    }
+    s->active = false;
     s->initialized = true;
     s->nystagma = true;
     s->lolimit = 1000;
     s->hilimit = -1000;
+    s->xpos = maxXPixel()+1;
+    s->forward = false;
+    s->scrollMode = sm;
+    s->textPix = -1;
     if (NULL != s->text)
         strcpy(s->text, "");
-    s->xpos = maxXPixel();
-    s->forward = false;
-    s->textPix = 0;
 }
 
 void clearScrollable(int line) {
-    char buff[255] = {0};
+    char buff[2] = {0};
     putScrollable(line, buff);
+}
+
+bool acquireLock(const int line)
+{
+    char buff[128] = {0};
+    bool ret = true;
+    if (NULL != scroll[line].text) // looking for instantiation here
+    {
+        uint8_t test = 0;
+        while (pthread_mutex_trylock(&scroll[line].scrollox) != 0)
+        {
+            if (test>30)
+            {
+                ret = false;
+                sprintf(buff,"scroller[%d] mutex acquire failed\n", line);
+                putMSG(buff, LL_DEBUG);
+                break;
+            }
+            usleep(10);
+            test++;
+        }
+    }
+    return ret;
 }
 
 bool putScrollable(int line, char *buff) {
 
-    int tlen = strlen(buff);
+    setScrollActive(line, false);
     bool ret = true;
-    bool goscroll = (maxCharacter() < tlen);
-    if (!goscroll) {
-        putTextToCenter(scroll[line].ypos, buff);
-        pthread_mutex_lock(&scroll[line].scrollox);
-        strcpy(scroll[line].text, "");
-        scroll[line].textPix = -1;
-        pthread_mutex_unlock(&scroll[line].scrollox);
-        ret = false;
-    } else {
-        pthread_mutex_lock(&scroll[line].scrollox);
-        baselineScroller(&scroll[line]);
-        sprintf(scroll[line].text, " %s ", buff); // pad ends
-        scroll[line].textPix = tlen * CHAR_WIDTH;
-        pthread_mutex_unlock(&scroll[line].scrollox);
+    if ((line > 0 )&&(line < MAX_LINES))
+    {
+        int tlen = strlen(buff);
+        bool goscroll = (maxCharacter() < tlen);
+        if (!goscroll) {
+            putTextToCenter(line * (2 + CHAR_HEIGHT), buff); // fast!
+            if (scroll[line].text)
+            {
+                if (acquireLock(line))
+                {
+                    strcpy(scroll[line].text, "");
+                    scroll[line].textPix = -1;
+                    pthread_mutex_unlock(&scroll[line].scrollox);
+                }
+            }
+            ret = false;
+        } else {
+            if (scroll[line].text)
+            {
+                if (acquireLock(line))
+                {
+                    baselineScroller(&scroll[line]);
+                    sprintf(scroll[line].text, " %s ", buff); // pad ends
+                    scroll[line].textPix = tlen * CHAR_WIDTH;
+                    scroll[line].active = true;
+                    short sm = scrollMode;
+                    if(SCROLL_MODE_RANDOM == scrollMode) {
+                        srandom(time(NULL));
+                        sm = random() % SCROLL_MODE_MAX;
+                    }
+                    scroll[line].scrollMode = sm;
+                    pthread_mutex_unlock(&scroll[line].scrollox);
+                }
+            }
+        }
     }
     return ret;
 }
@@ -671,54 +744,83 @@ void *scrollLine(void *input) {
     display.setTextWrap(false);
     while (true) {
         timer = SCAN_TIME;
-        pthread_mutex_lock(&s->scrollox);
+        if (s->active) {
 
-        if (scrollerActive() && 
-            ((int)strlen(s->text) > maxCharacter())) {
+            if (acquireLock(s->line))
+            {
+                if ((int)strlen(s->text) > maxCharacter()) {
 
-            // cylon sweep
-            if (s->forward)
-                s->xpos++;
-            else
-                s->xpos--;
-            clearLine(s->ypos);
-            display.setCursor(s->xpos, s->ypos);
-            display.print(s->text);
+                    switch (s->scrollMode) {
+                    case SCROLL_MODE_INFSIN:
+                        putTextToCenter(s->ypos, s->text);
+                        sinisterRotate(s->text);
+                        timer = 3 * SCAN_TIME;
+                        break;
 
-            if (-(CHAR_WIDTH / 2) == s->xpos) {
-                //if (0 == s->xpos) {
-                if (!s->forward)
-                    timer = PAUSE_TIME;
-                s->forward = false;
-            }
+                    case SCROLL_MODE_INFDEX:
+                        putTextToCenter(s->ypos, s->text);
+                        dexterRotate(s->text);
+                        timer = 3 * SCAN_TIME;
+                        break;
 
-            if ((maxXPixel() - (int)(1.5 * CHAR_WIDTH)) ==
-                ((s->textPix) + s->xpos))
-                s->forward = true;
+                    default:
+                        // cylon sweep
+                        if (s->forward)
+                            s->xpos++;
+                        else
+                            s->xpos--;
+                        clearLine(s->ypos);
+                        display.setCursor(s->xpos, s->ypos);
+                        display.print(s->text);
 
-            // address annoying pixels
-            display.fillRect(0, s->ypos, 2, CHAR_HEIGHT + 2, BLACK);
-            display.fillRect(maxXPixel() - 2, s->ypos, 2, CHAR_HEIGHT + 2,
-                             BLACK);
+                        if (-(CHAR_WIDTH / 2) == s->xpos) {
+                            //if (0 == s->xpos) {
+                            if (!s->forward)
+                                timer = PAUSE_TIME;
+                            s->forward = false;
+                        }
 
-            // need to test for "nystagma" - where text is just shy
-            // of being with static limits and gets to a point
-            // where it rapidly bounces left to right and back again
-            // more than annoying and needs to pin to xpos=0 and
-            // deactivate - implement test - check length limits
-            // and travel test
+                        if ((maxXPixel() - (int)(1.5 * CHAR_WIDTH)) ==
+                            ((s->textPix) + s->xpos))
+                            s->forward = true;
+
+                        // need to test for "nystagma" - where text is just shy
+                        // of being with static limits and gets to a point
+                        // where it rapidly bounces left to right and back again
+                        // more than annoying and needs to pin to xpos=0 and
+                        // deactivate - implement test - check length limits
+                        // and travel test
+
+                    }
+
+                    // address annoying pixels
+                    display.fillRect(0, s->ypos, 2, CHAR_HEIGHT + 2, BLACK);
+                    display.fillRect(maxXPixel() - 2, s->ypos, 2, CHAR_HEIGHT + 2,
+                                    BLACK);
+                }
+                pthread_mutex_unlock(&s->scrollox);
+            }else printf("cannot update %d\n",s->line);
         }
-        pthread_mutex_unlock(&s->scrollox);
         dodelay(timer);
     }
 }
 
 void setScrollActive(int line, bool active) {
-    return;
+    if (acquireLock(line))
+    {
+        if (active != scroll[line].active) {
+            scroll[line].active = active;
+        }
+        pthread_mutex_unlock(&scroll[line].scrollox);
+    }
 }
 
 void scrollerPause(void) {
-    return;
+    if (activeScroller()) {
+        for (int line = 0; line < MAX_LINES; line++) {
+            setScrollActive(line, false);
+        }
+    }
 }
 
 void scrollerInit(void) {
@@ -736,24 +838,44 @@ void scrollerInit(void) {
         } else {
             baselineScroller(&scroll[line]);
             scroll[line].ypos = line * (2 + CHAR_HEIGHT);
+            scroll[line].line = line;   // dang, dumb to have missed this !?!
             scroll[line].scrollMe = scrollLine;
+            scroll[line].scrollMode = scrollMode;
+            scroll[line].active = false;
             pthread_create(&scroll[line].scrollThread, NULL,
                            scroll[line].scrollMe, (void *)&scroll[line]);
         }
     }
 }
 
-void drawTimeText2(char *buff, char *last) {
+bool activeScroller(void) {
+    bool ret = false;
+    for (int line = 0; line < MAX_LINES; line++) {
+        if (acquireLock(line))
+        {
+            if (scroll[line].active)
+                ret = true;
+            pthread_mutex_unlock(&scroll[line].scrollox);
+        }
+        if (ret)
+            break;
+    }
+    return ret;
+}
+
+void drawTimeText2(char *buff, char *last, int y) {
     // digit walk and "blit"
     int x = 2;
+    int w = 25;
+    int h = 44;
     for (size_t i = 0; i < strlen(buff); i++) {
         // selective updates, less "blink"
         if (buff[i] != last[i]) {
             if ('X' == last[i])
-                display.fillRect(x, 1, 25, display.height() - 15, BLACK);
+                display.fillRect(x, 0, w, display.height() - 14, BLACK);
             else
-                bigChar(last[i], x, LCD25X44_LEN, 25, 44, lcd25x44, BLACK);
-            bigChar(buff[i], x, LCD25X44_LEN, 25, 44, lcd25x44, WHITE);
+                bigChar(last[i], x, y, LCD25X44_LEN, w, h, lcd25x44, BLACK); // soft erase
+            bigChar(buff[i], x, y, LCD25X44_LEN, w, h, lcd25x44, WHITE);
         }
         x += 25;
     }
@@ -827,13 +949,8 @@ void refreshDisplay(void) { shotAndDisplay(); }
 void refreshDisplay(void) { display.display(); }
 #endif
 
-bool scrollerActive(void) {
-
-    return ((!isVisualizeActive())&&(isPlaying()));
-}
-
 void refreshDisplayScroller(void) {
-    if (scrollerActive())
+    if (activeScroller())
         display.display();
 }
 
@@ -921,48 +1038,5 @@ void nagSaverNotes(void) {
         }
     }
 }
-
-/*
-// parked - want this to work like iPeng!!!
-void *scrollLineUgh(void *input) {
-    sme *s;
-    s = ((struct Scroller *)input);
-    int timer = SCAN_TIME;
-
-    display.setTextWrap(false);
-    while (true) {
-        timer = SCAN_TIME;
-        pthread_mutex_lock(&s->scrollox);
-
-// PARKED CODE HERE
-        if (scrollerActive() && 
-            ((int)strlen(s->text) > maxCharacter())) {
-            s->xpos--;
-            if (s->xpos + s->textPix <= maxXPixel())
-                s->xpos += s->textPix;
-            clearLine(s->ypos);
-            // should appear to marquee - but sadly it does not???
-            if (s->xpos > 0)
-                display.setCursor(s->xpos - s->textPix, s->ypos);
-            else
-                display.setCursor(s->xpos + s->textPix, s->ypos);
-
-            display.print(s->text);
-
-            // address annoying pixels
-            display.fillRect(0, s->ypos, 2, CHAR_HEIGHT + 2, BLACK);
-            display.fillRect(maxXPixel() - 2, s->ypos, 2, CHAR_HEIGHT + 2,
-                             BLACK);
-
-            if (-3 == s->xpos) {
-                s->forward = false; // what resets?
-                timer = 5000;
-            }
-        }
-        pthread_mutex_unlock(&s->scrollox);
-        usleep(timer);
-    }
-}
-*/
 
 #endif

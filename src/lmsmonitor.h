@@ -24,5 +24,7 @@
 #define LMSMON_H
 
 bool isPlaying(void);
+bool lockOptions(void);
+bool acquireOptLock(void);
 
 #endif

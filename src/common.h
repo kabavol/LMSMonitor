@@ -29,17 +29,25 @@
 #define BSIZE 4096
 
 #define APPNAME "LMSMonitor"
-#define VERSION "0.4.25"
+#define VERSION "0.4.27"
 
 #define LABEL_WIDTH 22
 #define LL_QUIET 0
 #define LL_INFO 1
 #define LL_DEBUG 2
+#define LL_MAX 3 // always 1+
+static const char * verbosity[] = {
+    "Normal",
+    "Info",
+    "Debug",
+    "Maximum"
+};
 
 typedef char *multi_tok_t;
 
 int incVerbose(void);
 int getVerbose(void);
+const char *getVerboseStr(void);
 int putMSG(const char *msg, int loglevel);
 void enableTOut(void);
 int tOut(const char *msg);
@@ -56,10 +64,15 @@ void strupr(char *s);
 
 int piVersion(void);
 
+bool debugActive(void);
+
 void dodelay(uint16_t d);
-void leftRotatebyOne(char *arr);
+void sinisterRotate(char *rm);
+void dexterRotate(char *rm);
 
 char *strrep(size_t n, const char *s);
 char *labelIt(const char *label, const size_t len, const char *pad);
+
+void instrument(const int line, const char *name, const char *msg);
 
 #endif

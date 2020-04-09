@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h> 
+#include <stdbool.h>
 #include "bcm2835.h"
 
 // Configuration Pin for ArduiPi board
@@ -42,7 +43,6 @@
 
 #define SH1106_I2C_ADDRESS   0x3C 
 
-  
 // Oled supported display
 #define OLED_ADAFRUIT_SPI_128x32  0
 #define OLED_ADAFRUIT_SPI_128x64  1
@@ -67,7 +67,7 @@ static const char * oled_type_str[] = {
 };
 
 // Arduino Compatible type
-typedef uint8_t boolean;
+typedef bool boolean;
 typedef uint8_t byte;
 
 // Arduino Compatible Macro

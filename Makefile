@@ -1,15 +1,27 @@
+# making leaner with overrides - 20200407
+
 TARGET = ./bin/lmsmonitor
 TARGETSSE = ./bin/lmsmonitor-sse
 LIBS =  -lpthread -lrt -L./lib -lwiringPi
+LIBS =  -lpthread -lrt -L./lib -li2c
+
 CC = g++
 
 CFLAGS4 = -g -Wall -Ofast -lrt -fPIC -fno-rtti -mfpu=neon-vfpv4 -fpermissive \
 -Wstringop-truncation -Wno-unused-variable -Wno-unused-parameter \
 -mfloat-abi=hard -march=armv7-a -mtune=cortex-a7 -ffast-math -pipe -I. -I./src
 
+CFLAGS4 = -g -Wall -Ofast -lrt -fPIC -fno-rtti -mfpu=neon-vfpv4 -fpermissive \
+-Wstringop-truncation -Wno-unused-variable -Wno-unused-parameter \
+-mfloat-abi=hard -ffast-math -pipe -I. -I./src
+
 CFLAGS3 = -g -Wall -Ofast -lrt -fPIC -fno-rtti -fpermissive -Wno-unused-variable \
 -Wno-unused-parameter -Wstringop-truncation -mfpu=vfp -mfloat-abi=hard \
 -march=armv6zk -mtune=arm1176jzf-s -funsafe-math-optimizations -ffast-math -pipe -I. -I./src
+
+CFLAGS3 = -g -Wall -Ofast -fPIC -fno-rtti -fpermissive -Wno-unused-variable \
+-Wno-unused-parameter -Wstringop-truncation -mfpu=vfp -mfloat-abi=hard \
+-funsafe-math-optimizations -ffast-math -pipe -I. -I./src
 
 CAPTURE_BMP = -DCAPTURE_BMP -I./src -I./capture
 SSE_VIZDATA = -DSSE_VIZDATA -I./src -I./sse
@@ -24,7 +36,7 @@ default: $(TARGET)
 
 #allsse: cleansse coresse ./sse/digest-sse.c coresse $(TARGETSSE)
 
-all: std default
+all: bin std default
 
 OBJECTS = $(patsubst %.cpp, %.o, $(wildcard ./src/*.cpp)) $(patsubst %.cc, %.o, $(wildcard ./src/*.cc)) $(patsubst %.c, %.o, $(wildcard ./src/*.c))
 OBJECTSCC = $(OBJECTS) $(patsubst %.cc, %.o, $(wildcard ./sse/*.cc)) $(patsubst %.c, %.o, $(wildcard ./sse/*.c))

@@ -30,7 +30,7 @@ double cpuLoad(void)
     load = fopen("/proc/loadavg", "r");
     fscanf(load, "%f", &loadavg);
     fclose(load);
-    return loadavg;
+    return (double)(100 * loadavg);
 } 
 
 double cpuTemp(void)

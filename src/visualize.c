@@ -22,61 +22,69 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "common.h"
-#include "visualize.h"
-#include "visdata.h"
 #include "display.h"
+#include "visdata.h"
+#include "visualize.h"
 
 uint8_t cm = -1;
 bool vis_is_active = false;
 vis_type_t vis_mode = {0};
-vis_type_t vis_list[3] =  {{0}, {0}, {0}};
+vis_type_t vis_list[3] = {{0}, {0}, {0}};
 uint8_t num_modes = 1;
 char downmix[5] = {0};
 
-size_t lenVisList(void) { return (sizeof(vis_list)/sizeof(vis_type_t)); }
-void activateVisualizer(void) { vis_is_active = true; }
+size_t lenVisList(void) { return (sizeof(vis_list) / sizeof(vis_type_t)); }
+void activateVisualizer(void) {
+    instrument(__LINE__, __FILE__, "Visualize On ->");
+    vis_is_active = true;
+    instrument(__LINE__, __FILE__, "Visualize On <-");
+}
 
-bool setVisMode(vis_type_t mode) { 
+bool setVisMode(vis_type_t mode) {
     bool ret = false;
     if (strcmp(vis_mode, mode) != 0) {
-        strncpy(vis_mode, mode, 2); 
+        strncpy(vis_mode, mode, 2);
         ret = true;
-    } 
+    }
     return ret;
 }
 
-char *getVisMode(void) { return vis_mode; }
-bool isVisualizeActive(void) { return vis_is_active; }
-void deactivateVisualizer(void) { vis_is_active = false; }
-
-void setDownmix(int samplesize, float samplerate)
-{
-    if(0 == samplesize)
-        strcpy(downmix,"N");
+const char *getVisMode(void) {
+    if (!isEmptyStr(vis_mode))
+        return vis_mode;
     else
-        if (1 == samplesize)
-            sprintf(downmix, "D%.0f", (samplerate/44.1));
-        else
-            sprintf(downmix, "M%d", samplesize);
+        return "??";
+}
+const bool isVisualizeActive(void) { return vis_is_active; }
+void deactivateVisualizer(void) {
+    instrument(__LINE__, __FILE__, "Visualize Off ->");
+    vis_is_active = false;
+    instrument(__LINE__, __FILE__, "Visualize Off <-");
 }
 
-void sayVisList(void)
-{
+void setDownmix(int samplesize, float samplerate) {
+    if (0 == samplesize)
+        strcpy(downmix, "N");
+    else if (1 == samplesize)
+        sprintf(downmix, "D%.0f", (samplerate / 44.1));
+    else
+        sprintf(downmix, "M%d", samplesize);
+}
+
+void sayVisList(void) {
     int ll = lenVisList();
     char delim[3] = {0};
     char stb[BSIZE] = {0};
     char say[BSIZE] = {0};
 
-    for (int x=0; x < ll; x++)
-    {
-        if (!(isEmptyStr(vis_list[x])))
-        {
+    for (int x = 0; x < ll; x++) {
+        if (!(isEmptyStr(vis_list[x]))) {
             strcat(say, delim);
             if (strncmp(vis_list[x], VMODE_RN, 2) == 0)
                 strcat(say, "Random");
@@ -85,71 +93,65 @@ void sayVisList(void)
             strcpy(delim, ", ");
         }
     }
-    if (!(isEmptyStr(say)))
-    {
-        sprintf(stb, "%s %s\n", 
-            labelIt("Visualization", LABEL_WIDTH, "."),
-            say);
+    if (!(isEmptyStr(say))) {
+        sprintf(stb, "%s %s\n", labelIt("Visualization", LABEL_WIDTH, "."),
+                say);
         putMSG(stb, LL_INFO);
     }
 }
 
-void setVisList(char *vlist)
-{
+void setVisList(char *vlist) {
 
     // init...
     int ll = lenVisList();
-    for (int x=0; x < ll; x++)
-    {
+    for (int x = 0; x < ll; x++) {
         vis_list[x][0] = '\0';
-    }    
-    
+    }
+
     int i = -1;
     char delim[3] = ",-";
-    char *p = strtok (vlist, delim);
-    while ((p != NULL) && (i+1 < ll))
-    {
+    char *p = strtok(vlist, delim);
+    while ((p != NULL) && (i + 1 < ll)) {
         strupr(p);
         // validate and silently assign to default if "bogus"
-        if ((strncmp(p, VMODE_VU, 2) != 0) 
-        &&(strncmp(p, VMODE_SA, 2) != 0)
-        &&(strncmp(p, VMODE_RN, 2) != 0)
-        &&(strncmp(p, VMODE_PK, 2) != 0)) {
+        if ((strncmp(p, VMODE_VU, 2) != 0) && (strncmp(p, VMODE_SA, 2) != 0) &&
+            (strncmp(p, VMODE_RN, 2) != 0) && (strncmp(p, VMODE_PK, 2) != 0)) {
             strcpy(p, VMODE_NA);
         }
         i++;
         strncpy(vis_list[i], p, 2);
-        p = strtok (NULL, delim);
+        p = strtok(NULL, delim);
     }
     num_modes = i;
 }
 
-char *currentMeter(void)
-{
+char *currentMeter(void) {
     cm++;
-    if (cm > lenVisList()-1)
+    if (cm > lenVisList() - 1)
         cm = 0;
 
     if (isEmptyStr(vis_list[cm]))
         cm = 0;
 
-    if (strcmp(vis_list[cm], VMODE_RN) == 0)
-    {
+    if (strcmp(vis_list[cm], VMODE_RN) == 0) {
         // pick a random visualization
-        int i = rand()%3;
-        switch (i)
-        {
+        int i = rand() % 3;
+        switch (i) {
             case 0: setVisMode(VMODE_VU); break;
             case 1: setVisMode(VMODE_SA); break;
-            default:
-                setVisMode(VMODE_PK);
+            default: setVisMode(VMODE_PK);
         }
-    }
-    else
+    } else
         setVisMode(vis_list[cm]);
 
-    return getVisMode();
+    if (debugActive()) {
+        char stb[128] = {0};
+        sprintf(stb, "%s %s\n", labelIt("Active Visualizer", LABEL_WIDTH, "."),
+                getVisMode());
+        putMSG(stb, LL_DEBUG);
+    }
 
+    return (char *)getVisMode();
 }
 
 int visgood = 0;
@@ -159,32 +161,43 @@ void visualize(struct vissy_meter_t *vissy_meter) {
     if (vis_is_active) {
         if (visgood < 4) {
 
-            if (isEmptyStr(downmix))
+            if (isEmptyStr(downmix)) {
                 strcpy(downmix, "N");
-
-            // bug workaround
-            if (isEmptyStr(vis_mode))
-                currentMeter();
-
-            if (strncmp(VMODE_VU, vissy_meter->meter_type, 2) == 0) {
-                // support vu or pk
-                if (strncmp(vis_mode, VMODE_VU, 2) == 0)
-                    stereoVU(vissy_meter, downmix);
-                else
-                    if (strncmp(vis_mode, VMODE_PK, 2) == 0)
-                        stereoPeakH(vissy_meter, downmix);
+                instrument(__LINE__, __FILE__, "Fix Downmix <-");
             }
-            else 
-                if (strncmp(vis_mode,vissy_meter->meter_type,2) == 0)
-                    stereoSpectrum(vissy_meter, downmix);
-
+            if (isEmptyStr(vis_mode)) {
+                currentMeter();
+                instrument(__LINE__, __FILE__, "Fix VisMode <-");
+            }
+            if (strncmp(VMODE_VU, vissy_meter->meter_type, 2) == 0) {
+                instrument(__LINE__, __FILE__, "Visualize VU/PK");
+                // support vu or pk
+                if (strncmp(vis_mode, VMODE_VU, 2) == 0) {
+                    instrument(__LINE__, __FILE__, "Visualize VU ->");
+                    stereoVU(vissy_meter, downmix);
+                    instrument(__LINE__, __FILE__, "Visualize VU <-");
+                } else {
+                    if (strncmp(vis_mode, VMODE_PK, 2) == 0) {
+                        instrument(__LINE__, __FILE__, "Visualize PK ->");
+                        stereoPeakH(vissy_meter, downmix);
+                        instrument(__LINE__, __FILE__, "Visualize PK <-");
+                    }
+                }
+            } else if (strncmp(vis_mode, vissy_meter->meter_type, 2) == 0) {
+                instrument(__LINE__, __FILE__, "Visualize SA ->");
+                stereoSpectrum(vissy_meter, downmix);
+                instrument(__LINE__, __FILE__, "Visualize SA <-");
+            }
         }
         lastTest = true;
-    } else {
-        if (lastTest) // transition
+    } /*else {
+        if (lastTest) {// transition
+    instrument(__LINE__, __FILE__, "Visualize Cleanup");
             clearDisplay();
+        }
         lastTest = false;
-    }
+    ///instrument(__LINE__, __FILE__, "Visualize Done?");
+    }*/
 
     // stream is too fast for display - a 1:20 consumption ratio plays happy w/ display
     // routine VU routine checks for change so we may be Ok, parameterize and push limits
@@ -192,5 +205,4 @@ void visualize(struct vissy_meter_t *vissy_meter) {
     visgood++;
     if (visgood > 19) // sweet spot for SA
         visgood = 0;
-
 }

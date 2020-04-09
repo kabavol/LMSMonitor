@@ -26,6 +26,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <sys/time.h>
+#include <time.h>
+
 #include "common.h"
 
 int verbose = 0;
@@ -64,13 +67,21 @@ char *labelIt(const char *label, const size_t len, const char *pad)
 }
 
 int incVerbose(void) {
-    if (verbose < INT_MAX) {
+    if (verbose < LL_MAX-1) {
         verbose++;
     }
     return verbose;
 }
 
 int getVerbose(void) { return verbose; }
+const char *getVerboseStr(void) {
+    if (verbose < LL_MAX)
+        return verbosity[verbose];
+    else
+        return "Unknown";
+}
+
+bool debugActive(void) { return (verbose >= LL_DEBUG); }
 
 int putMSG(const char *msg, int loglevel) {
     if (loglevel > verbose) {
@@ -175,7 +186,7 @@ int piVersion(void)
     return ret;
 }
 
-void leftRotate(char *rm) 
+void sinisterRotate(char *rm) 
 { 
     int n = strlen(rm);
 	uint8_t temp = rm[0];
@@ -183,4 +194,29 @@ void leftRotate(char *rm)
 	for (i = 0; i < n - 1; i++) 
 		rm[i] = rm[i+1]; 
 	rm[i] = temp; 
+}
+
+void dexterRotate(char *rm) 
+{ 
+    int n = strlen(rm);
+	uint8_t temp = rm[n-1];
+    int i; 
+	for (i = n-1; i > 0; i--) 
+		rm[i] = rm[i-1]; 
+	rm[0] = temp; 
+}
+
+void instrument(const int line, const char *name, const char *msg)
+{
+    if (debugActive()) {
+        char tbuff[30];
+        char buff[254];
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
+        time_t now = tv.tv_sec;
+        struct tm loctm = *localtime(&now);
+        strftime(tbuff, sizeof(tbuff), "%Y-%m-%02d %H:%M:%S", &loctm);
+        sprintf(buff,"%19s :: %16s-%04d : %s\n", tbuff, name, line, msg);
+        putMSG(buff, LL_DEBUG);
+    }
 }

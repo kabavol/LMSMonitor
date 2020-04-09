@@ -24,7 +24,6 @@
 #define METRICS_H
 
 double cpuLoad(void);
-
 double cpuTemp(void);
 
 #endif

@@ -47,6 +47,19 @@
 #define NAGNOTE_HEIGHT 16
 #define NAGNOTE_WIDTH  16
 
+#define SCROLL_MODE_CYLON  0 // cylon sweep with pause
+#define SCROLL_MODE_INFSIN 1 // infinity scroll left (sinister)
+#define SCROLL_MODE_INFDEX 2 // infinity scroll right (dexter)
+#define SCROLL_MODE_RANDOM 3 // randomize the above
+#define SCROLL_MODE_MAX 4
+
+static const char * scrollerMode[] = {
+    "Cylon (Default)",
+    "Infinity (Sinister)",
+    "Infinity (Dexter)",
+    "Randomized"
+};
+
 typedef enum PageMode {
     DETAILS,
     CLOCK,
@@ -76,13 +89,13 @@ typedef struct MonitorAttrs {
     char lastBits[16];
     char lastTime[6];
     char lastTemp[10]; // should be a double
+    char lastLoad[10]; // should be a double
+    pthread_mutex_t update;
 } MonitorAttrs;
 
 typedef struct Scroller {
-    pthread_mutex_t scrollox;
+    bool active;
     bool initialized;
-    char *text;
-    pthread_t scrollThread;
     int textPix;
     int line;
     int xpos;
@@ -91,13 +104,20 @@ typedef struct Scroller {
     int lolimit;
     int hilimit;
     bool forward;
+    short scrollMode;
+    pthread_t scrollThread;
+    pthread_mutex_t scrollox;
     void *(*scrollMe)(void *input);
+    char *text;
 } sme;
 
 void printOledSetup(void);
 void printOledTypes(void);
 bool setOledType(int ot);
 bool setOledAddress(int8_t oa);
+
+void setScrollMode(short sm);
+void printScrollerMode(void);
 
 double deg2Rad(double angDeg);
 double rad2Deg(double angRad);
@@ -111,12 +131,13 @@ void scrollerInit(void);
 void clearScrollable(int line);
 bool putScrollable(int y, char *buff);
 void scrollerFinalize(void);
-bool activeScroller(void);
 void setScrollActive(int line, bool active);
+bool activeScroller(void);
 
 void resetDisplay(int fontSize);
 int initDisplay(void);
 void closeDisplay(void);
+void softClear(void);
 
 // we'll support 2up and dual displays
 // 2 up for now
@@ -132,11 +153,13 @@ void putAudio(int a, char *buff);
 void putText(int x, int y, char *buff);
 void putTextCenterColor(int y, char *buff, uint16_t color);
 void putTextToCenter(int y, char *buff);
-void drawTimeBlink(uint8_t cc);
-void drawTimeText(char *buff);
-void drawTimeText2(char *buff, char *last);
+
 void clearLine(int y);
 void clearDisplay();
+
+void drawTimeBlink(uint8_t cc, int y);
+void drawTimeText(char *buff);
+void drawTimeText2(char *buff, char *last, int y);
 
 void refreshDisplay(void);
 void refreshDisplayScroller(void);
@@ -158,7 +181,5 @@ void shotAndDisplay(void);
 
 void nagSaverSetup(void);
 void nagSaverNotes(void);
-
-bool scrollerActive(void);
 
 #endif
