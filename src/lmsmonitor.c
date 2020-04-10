@@ -248,7 +248,6 @@ void setupPlayMode(void) {
 
 bool isPlaying(void) { return playing; }
 
-
 bool acquireOptLock(void) 
 {
 
@@ -281,6 +280,16 @@ void softClockRefresh(bool rc=true)
             glopt->refreshClock = rc;
             pthread_mutex_unlock(&glopt->update);
         }
+}
+
+void softVisualizeRefresh(bool rv=true)
+{
+    if (glopt->visualize)
+        if (rv != glopt->refreshViz)
+            if (acquireOptLock()) {
+                glopt->refreshViz = rv;
+                pthread_mutex_unlock(&glopt->update);
+            }
 }
 
 void softPlayRefresh(bool r=true)
@@ -395,7 +404,7 @@ void toggleVisualize(size_t timer_id, void *user_data) {
                 activateVisualizer();
             }
             softlySoftly = true;
-            clearDisplay();
+            softVisualizeRefresh(true);
         }
     }
 }
@@ -418,12 +427,12 @@ void cycleVisualize(size_t timer_id, void *user_data) {
                 strncpy(updated, currentMeter(), 2);
                 if (strcmp(current, updated) != 0) {
                     softlySoftly = true;
-                    softClear();
-                    clearDisplay();
+                    ///softClear();
                 }
             } else {
                 currentMeter();
             }
+            softVisualizeRefresh(true);
         } else {
             currentMeter();
         }
@@ -475,6 +484,7 @@ int main(int argc, char *argv[]) {
         .splash = true,
         .refreshLMS = false,
         .refreshClock = false,
+        .refreshViz = false,
         .lastVolume = -1,
     };
 
@@ -766,11 +776,11 @@ void clockPage(void) {
     if (glopt->refreshClock) {
         softClockReset();
         softClockRefresh(false);
-        ///clearDisplay();
     }
 
     setNagDone();
     softPlayReset();
+    softVisualizeRefresh(true);
     setSleepTime(SLEEP_TIME_LONG);
 
     if (glopt->showTemp)
@@ -836,12 +846,15 @@ void playingPage(void)
         if (activeScroller()) {
             scrollerPause();
         }
-        instrument(__LINE__, __FILE__, "Modify Option");
+        if (glopt->refreshViz)
+        {
+            clearDisplay();
+        }
+        softVisualizeRefresh(false);
         softPlayReset();
         softClockReset(false);
         setNagDone();
         setSleepTime(SLEEP_TIME_SHORT);
-        instrument(__LINE__, __FILE__, "Active Visualize");
     } else {
 #endif
         sprintf(buff, "________________________\n");
@@ -851,6 +864,7 @@ void playingPage(void)
 
         setNagDone(false); // do not set refreshLMS
         softClockReset(false);
+        softVisualizeRefresh(true);
 
         actVolume =
             tags[VOLUME].valid ? strtol(tags[VOLUME].tagData, NULL, 10) : 0;
@@ -860,7 +874,6 @@ void playingPage(void)
             else
                 sprintf(buff, "  %ld%% ", actVolume);
             putVolume((0 != actVolume), buff);
-            instrument(__LINE__, __FILE__, "Modify Option");
             setLastVolume(actVolume);
         }
 
@@ -884,7 +897,6 @@ void playingPage(void)
 
         if (strcmp(glopt->lastBits, buff) != 0) {
             putAudio(audio, buff);
-            instrument(__LINE__, __FILE__, "Modify Option");
             setLastBits(buff);
         }
 
@@ -915,7 +927,6 @@ void playingPage(void)
             }
 #ifdef __arm__
             if (!filled) {
-printf("------------------------------- clear on %d\n", line);                
                 clearScrollable(line);
                 clearLine(line * 10);
             }

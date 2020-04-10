@@ -105,7 +105,7 @@ void setVisList(char *vlist) {
     // init...
     int ll = lenVisList();
     for (int x = 0; x < ll; x++) {
-        vis_list[x][0] = '\0';
+        vis_list[x][0] = 0; //'\0';
     }
 
     int i = -1;
@@ -190,14 +190,7 @@ void visualize(struct vissy_meter_t *vissy_meter) {
             }
         }
         lastTest = true;
-    } /*else {
-        if (lastTest) {// transition
-    instrument(__LINE__, __FILE__, "Visualize Cleanup");
-            clearDisplay();
-        }
-        lastTest = false;
-    ///instrument(__LINE__, __FILE__, "Visualize Done?");
-    }*/
+    }
 
     // stream is too fast for display - a 1:20 consumption ratio plays happy w/ display
     // routine VU routine checks for change so we may be Ok, parameterize and push limits

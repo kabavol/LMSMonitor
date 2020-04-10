@@ -85,6 +85,7 @@ typedef struct MonitorAttrs {
     bool splash;
     bool refreshLMS;
     bool refreshClock;
+    bool refreshViz;
     int  lastVolume;
     char lastBits[16];
     char lastTime[6];

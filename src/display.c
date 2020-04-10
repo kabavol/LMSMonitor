@@ -193,15 +193,19 @@ void vumeter2upl(void) {
 }
 
 void vumeterDownmix(bool inv) {
+    //if (inv)
+    //    softClear();  // display.drawBitmap(0, 0, vudm128x64, 128, 64, BLACK);
     if (inv)
-        softClear();  // display.drawBitmap(0, 0, vudm128x64, 128, 64, BLACK);
+        display.drawBitmap(0, 0, vudm128x64, 128, 64, BLACK);
     else
         display.drawBitmap(0, 0, vudm128x64, 128, 64, WHITE);
 }
 
 void peakMeterH(bool inv) {
+    //if (inv)
+    //    softClear();  // display.drawBitmap(0, 0, peak_rms, 128, 64, BLACK);
     if (inv)
-        softClear();  // display.drawBitmap(0, 0, peak_rms, 128, 64, BLACK);
+        display.drawBitmap(0, 0, peak_rms, 128, 64, BLACK);
     else
         display.drawBitmap(0, 0, peak_rms, 128, 64, WHITE);
 }

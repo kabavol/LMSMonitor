@@ -37,9 +37,9 @@ Supported OLED types:
 - Removed use of ALSA MIMO, audio attributes provided by LMS are used
 - Track details are displayed only when playing
 - Display features independant scrolling of track details.
-- Remaining time can now be displayed
-- Audio attributes, volume, sample depth, and sample rate are displayed
-- A retro clock is displayed when audio paused/stopped.
+- Remaining time can now be displayed rather than total time
+- Audio attributes, volume, sample depth, and sample rate are shown
+- A retro clock is displayed when the audio paused/stopped.
 - Automatically sets the brightness of the display at dawn and dusk.
 - Multiple audio visualization modes are supported
 
@@ -122,7 +122,7 @@ Add a *User command*, here for example requesting the random visualizations
 /mnt/mmcblk0p2/tce/gomonitor rn
 ```
 
-Additional supported commands may also be specified, here we request a specific visualizaer sequence, the device driver, override the default OLED address, request downmixed visualizers, and automatedbrightness at dawn and dusk
+Additional supported commands may also be specified, here we request a specific visualizaer sequence, the device driver, override the default OLED address, request downmixed visualizers, and automated display brightness at dawn and dusk
 
 ```bash
 /mnt/mmcblk0p2/tce/gomonitor vu,sa,pk -o 6 -x 0x3c -db
