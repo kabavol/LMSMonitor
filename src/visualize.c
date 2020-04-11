@@ -35,7 +35,7 @@
 uint8_t cm = -1;
 bool vis_is_active = false;
 vis_type_t vis_mode = {0};
-vis_type_t vis_list[3] = {{0}, {0}, {0}};
+vis_type_t vis_list[4] = {{0}, {0}, {0}, {0}};
 uint8_t num_modes = 1;
 char downmix[5] = {0};
 
@@ -65,7 +65,6 @@ const bool isVisualizeActive(void) { return vis_is_active; }
 void deactivateVisualizer(void) {
     instrument(__LINE__, __FILE__, "Visualize Off ->");
     vis_is_active = false;
-    instrument(__LINE__, __FILE__, "Visualize Off <-");
 }
 
 void setDownmix(int samplesize, float samplerate) {
@@ -114,8 +113,11 @@ void setVisList(char *vlist) {
     while ((p != NULL) && (i + 1 < ll)) {
         strupr(p);
         // validate and silently assign to default if "bogus"
-        if ((strncmp(p, VMODE_VU, 2) != 0) && (strncmp(p, VMODE_SA, 2) != 0) &&
-            (strncmp(p, VMODE_RN, 2) != 0) && (strncmp(p, VMODE_PK, 2) != 0)) {
+        if ((strncmp(p, VMODE_VU, 2) != 0) && 
+            (strncmp(p, VMODE_SA, 2) != 0) &&
+            (strncmp(p, VMODE_ST, 2) != 0) &&
+            (strncmp(p, VMODE_RN, 2) != 0) && 
+            (strncmp(p, VMODE_PK, 2) != 0)) {
             strcpy(p, VMODE_NA);
         }
         i++;
@@ -135,10 +137,11 @@ char *currentMeter(void) {
 
     if (strcmp(vis_list[cm], VMODE_RN) == 0) {
         // pick a random visualization
-        int i = rand() % 3;
+        int i = rand() % 4;
         switch (i) {
             case 0: setVisMode(VMODE_VU); break;
             case 1: setVisMode(VMODE_SA); break;
+            case 2: setVisMode(VMODE_ST); break;
             default: setVisMode(VMODE_PK);
         }
     } else
@@ -176,17 +179,21 @@ void visualize(struct vissy_meter_t *vissy_meter) {
                     instrument(__LINE__, __FILE__, "Visualize VU ->");
                     stereoVU(vissy_meter, downmix);
                     instrument(__LINE__, __FILE__, "Visualize VU <-");
-                } else {
-                    if (strncmp(vis_mode, VMODE_PK, 2) == 0) {
-                        instrument(__LINE__, __FILE__, "Visualize PK ->");
-                        stereoPeakH(vissy_meter, downmix);
-                        instrument(__LINE__, __FILE__, "Visualize PK <-");
-                    }
+                } else if (strncmp(vis_mode, VMODE_PK, 2) == 0) {
+                    instrument(__LINE__, __FILE__, "Visualize PK ->");
+                    stereoPeakH(vissy_meter, downmix);
+                    instrument(__LINE__, __FILE__, "Visualize PK <-");
                 }
             } else if (strncmp(vis_mode, vissy_meter->meter_type, 2) == 0) {
-                instrument(__LINE__, __FILE__, "Visualize SA ->");
-                stereoSpectrum(vissy_meter, downmix);
-                instrument(__LINE__, __FILE__, "Visualize SA <-");
+                if (strncmp(vis_mode, VMODE_SA, 2) == 0) {
+                    instrument(__LINE__, __FILE__, "Visualize SA ->");
+                    stereoSpectrum(vissy_meter, downmix);
+                    instrument(__LINE__, __FILE__, "Visualize SA <-");
+                } else if (strncmp(vis_mode, VMODE_ST, 2) == 0) {
+                    instrument(__LINE__, __FILE__, "Visualize SO ->");
+                    ovoidSpectrum(vissy_meter, downmix);
+                    instrument(__LINE__, __FILE__, "Visualize SO <-");
+                }
             }
         }
         lastTest = true;

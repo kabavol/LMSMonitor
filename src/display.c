@@ -308,14 +308,14 @@ void stereoVU(struct vissy_meter_t *vissy_meter, char *downmix) {
         (lastVU.metric[1] == thisVU.metric[1]))
         return;
 
-    lastVU.metric[0] = thisVU.metric[0];
-    lastVU.metric[1] = thisVU.metric[1];
-
     // VU Mode
     if (strncmp(downmix, "N", 1) != 0) {
         downmixVU(vissy_meter);
         return;
     }
+
+    lastVU.metric[0] = thisVU.metric[0];
+    lastVU.metric[1] = thisVU.metric[1];
 
     vumeter2upl();
 
@@ -530,6 +530,60 @@ void stereoSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
     display.fillRect(0, maxYPixel() - 4, maxXPixel(), 4, BLACK);
 
     // track detail scroller...
+}
+
+void ovoidSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
+
+    // a spectrum that is centered and horizontal
+
+    /*
+   left hi-lo right lo-hi
+        +++++ +++++
+      +++++++ ++++++
+    +++++++++ ++++++++
+      +++++++ ++++++
+       ++++++ ++++++
+         ++++ +++++++
+    */
+
+    int bins = 12;
+
+    int wsa = (maxXPixel() - 6) / 2;
+    int hsa = maxYPixel() - 2;
+
+    double hbin = (double)hsa / (double)(bins + 1); // 12 bar display
+
+    // SA scaling
+    double multiSA =
+        (double)wsa / 31.00; // max input is 31
+
+    for (int channel = 0; channel < 2; channel++) {
+
+        int ofs = 2;
+        int mod = (0 == channel)?-1:1;
+        for (int bin = 0; bin < bins; bin++) {
+            int lob = (int)(multiSA / 2.00);
+            int oob = (int)(multiSA / 2.00);
+            if (bin < vissy_meter->numFFT[channel])
+                oob = (int)(multiSA * (double)vissy_meter->sample_bin_chan[channel][bin]);
+
+            if (last_bin.bin[channel][bin])
+                lob = int(multiSA * last_bin.bin[channel][bin]);
+            else
+                lob = oob;
+            display.fillRect((wsa + mod) + ((channel-1) * lob), ofs, lob, hbin - 1,
+                            BLACK);
+            display.fillRect((wsa + mod) + ((channel-1) * oob), ofs, oob, hbin - 1,
+                            WHITE);
+
+            last_bin.bin[channel][bin] =
+                vissy_meter->sample_bin_chan[channel][bin];
+
+            ofs += hbin;
+
+        }
+    }
+
 }
 
 meter_chan_t lastPK = {-1000, -1000};

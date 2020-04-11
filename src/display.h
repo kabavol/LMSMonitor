@@ -140,11 +140,9 @@ int initDisplay(void);
 void closeDisplay(void);
 void softClear(void);
 
-// we'll support 2up and dual displays
-// 2 up for now
-//void vumeter2upl(void);
 void stereoVU(struct vissy_meter_t *vissy_meter, char *downmix);
 void stereoSpectrum(struct vissy_meter_t *vissy_meter, char *downmix);
+void ovoidSpectrum(struct vissy_meter_t *vissy_meter, char *downmix);
 void stereoPeakH(struct vissy_meter_t *vissy_meter, char *downmix);
 
 // audio attributes

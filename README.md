@@ -14,7 +14,7 @@ options:
  -d downmix audio and display a single large meter, SA and VU only
  -i increment verbose level
  -k show CPU load and temperature (clock mode)
- -m if visualization on specify one or more meter modes, sa, vu, pk, or rn for random
+ -m if visualization on specify one or more meter modes, sa, vu, pk, st, or rn for random
  -o specifies OLED "driver" type (see options below)
  -r show remaining time rather than track time
  -t enable print info to stdout
@@ -52,9 +52,10 @@ At 15 FPS scrolling text is smooth and the visualizer modes very kinetic.
 
 ### Visualizer Modes
 
-Five visualizer modes are supported
+Six visualizer modes are supported
 - Stereo VU Meters - dBfs metered
 - Stereo 12-band Spectrum Analysis
+- Stereo 12-band "tornado" Spectrum Analysis
 - Stereo Peak Meter - dBfs metered
 - Large Downmix (visual data only) VU meter
 - Large Downmix (visual data only) Spectrum
@@ -122,17 +123,18 @@ Add a *User command*, here for example requesting the random visualizations
 /mnt/mmcblk0p2/tce/gomonitor rn
 ```
 
-Additional supported commands may also be specified, here we request a specific visualizaer sequence, the device driver, override the default OLED address, request downmixed visualizers, and automated display brightness at dawn and dusk
+Additional supported commands may also be specified, here we request a specific visualizer sequence, the device driver, override the default OLED address, request downmixed visualizers, and automated display brightness at dawn and dusk
 
 ```bash
-/mnt/mmcblk0p2/tce/gomonitor vu,sa,pk -o 6 -x 0x3c -db
+/mnt/mmcblk0p2/tce/gomonitor vu,sa,pk,st -o 6 -x 0x3c -db
 ```
 
-the visualization parameter must always be specified firts
+the visualization parameter must always be specified first
 
 ### Coming soon
 - DONE! Audio visualizer support: stereo VU meters
 - DONE! Audio visualizer support: spectrum analyzer
+- DONE! Audio visualizer support: tornado spectrum analyzer
 - DONE! Audio visualizer support: horizontal Peak RMS
 - DONE! Audio visualizer support: random and multiple meters
 - DONE! Set display brightness, day and night modes.

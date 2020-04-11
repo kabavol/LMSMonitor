@@ -219,7 +219,7 @@ void print_help(char *executable) {
         " -i increment verbose level\n"
         " -k show CPU load and temperature (clock mode)\n"
         " -m if visualization on specify one or more meter modes, sa, vu, "
-        "pk, or rn for random\n"
+        "pk, st, or rn for random\n"
         " -o specifies OLED \"driver\" type (see options below)\n"
         " -r show remaining time rather than track time\n"
         " -S scrollermode: 0 (cylon), 1 (infinity left), 2 infinity (right)\n"
@@ -536,7 +536,10 @@ int main(int argc, char *argv[]) {
                     setOledType(oled);
                 }
                 break;
-            case 'a': lmsopt.allInOne = true; break;
+            case 'a':
+                printf("All-In-One coming soon\n"); 
+                lmsopt.allInOne = true; 
+                break;
             case 'b': lmsopt.astral = true; break;
             case 'm':
                 setVisList(optarg);

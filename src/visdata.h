@@ -40,6 +40,7 @@
 #define VMODE_SA "SA" // Spectrum
 #define VMODE_VU "VU" // VU meters
 #define VMODE_PK "PK" // Peak meter
+#define VMODE_ST "ST" // Spectrum Tornado
 #define VMODE_RN "RN" // random
 
 struct peak_meter_t {
