@@ -40,7 +40,7 @@ all: bin std default
 
 OBJECTS = $(patsubst %.cpp, %.o, $(wildcard ./src/*.cpp)) $(patsubst %.cc, %.o, $(wildcard ./src/*.cc)) $(patsubst %.c, %.o, $(wildcard ./src/*.c))
 OBJECTSCC = $(OBJECTS) $(patsubst %.cc, %.o, $(wildcard ./sse/*.cc)) $(patsubst %.c, %.o, $(wildcard ./sse/*.c))
-HEADERS = $(wildcard ./src/*.h)
+HEADERS = $(wildcard ./src/*.h) $(wildcard ./font/*.h)
 HEADERSCC = $(HEADERS) $(wildcard ./sse/*.h)
 
 %.o: %cc $(HEADERSCC)

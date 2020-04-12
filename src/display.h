@@ -22,18 +22,24 @@
 #ifndef DISPLAY_H
 #define DISPLAY_H 1
 
+#ifndef PROGMEM
+#define PROGMEM
+#endif
+
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include "gfxfont.h"
+#include "../font/NotoSansRegular5lms.h"
 
 #include "visdata.h"
 
-#define CHAR_WIDTH 6
-#define CHAR_HEIGHT 8
-
+///#define CHAR_WIDTH 6
+///#define CHAR_HEIGHT 8
 #define MAX_LINES 8
+
 #define MAXSCROLL_DATA 255
 #define MAX_BRIGHTNESS 220
 #define NIGHT_BRIGHTNESS 100
@@ -112,6 +118,17 @@ typedef struct Scroller {
     char *text;
 } sme;
 
+typedef struct {
+    int charWidth;
+    int charHeight;
+    int bufferLen;
+    int xPos;
+    int yPos;
+    const uint8_t font[];
+} DrawTime; // generic font header!
+
+void printFontMetrics(void);
+
 void printOledSetup(void);
 void printOledTypes(void);
 bool setOledType(int ot);
@@ -169,12 +186,11 @@ int maxCharacter(void);
 int maxLine(void);
 int maxXPixel(void);
 int maxYPixel(void);
+uint16_t charWidth(void);
+uint16_t charHeight(void);
 
 void drawHorizontalBargraph(int x, int y, int w, int h, int percent);
 void drawRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
-
-// experimental
-void testFont(int x, int y, char *buff);
 
 void setSnapOn(void);
 void setSnapOff(void);

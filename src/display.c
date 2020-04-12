@@ -58,19 +58,49 @@ ArduiPi_OLED display;
 int oledType = OLED_SH1106_I2C_128x64;
 int8_t oledAddress = 0x00;
 int8_t icons[NUMNOTES][4];
+uint16_t _char_width = 6;
+uint16_t _char_height = 8;
 short scrollMode = SCROLL_MODE_CYLON;
 sme scroll[MAX_LINES];
 
+int maxCharacter(void) { return (int)(maxXPixel()/_char_width); }
+int maxLine(void) { return (int)(maxYPixel()/_char_height); }
+uint16_t charWidth(void) { return _char_width; }
+uint16_t charHeight(void){ return _char_height; }
+
+#else
+int maxCharacter(void) { return 21; }
+int maxLine(void) { return MAX_LINES; }
+uint16_t charWidth(void) { return 6; }
+uint16_t charHeight(void)  { return 8; }
+
 #endif
 
-int maxCharacter(void) { return 21; } // review when we get scroll working
-int maxLine(void) { return MAX_LINES; }
 int maxXPixel(void) { return 128; }
 int maxYPixel(void) { return 64; }
 double deg2Rad(double angDeg) { return (PI * angDeg / 180.0); }
 double rad2Deg(double angRad) { return (180.0 * angRad / PI); }
 
 #ifdef __arm__
+
+void fontMetrics(void)
+{
+    int16_t  x, y, x1, y1;
+    display.getTextBounds("W", 0, 0, &x1, &y1, &_char_width, &_char_height);
+}
+
+void printFontMetrics(void)
+{
+    fontMetrics();
+    char stb[BSIZE] = {0};
+    sprintf(stb, "%s %d (px)\n%s %d (px)\n", 
+        labelIt("GFX Font Width", LABEL_WIDTH, "."), 
+        _char_width,
+        labelIt("GFX Font Height", LABEL_WIDTH, "."), 
+        _char_height);
+    putMSG(stb, LL_INFO);
+
+}
 
 void printOledSetup(void)
 {
@@ -170,6 +200,9 @@ int initDisplay(void) {
     }
 
     display.begin();
+    display.setFont(&NotoSans_Regular5pt7b);
+    display.setFont();
+    fontMetrics();
     display.setBrightness(0);
     resetDisplay(1);
     scrollerInit();
@@ -658,6 +691,16 @@ void drawTimeBlinkS(uint8_t cc, int y)
         bigChar(cc, x, y, LCD15X21_LEN, w, h, microlcd, WHITE);
 }
 
+void drawTimeBlinkL(uint8_t cc, int y) {
+    int w = 25;
+    int h = 44;
+    int x = 2 + (2 * w);    
+    if (32 == cc) // a space - colon off
+        bigChar(':', x, y, LCD25X44_LEN, w, h, lcd25x44, BLACK);
+    else
+        bigChar(cc, x, y, LCD25X44_LEN, w, h, lcd25x44, WHITE);
+}
+
 void drawTimeTextS(char *buff, char *last, int y) 
 {
     // digit walk and "blit"
@@ -675,16 +718,6 @@ void drawTimeTextS(char *buff, char *last, int y)
         }
         x += w;
     }
-}
-
-void drawTimeBlinkL(uint8_t cc, int y) {
-    int w = 25;
-    int h = 44;
-    int x = 2 + (2 * w);    
-    if (32 == cc) // a space - colon off
-        bigChar(':', x, y, LCD25X44_LEN, w, h, lcd25x44, BLACK);
-    else
-        bigChar(cc, x, y, LCD25X44_LEN, w, h, lcd25x44, WHITE);
 }
 
 void drawTimeTextL(char *buff, char *last, int y) {
@@ -717,7 +750,7 @@ void putVolume(bool v, char *buff) {
 void putAudio(int a, char *buff) {
     char pad[32];
     sprintf(pad, "   %s  ", buff); // ensue we cleanup
-    int x = maxXPixel() - (strlen(pad) * CHAR_WIDTH);
+    int x = maxXPixel() - (strlen(pad) * _char_width);
     putText(x, 0, pad);
     int w = 8;
     int start = a * w;
@@ -727,7 +760,7 @@ void putAudio(int a, char *buff) {
 }
 
 void scrollerFinalize(void) {
-    for (int line = 0; line < MAX_LINES; line++) {
+    for (int line = 0; line < maxLine(); line++) {
         pthread_cancel(scroll[line].scrollThread);
         pthread_join(scroll[line].scrollThread, NULL);
         if (scroll[line].text)
@@ -787,12 +820,12 @@ bool putScrollable(int line, char *buff) {
 
     setScrollActive(line, false);
     bool ret = true;
-    if ((line > 0 )&&(line < MAX_LINES))
+    if ((line > 0 )&&(line < maxLine()))
     {
         int tlen = strlen(buff);
         bool goscroll = (maxCharacter() < tlen);
         if (!goscroll) {
-            putTextToCenter(line * (2 + CHAR_HEIGHT), buff); // fast!
+            putTextToCenter(line * (2 + _char_height), buff); // fast!
             if (scroll[line].text)
             {
                 if (acquireLock(line))
@@ -810,7 +843,7 @@ bool putScrollable(int line, char *buff) {
                 {
                     baselineScroller(&scroll[line]);
                     sprintf(scroll[line].text, " %s ", buff); // pad ends
-                    scroll[line].textPix = tlen * CHAR_WIDTH;
+                    scroll[line].textPix = tlen * _char_width;
                     scroll[line].active = true;
                     short sm = scrollMode;
                     if(SCROLL_MODE_RANDOM == scrollMode) {
@@ -867,14 +900,14 @@ void *scrollLine(void *input) {
                         display.setCursor(s->xpos, s->ypos);
                         display.print(s->text);
 
-                        if (-(CHAR_WIDTH / 2) == s->xpos) {
+                        if (-(_char_width / 2) == s->xpos) {
                             //if (0 == s->xpos) {
                             if (!s->forward)
                                 timer = PAUSE_TIME;
                             s->forward = false;
                         }
 
-                        if ((maxXPixel() - (int)(1.5 * CHAR_WIDTH)) ==
+                        if ((maxXPixel() - (int)(1.5 * _char_width)) ==
                             ((s->textPix) + s->xpos))
                             s->forward = true;
 
@@ -888,8 +921,8 @@ void *scrollLine(void *input) {
                     }
 
                     // address annoying pixels
-                    display.fillRect(0, s->ypos, 2, CHAR_HEIGHT + 2, BLACK);
-                    display.fillRect(maxXPixel() - 2, s->ypos, 2, CHAR_HEIGHT + 2,
+                    display.fillRect(0, s->ypos, 2, _char_height + 2, BLACK);
+                    display.fillRect(maxXPixel() - 2, s->ypos, 2, _char_height + 2,
                                     BLACK);
                 }
                 pthread_mutex_unlock(&s->scrollox);
@@ -911,14 +944,14 @@ void setScrollActive(int line, bool active) {
 
 void scrollerPause(void) {
     if (activeScroller()) {
-        for (int line = 0; line < MAX_LINES; line++) {
+        for (int line = 0; line < maxLine(); line++) {
             setScrollActive(line, false);
         }
     }
 }
 
 void scrollerInit(void) {
-    for (int line = 0; line < MAX_LINES; line++) {
+    for (int line = 0; line < maxLine(); line++) {
         if (pthread_mutex_init(&scroll[line].scrollox, NULL) != 0) {
             closeDisplay();
             printf("\nscroller[%d] mutex init has failed\n", line);
@@ -931,7 +964,7 @@ void scrollerInit(void) {
             return;
         } else {
             baselineScroller(&scroll[line]);
-            scroll[line].ypos = line * (2 + CHAR_HEIGHT);
+            scroll[line].ypos = line * (2 + _char_height);
             scroll[line].line = line;   // dang, dumb to have missed this !?!
             scroll[line].scrollMe = scrollLine;
             scroll[line].scrollMode = scrollMode;
@@ -944,7 +977,7 @@ void scrollerInit(void) {
 
 bool activeScroller(void) {
     bool ret = false;
-    for (int line = 0; line < MAX_LINES; line++) {
+    for (int line = 0; line < maxLine(); line++) {
         if (acquireLock(line))
         {
             if (scroll[line].active)
@@ -1032,17 +1065,17 @@ void refreshDisplayScroller(void) {
 
 void putText(int x, int y, char *buff) {
     display.setTextSize(1);
-    display.fillRect(x, y, (int16_t)strlen(buff) * CHAR_WIDTH, CHAR_HEIGHT, 0);
+    display.fillRect(x, y, (int16_t)strlen(buff) * _char_width, _char_height, 0);
     display.setCursor(x, y);
     display.print(buff);
 }
 
-void clearLine(int y) { display.fillRect(0, y, maxXPixel(), CHAR_HEIGHT, 0); }
+void clearLine(int y) { display.fillRect(0, y, maxXPixel(), _char_height, 0); }
 
 void putTextCenterColor(int y, char *buff, uint16_t color) {
     int tlen = strlen(buff);
     int px =
-        maxCharacter() < tlen ? 0 : (maxXPixel() - (tlen * CHAR_WIDTH)) / 2;
+        maxCharacter() < tlen ? 0 : (maxXPixel() - (tlen * _char_width)) / 2;
     clearLine(y);
     display.setTextColor(color);
     putText(px, y, buff);
@@ -1053,17 +1086,9 @@ void putTextCenterColor(int y, char *buff, uint16_t color) {
 void putTextToCenter(int y, char *buff) {
     int tlen = strlen(buff);
     int px =
-        maxCharacter() < tlen ? 0 : (maxXPixel() - (tlen * CHAR_WIDTH)) / 2;
+        maxCharacter() < tlen ? 0 : (maxXPixel() - (tlen * _char_width)) / 2;
     clearLine(y);
     putText(px, y, buff);
-}
-
-void testFont(int x, int y, char *buff) {
-    //display.setTextFont(&LiberationMono_Regular6pt7bBitmaps);
-    display.setTextSize(1);
-    display.fillRect(x, y, (int16_t)strlen(buff) * CHAR_WIDTH, CHAR_HEIGHT, 0);
-    display.setCursor(x, y);
-    display.print(buff);
 }
 
 void drawRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {

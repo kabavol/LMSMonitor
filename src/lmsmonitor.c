@@ -680,6 +680,8 @@ int main(int argc, char *argv[]) {
 
     clearDisplay(); // clears the  splash if shown
 
+    printFontMetrics();
+
     // bitmap capture
 #ifdef CAPTURE_BMP
     //setSnapOn();
@@ -972,12 +974,12 @@ void playingPage(void)
             sprintf(buff, "%02ld:%02ld", dTime / 60, dTime % 60);
 
         int dlen = strlen(buff);
-        putText(maxXPixel() - (dlen * CHAR_WIDTH) - 1, 56, buff);
+        putText(maxXPixel() - (dlen * charWidth()) - 1, 56, buff);
 
         sprintf(buff, "%s", (tags[MODE].valid) ? tags[MODE].tagData : "");
         int mlen = strlen(buff);
-        putText(((maxXPixel() - ((tlen + mlen + dlen) * CHAR_WIDTH)) / 2) +
-                    (tlen * CHAR_WIDTH),
+        putText(((maxXPixel() - ((tlen + mlen + dlen) * charWidth())) / 2) +
+                    (tlen * charWidth()),
                 56, buff);
 
         drawHorizontalBargraph(2, 51, maxXPixel() - 4, 4,
