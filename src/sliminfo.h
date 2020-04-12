@@ -49,6 +49,7 @@ typedef enum {
     SAMPLESIZE,
     SAMPLERATE,
     MODE,
+    PERFORMER,
     MAXTAG_TYPES
 } tagtypes_t;
 

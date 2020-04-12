@@ -29,7 +29,7 @@
 #define BSIZE 4096
 
 #define APPNAME "LMSMonitor"
-#define VERSION "0.4.30"
+#define VERSION "0.4.31"
 
 #define LABEL_WIDTH 22
 #define LL_QUIET 0

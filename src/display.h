@@ -156,9 +156,11 @@ void putTextToCenter(int y, char *buff);
 void clearLine(int y);
 void clearDisplay();
 
-void drawTimeBlink(uint8_t cc, int y);
-void drawTimeText(char *buff);
-void drawTimeText2(char *buff, char *last, int y);
+void drawTimeBlinkL(uint8_t cc, int y);
+void drawTimeTextL(char *buff, char *last, int y);
+
+void drawTimeBlinkS(uint8_t cc, int y);
+void drawTimeTextS(char *buff, char *last, int y);
 
 void refreshDisplay(void);
 void refreshDisplayScroller(void);

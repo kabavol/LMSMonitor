@@ -209,8 +209,8 @@ void dexterRotate(char *rm)
 void instrument(const int line, const char *name, const char *msg)
 {
     if (debugActive()) {
-        char tbuff[30];
-        char buff[254];
+        char tbuff[32];
+        char buff[BSIZE];
         struct timeval tv;
         gettimeofday(&tv, NULL);
         time_t now = tv.tv_sec;

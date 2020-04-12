@@ -270,6 +270,7 @@ tag *initTagStore(void) {
     tagStore[COMPOSER].name = "composer";
     tagStore[CONDUCTOR].name = "conductor";
     tagStore[MODE].name = "mode";
+    tagStore[PERFORMER].name = "performer";
     tagStore[COMPILATION].name = "compilation";
 
     for (int i = 0; i < MAXTAG_TYPES; i++) {

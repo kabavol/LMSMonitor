@@ -306,7 +306,8 @@ void setLastTime(char *tm)
     if (strcmp(glopt->lastTime, tm) != 0)
     {
         if (acquireOptLock()) {
-            drawTimeText2(tm, glopt->lastTime, ((glopt->showTemp) ? -1 : 1));
+            drawTimeTextL(tm, glopt->lastTime, ((glopt->showTemp) ? -1 : 1));
+            //drawTimeTextS(tm, glopt->lastTime, 17);
             strncpy(glopt->lastTime, tm, 32);
             pthread_mutex_unlock(&glopt->update);
         }
@@ -420,7 +421,7 @@ void cycleVisualize(size_t timer_id, void *user_data) {
             instrument(__LINE__, __FILE__, "isPlaying");
             if (isVisualizeActive()) {
                 instrument(__LINE__, __FILE__,
-                           "Active Visualization in Progress");
+                           "Active Visualization");
                 vis_type_t current = {0};
                 vis_type_t updated = {0};
                 strncpy(current, getVisMode(), 2);
@@ -699,25 +700,32 @@ int main(int argc, char *argv[]) {
                 instrument(__LINE__, __FILE__, "Softly Softly <-");
                 clearDisplay(); // refreshDisplay();
             }
+
 #endif
             playing = (strcmp("play", tags[MODE].tagData) == 0);
 
             if (playing) {
 
 #ifdef __arm__
+
                 instrument(__LINE__, __FILE__, "isPlaying");
+
+                // Threaded logic in play - DO NOT MODIFY
                 if (!isVisualizeActive())
                     playingPage();
                 else
                     setupPlayMode();
+                // Threaded logic in play - DO NOT MODIFY
 #else
                 playingPage();
 #endif
             } else {
 #ifdef __arm__
+                instrument(__LINE__, __FILE__, "activeScroller test");
                 if (activeScroller()) {
                     scrollerPause();
                 }
+                instrument(__LINE__, __FILE__, "clock test");
                 if (lmsopt.clock)
                     clockPage();
                 else
@@ -777,15 +785,18 @@ void clockPage(void) {
     char buff[255];
 
     if (glopt->refreshClock) {
+instrument(__LINE__, __FILE__, "clock reset");
         softClockReset();
         softClockRefresh(false);
     }
+instrument(__LINE__, __FILE__, "clockPage");
 
     setNagDone();
     softPlayReset();
     softVisualizeRefresh(true);
     setSleepTime(SLEEP_TIME_LONG);
 
+instrument(__LINE__, __FILE__, "cpu Metrics?");
     if (glopt->showTemp)
         putCPUMetrics(39);
 
@@ -800,8 +811,8 @@ void clockPage(void) {
         setLastTime(buff);
 
     // colon (blink)
-    drawTimeBlink(((loctm.tm_sec % 2) ? ' ' : ':'),
-                  ((glopt->showTemp) ? -1 : 1));
+    drawTimeBlinkL(((loctm.tm_sec % 2) ? ' ' : ':'),((glopt->showTemp) ? -1 : 1));
+    //drawTimeBlinkS(((loctm.tm_sec % 2) ? ' ' : ':'), 17);
 
     // seconds
     drawHorizontalBargraph(

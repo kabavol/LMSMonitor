@@ -647,7 +647,37 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter, char *downmix) {
 
 }
 
-void drawTimeBlink(uint8_t cc, int y) {
+void drawTimeBlinkS(uint8_t cc, int y)
+{
+    int w = 15;
+    int h = 21;
+    int x = 49 + (2 * w);    
+    if (32 == cc) // a space - colon off
+        bigChar(':', x, y, LCD15X21_LEN, w, h, microlcd, BLACK);
+    else
+        bigChar(cc, x, y, LCD15X21_LEN, w, h, microlcd, WHITE);
+}
+
+void drawTimeTextS(char *buff, char *last, int y) 
+{
+    // digit walk and "blit"
+    int x = 49;
+    int w = 15;
+    int h = 21;
+    for (size_t i = 0; i < strlen(buff); i++) {
+        // selective updates, less "blink"
+        if (buff[i] != last[i]) {
+            if ('X' == last[i])
+                display.fillRect(x, y-1, w, h+2, BLACK);
+            else
+                bigChar(last[i], x, y, LCD15X21_LEN, w, h, microlcd, BLACK); // soft erase
+            bigChar(buff[i], x, y, LCD15X21_LEN, w, h, microlcd, WHITE);
+        }
+        x += w;
+    }
+}
+
+void drawTimeBlinkL(uint8_t cc, int y) {
     int w = 25;
     int h = 44;
     int x = 2 + (2 * w);    
@@ -655,6 +685,24 @@ void drawTimeBlink(uint8_t cc, int y) {
         bigChar(':', x, y, LCD25X44_LEN, w, h, lcd25x44, BLACK);
     else
         bigChar(cc, x, y, LCD25X44_LEN, w, h, lcd25x44, WHITE);
+}
+
+void drawTimeTextL(char *buff, char *last, int y) {
+    // digit walk and "blit"
+    int x = 2;
+    int w = 25;
+    int h = 44;
+    for (size_t i = 0; i < strlen(buff); i++) {
+        // selective updates, less "blink"
+        if (buff[i] != last[i]) {
+            if ('X' == last[i])
+                display.fillRect(x, 0, w, display.height() - 14, BLACK);
+            else
+                bigChar(last[i], x, y, LCD25X44_LEN, w, h, lcd25x44, BLACK); // soft erase
+            bigChar(buff[i], x, y, LCD25X44_LEN, w, h, lcd25x44, WHITE);
+        }
+        x += w;
+    }
 }
 
 void putVolume(bool v, char *buff) {
@@ -676,18 +724,6 @@ void putAudio(int a, char *buff) {
     uint8_t dest[w];
     memcpy(dest, volume8x8 + start, sizeof dest);
     display.drawBitmap(maxXPixel() - (w + 2), 0, dest, w, w, WHITE);
-}
-
-void drawTimeText(char *buff) {
-    display.fillRect(0, 0, display.width(), display.height() - 16, BLACK);
-    // digit walk and "blit"
-    int x = 2;
-    int w = 25;
-    int h = 44;
-    for (size_t i = 0; i < strlen(buff); i++) {
-        bigChar(buff[i], x, 1, LCD25X44_LEN, w, h, lcd25x44, WHITE);
-        x += 25;
-    }
 }
 
 void scrollerFinalize(void) {
@@ -919,24 +955,6 @@ bool activeScroller(void) {
             break;
     }
     return ret;
-}
-
-void drawTimeText2(char *buff, char *last, int y) {
-    // digit walk and "blit"
-    int x = 2;
-    int w = 25;
-    int h = 44;
-    for (size_t i = 0; i < strlen(buff); i++) {
-        // selective updates, less "blink"
-        if (buff[i] != last[i]) {
-            if ('X' == last[i])
-                display.fillRect(x, 0, w, display.height() - 14, BLACK);
-            else
-                bigChar(last[i], x, y, LCD25X44_LEN, w, h, lcd25x44, BLACK); // soft erase
-            bigChar(buff[i], x, y, LCD25X44_LEN, w, h, lcd25x44, WHITE);
-        }
-        x += 25;
-    }
 }
 
 void drawHorizontalBargraph(int x, int y, int w, int h, int percent) {
