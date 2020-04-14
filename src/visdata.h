@@ -43,6 +43,15 @@
 #define VMODE_ST "ST" // Spectrum Tornado
 #define VMODE_RN "RN" // random
 
+enum VIZMODES {
+  VEMODE_NA = -1, 
+  VEMODE_RN = 0,
+  VEMODE_VU = 1,
+  VEMODE_PK = 2,
+  VEMODE_SA = 3,
+  VEMODE_ST = 4}; 
+
+
 struct peak_meter_t {
   uint16_t int_time;  // Integration time (ms).
   uint16_t samples;   // Samples for integration time.

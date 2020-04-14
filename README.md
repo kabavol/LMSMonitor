@@ -44,9 +44,9 @@ Supported OLED types:
 - Multiple audio visualization modes are supported
 
 ### Screen-snaps
-The following images were captured by dumping the display on refresh; it's a tad blocky but the actual screen animations are buttery smooth with a 15 FPS attained.
+The following images were captured by dumping the display on refresh; it's a tad blocky but the actual screen animations are buttery smooth.
 
-At 15 FPS scrolling text is smooth and the visualizer modes very kinetic.
+See the videos in the base folder, scrolling text is smooth and the visualizer modes very kinetic.
 
 <img width="300" src="base/demo.gif" align="center" />
 

@@ -31,6 +31,7 @@
 #include "display.h"
 #include "visdata.h"
 #include "visualize.h"
+////#include "hash.h"
 
 uint8_t cm = -1;
 bool vis_is_active = false;
@@ -60,6 +61,22 @@ const char *getVisMode(void) {
         return vis_mode;
     else
         return "??";
+}
+
+const int getMode(const char *mode)
+{
+    if (0 == strncmp(mode, VMODE_VU, 2))
+        return VEMODE_VU;
+    else if (0 == strncmp(mode, VMODE_PK, 2))
+        return VEMODE_PK;
+    else if (0 == strncmp(mode, VMODE_SA, 2))
+        return VEMODE_SA;
+    else if (0 == strncmp(mode, VMODE_ST, 2))
+        return VEMODE_ST;
+    else if (0 == strncmp(mode, VMODE_RN, 2))
+        return VEMODE_RN;
+    else
+        return -1;
 }
 
 const bool isVisualizeActive(void) { return vis_is_active; }
@@ -104,6 +121,7 @@ void sayVisList(void) {
 void setVisList(char *vlist) {
 
     // init...
+
     int ll = lenVisList();
     for (int x = 0; x < ll; x++) {
         vis_list[x][0] = 0; //'\0';
@@ -162,7 +180,8 @@ bool lastTest = false;
 void visualize(struct vissy_meter_t *vissy_meter) {
 
     if (vis_is_active) {
-        if (visgood < 4) {
+
+//        if (0 == (visgood % 3)) {
 
             if (isEmptyStr(downmix)) {
                 strcpy(downmix, "N");
@@ -172,44 +191,47 @@ void visualize(struct vissy_meter_t *vissy_meter) {
                 currentMeter();
                 instrument(__LINE__, __FILE__, "<-Fixed VisMode");
             }
-            
-            if (strncmp(VMODE_VU, vissy_meter->meter_type, 2) == 0) {
-                instrument(__LINE__, __FILE__, "Visualize VU/PK");
-                // support vu or pk
-                if (strncmp(vis_mode, VMODE_VU, 2) == 0) {
+
+            switch(getMode(vissy_meter->meter_type))
+            {
+            case VEMODE_VU:
+                switch(getMode(vis_mode))
+                {
+                case VEMODE_VU:
                     instrument(__LINE__, __FILE__, "->Visualize VU");
                     stereoVU(vissy_meter, downmix);
                     instrument(__LINE__, __FILE__, "<-Visualize VU");
-                } else {
-                    if (strncmp(vis_mode, VMODE_PK, 2) == 0) {
-                        instrument(__LINE__, __FILE__, "->Visualize PK");
-                        stereoPeakH(vissy_meter, downmix);
-                        instrument(__LINE__, __FILE__, "<-Visualize PK");
-                    }
+                    break;
+                case VEMODE_PK:
+                    instrument(__LINE__, __FILE__, "->Visualize PK");
+                    stereoPeakH(vissy_meter, downmix);
+                    instrument(__LINE__, __FILE__, "<-Visualize PK");
+                    break;
                 }
-            } else {
-                if (strncmp(vis_mode, vissy_meter->meter_type, 2) == 0) {
-                    if (strncmp(vis_mode, VMODE_SA, 2) == 0) {
-                        instrument(__LINE__, __FILE__, "->Visualize SA");
-                        stereoSpectrum(vissy_meter, downmix);
-                        instrument(__LINE__, __FILE__, "<-Visualize SA");
-                    } else {
-                        if (strncmp(vis_mode, VMODE_ST, 2) == 0) {
-                            instrument(__LINE__, __FILE__, "->Visualize ST");
-                            ovoidSpectrum(vissy_meter, downmix);
-                            instrument(__LINE__, __FILE__, "<-Visualize ST");
-                        }
-                    }
+                break;
+            case VEMODE_SA:
+                switch(getMode(vis_mode))
+                {
+                case VEMODE_SA:
+                    instrument(__LINE__, __FILE__, "->Visualize SA");
+                    stereoSpectrum(vissy_meter, downmix);
+                    instrument(__LINE__, __FILE__, "<-Visualize SA");
+                    break;
+                case VEMODE_ST:
+                    instrument(__LINE__, __FILE__, "->Visualize ST");
+                    ovoidSpectrum(vissy_meter, downmix);
+                    instrument(__LINE__, __FILE__, "<-Visualize ST");
+                    break;
                 }
             }
         }
         lastTest = true;
-    }
-
-    // stream is too fast for display - a 1:20 consumption ratio plays happy w/ display
-    // routine VU routine checks for change so we may be Ok, parameterize and push limits
-    // is worse still on pi3 build...
-    visgood++;
-    if (visgood > 19) // sweet spot for SA
-        visgood = 0;
+    
+    //}
+    // stream is too fast for display
+    // a 1:20 consumption ratio plays
+    // happier w/ the display
+    //visgood++;
+    //if (visgood > 20)
+    //    visgood = 0;
 }

@@ -32,17 +32,15 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "gfxfont.h"
-#include "../font/NotoSansRegular5lms.h"
+//#include "../font/NotoSansRegular5lms.h"
 
 #include "visdata.h"
 
-///#define CHAR_WIDTH 6
-///#define CHAR_HEIGHT 8
 #define MAX_LINES 8
 
 #define MAXSCROLL_DATA 255
-#define MAX_BRIGHTNESS 220
-#define NIGHT_BRIGHTNESS 100
+#define MAX_BRIGHTNESS 200
+#define NIGHT_BRIGHTNESS 90
 
 #define XPOS 0
 #define YPOS 1
@@ -69,7 +67,8 @@ static const char * scrollerMode[] = {
 typedef enum PageMode {
     DETAILS,
     CLOCK,
-    VISUALIZER
+    VISUALIZER,
+    ALLINONE
 } PageMode;
 
 typedef struct MonitorAttrs {
@@ -164,7 +163,7 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter, char *downmix);
 
 // audio attributes
 void putVolume(bool v, char *buff);
-void putAudio(int a, char *buff);
+void putAudio(int a, char *buff, bool full=true);
 
 void putText(int x, int y, char *buff);
 void putTextCenterColor(int y, char *buff, uint16_t color);

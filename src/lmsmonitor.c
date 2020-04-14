@@ -440,6 +440,17 @@ void cycleVisualize(size_t timer_id, void *user_data) {
     }
 }
 
+void sampleDetails( double *samplerate, int *samplesize, long *actVolume)
+{
+    *samplerate = tags[SAMPLERATE].valid
+                    ? strtof(tags[SAMPLERATE].tagData, NULL) / 1000
+                    : 44.1;
+    *samplesize = tags[SAMPLESIZE].valid
+                    ? strtol(tags[SAMPLESIZE].tagData, NULL, 10)
+                    : 16;
+    *actVolume = tags[VOLUME].valid ? strtol(tags[VOLUME].tagData, NULL, 10) : 0;
+}
+
 #endif
 
 int main(int argc, char *argv[]) {
@@ -828,15 +839,58 @@ instrument(__LINE__, __FILE__, "cpu Metrics?");
     setupPlayMode();
     refreshDisplay();
 }
+
+void allInOnePage(void)
+{
+
+/*
+[I] 10%  [I][           ]
+            [           ]
+[HH:MM]     [           ]
+            [           ]
+[Artist scroller        ]
+[Compound Track scroller]
+*/
+
+    char buff[BSIZE] = {0};
+    int audio = 3; // 2 HD 3 SD 4 DSD
+    long actVolume = -1;
+    double samplerate = 44.1;
+    int samplesize = 16;
+    sampleDetails(&samplerate, &samplesize, &actVolume);
+
+    softClockReset(false);
+
+    if (actVolume != glopt->lastVolume) {
+        if (0 == actVolume)
+            strncpy(buff, "  mute", 32);
+        else
+            sprintf(buff, "  %ld%% ", actVolume);
+        putVolume((0 != actVolume), buff);
+        setLastVolume(actVolume);
+    }
+
+    if (1 == samplesize)
+        audio++;
+    else
+        if (16 != samplesize)
+            audio--;
+
+    strcpy(buff, "");
+    putAudio(audio, buff, false);
+
+}
+
+
 #endif
 
 void playingPage(void)
 {
 
-    long actVolume = 0;
+    long actVolume = -1;
     int audio = 3; // 2 HD 3 SD 4 DSD
     long pTime, dTime, rTime;
-    char buff[255];
+    char buff[BSIZE] = {0};
 
 #ifdef __arm__
 
@@ -845,13 +899,9 @@ void playingPage(void)
         softPlayRefresh(false);
     }
 
-    // output sample rate and bit depth too, supports DSD nomenclature
-    double samplerate = tags[SAMPLERATE].valid
-                            ? strtof(tags[SAMPLERATE].tagData, NULL) / 1000
-                            : 44.1;
-    int samplesize = tags[SAMPLESIZE].valid
-                         ? strtol(tags[SAMPLESIZE].tagData, NULL, 10)
-                         : 16;
+    double samplerate = 44.1;
+    int samplesize = 16;
+    sampleDetails(&samplerate, &samplesize, &actVolume);
 
     if (glopt->downmix)
         setDownmix(samplesize, samplerate);
@@ -882,8 +932,6 @@ void playingPage(void)
         softClockReset(false);
         softVisualizeRefresh(true);
 
-        actVolume =
-            tags[VOLUME].valid ? strtol(tags[VOLUME].tagData, NULL, 10) : 0;
         if (actVolume != glopt->lastVolume) {
             if (0 == actVolume)
                 strncpy(buff, "  mute", 32);
