@@ -50,6 +50,8 @@ typedef enum {
     SAMPLERATE,
     MODE,
     PERFORMER,
+    REPEAT,
+    SHUFFLE,
     MAXTAG_TYPES
 } tagtypes_t;
 

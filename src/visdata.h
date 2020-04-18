@@ -41,7 +41,10 @@
 #define VMODE_VU "VU" // VU meters
 #define VMODE_PK "PK" // Peak meter
 #define VMODE_ST "ST" // Spectrum Tornado
+#define VMODE_SM "SM" // Spectrum Mirror
 #define VMODE_RN "RN" // random
+#define VMODE_A1 "A1" // all-in-one (special)
+#define VMODE_TY "TY" // toy - swoosh
 
 enum VIZMODES {
   VEMODE_NA = -1, 
@@ -49,8 +52,13 @@ enum VIZMODES {
   VEMODE_VU = 1,
   VEMODE_PK = 2,
   VEMODE_SA = 3,
-  VEMODE_ST = 4}; 
+  VEMODE_ST = 4, 
+  VEMODE_SM = 5,
+  VEMODE_MX = 6,
+  VEMODE_A1 = 7,
+  VEMODE_TY = 8}; // note all-in-one out of "bounds"
 
+const int getMode(const char *mode);
 
 struct peak_meter_t {
   uint16_t int_time;  // Integration time (ms).
@@ -73,7 +81,7 @@ struct peak_meter_t {
   int16_t scale[PEAK_METER_LEVELS_MAX]; // Scale intervals.
 };
 
-struct bin_chan_t {int bin[METER_CHANNELS][MAX_SUBBANDS];};
+struct bin_chan_t {double bin[METER_CHANNELS][MAX_SUBBANDS];};
 struct meter_chan_t {int metric[METER_CHANNELS];};
 typedef char vis_type_t[3];
 

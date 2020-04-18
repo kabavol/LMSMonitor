@@ -36,13 +36,14 @@
 uint8_t cm = -1;
 bool vis_is_active = false;
 vis_type_t vis_mode = {0};
-vis_type_t vis_list[4] = {{0}, {0}, {0}, {0}};
+vis_type_t vis_list[5] = {{0}, {0}, {0}, {0}, {0}};
 uint8_t num_modes = 1;
 char downmix[5] = {0};
 
 size_t lenVisList(void) { return (sizeof(vis_list) / sizeof(vis_type_t)); }
 void activateVisualizer(void) {
     instrument(__LINE__, __FILE__, "Visualize On ->");
+    setInitRefresh();
     vis_is_active = true;
     instrument(__LINE__, __FILE__, "Visualize On <-");
 }
@@ -61,22 +62,6 @@ const char *getVisMode(void) {
         return vis_mode;
     else
         return "??";
-}
-
-const int getMode(const char *mode)
-{
-    if (0 == strncmp(mode, VMODE_VU, 2))
-        return VEMODE_VU;
-    else if (0 == strncmp(mode, VMODE_PK, 2))
-        return VEMODE_PK;
-    else if (0 == strncmp(mode, VMODE_SA, 2))
-        return VEMODE_SA;
-    else if (0 == strncmp(mode, VMODE_ST, 2))
-        return VEMODE_ST;
-    else if (0 == strncmp(mode, VMODE_RN, 2))
-        return VEMODE_RN;
-    else
-        return -1;
 }
 
 const bool isVisualizeActive(void) { return vis_is_active; }
@@ -135,7 +120,7 @@ void setVisList(char *vlist) {
         // validate and silently assign to default if "bogus"
         if ((strncmp(p, VMODE_VU, 2) != 0) && (strncmp(p, VMODE_SA, 2) != 0) &&
             (strncmp(p, VMODE_ST, 2) != 0) && (strncmp(p, VMODE_RN, 2) != 0) &&
-            (strncmp(p, VMODE_PK, 2) != 0)) {
+            (strncmp(p, VMODE_PK, 2) != 0) && (strncmp(p, VMODE_SM, 2) != 0)) {
             strcpy(p, VMODE_NA);
         }
         i++;
@@ -155,11 +140,11 @@ char *currentMeter(void) {
 
     if (strcmp(vis_list[cm], VMODE_RN) == 0) {
         // pick a random visualization
-        int i = rand() % 4;
-        switch (i) {
-            case 0: setVisMode(VMODE_VU); break;
-            case 1: setVisMode(VMODE_SA); break;
-            case 2: setVisMode(VMODE_ST); break;
+        switch ((rand() % VEMODE_MX)+1) {
+            case VEMODE_VU: setVisMode(VMODE_VU); break;
+            case VEMODE_SA: setVisMode(VMODE_SA); break;
+            case VEMODE_ST: setVisMode(VMODE_ST); break;
+            case VEMODE_SM: setVisMode(VMODE_SM); break;
             default: setVisMode(VMODE_PK);
         }
     } else
@@ -221,6 +206,11 @@ void visualize(struct vissy_meter_t *vissy_meter) {
                     instrument(__LINE__, __FILE__, "->Visualize ST");
                     ovoidSpectrum(vissy_meter, downmix);
                     instrument(__LINE__, __FILE__, "<-Visualize ST");
+                    break;
+                case VEMODE_SM:
+                    instrument(__LINE__, __FILE__, "->Visualize SM");
+                    mirrorSpectrum(vissy_meter, downmix);
+                    instrument(__LINE__, __FILE__, "<-Visualize SM");
                     break;
                 }
             }

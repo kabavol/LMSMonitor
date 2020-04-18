@@ -29,13 +29,14 @@
 #define BSIZE 4096
 
 #define APPNAME "LMSMonitor"
-#define VERSION "0.4.31"
+#define VERSION "0.4.34"
 
 #define LABEL_WIDTH 22
 #define LL_QUIET 0
 #define LL_INFO 1
 #define LL_DEBUG 2
 #define LL_MAX 3 // always 1+
+
 static const char * verbosity[] = {
     "Normal",
     "Info",

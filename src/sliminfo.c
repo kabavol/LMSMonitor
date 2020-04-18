@@ -4,9 +4,7 @@
  *	(c) 2015 László TÓTH
  *	(c) 2020 Stuart Hunter
  *
- *	TODO:	Reconnect to server
- *	TODO:	Clock when not playing
- *	TODO:	Visualization (shmem or SSE stream)
+ *	TODO:	Reconnect to server - server bounce!
  *	TODO:	Weather service
  *
  *	This program is free software: you can redistribute it and/or modify
@@ -272,6 +270,9 @@ tag *initTagStore(void) {
     tagStore[MODE].name = "mode";
     tagStore[PERFORMER].name = "performer";
     tagStore[COMPILATION].name = "compilation";
+    tagStore[REPEAT].name = "playlist%20repeat";   //	0 no repeat, 1 repeat song, 2 repeat playlist.
+    tagStore[SHUFFLE].name = "playlist%20shuffle"; //	0 no shuffle, 1 shuffle songs, 2 shuffle albums.
+
 
     for (int i = 0; i < MAXTAG_TYPES; i++) {
         if ((tagStore[i].tagData =
@@ -442,7 +443,7 @@ tag *initSliminfo(char *playerName) {
 
 */
 
-    sprintf(query, "%s status - 1 tags:aAlCITytrdx\n", playerID);
+    sprintf(query, "%s status - 1 tags:aAlCITytrdxB\n", playerID);
     int x = 0;
 
     if (initTagStore() != NULL) {

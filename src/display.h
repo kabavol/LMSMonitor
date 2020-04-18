@@ -57,6 +57,12 @@
 #define SCROLL_MODE_RANDOM 3 // randomize the above
 #define SCROLL_MODE_MAX 4
 
+#define SHUFFLE_BUCKET 0
+#define REPEAT_BUCKET  1
+#define MAX_FREQUENCY_BINS 12
+// frequency cap decay
+#define CAPS_DECAY 0.075
+
 static const char * scrollerMode[] = {
     "Cylon (Default)",
     "Infinity (Sinister)",
@@ -70,6 +76,15 @@ typedef enum PageMode {
     VISUALIZER,
     ALLINONE
 } PageMode;
+
+typedef struct audio_t {
+    double samplerate; 
+    int8_t samplesize; 
+    int8_t volume;
+    int8_t audioIcon;
+    int8_t repeat;
+    int8_t shuffle;
+} audio_t;
 
 typedef struct MonitorAttrs {
     int8_t oledAddrL;
@@ -92,6 +107,7 @@ typedef struct MonitorAttrs {
     bool refreshClock;
     bool refreshViz;
     int  lastVolume;
+    uint8_t lastModes[2]; // shuffle[0] + repeat[1]
     char lastBits[16];
     char lastTime[6];
     char lastTemp[10]; // should be a double
@@ -110,7 +126,7 @@ typedef struct Scroller {
     int lolimit;
     int hilimit;
     bool forward;
-    short scrollMode;
+    int scrollMode;
     pthread_t scrollThread;
     pthread_mutex_t scrollox;
     void *(*scrollMe)(void *input);
@@ -128,12 +144,14 @@ typedef struct {
 
 void printFontMetrics(void);
 
+void setInitRefresh(void);
+
 void printOledSetup(void);
 void printOledTypes(void);
 bool setOledType(int ot);
 bool setOledAddress(int8_t oa);
 
-void setScrollMode(short sm);
+void setScrollMode(int sm);
 void printScrollerMode(void);
 
 double deg2Rad(double angDeg);
@@ -159,11 +177,13 @@ void softClear(void);
 void stereoVU(struct vissy_meter_t *vissy_meter, char *downmix);
 void stereoSpectrum(struct vissy_meter_t *vissy_meter, char *downmix);
 void ovoidSpectrum(struct vissy_meter_t *vissy_meter, char *downmix);
+void mirrorSpectrum(struct vissy_meter_t *vissy_meter, char *downmix);
+void reflectSpectrum(struct vissy_meter_t *vissy_meter, char *downmix);
 void stereoPeakH(struct vissy_meter_t *vissy_meter, char *downmix);
 
 // audio attributes
 void putVolume(bool v, char *buff);
-void putAudio(int a, char *buff, bool full=true);
+void putAudio(audio_t audio, char *buff, bool full=true);
 
 void putText(int x, int y, char *buff);
 void putTextCenterColor(int y, char *buff, uint16_t color);

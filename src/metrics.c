@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "metrics.h"
 
 double cpuLoad(void)
 {
@@ -41,4 +42,15 @@ double cpuTemp(void)
     fscanf(thermo, "%f", &millideg);
     fclose(thermo);
     return (int)(millideg / 10.0f) / 100.0f;
+}
+
+meminfo_t memInfo(void)
+{
+    /*
+    uint16_t MemTotalKiB;
+    uint16_t MemTotalMiB;
+    uint16_t MemAvailMiB; // -1 ~ no data
+    double   MemAvailPct; // percent of total memory that is available
+    */
+    ;
 }

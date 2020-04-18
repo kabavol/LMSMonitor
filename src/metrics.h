@@ -23,7 +23,19 @@
 #ifndef METRICS_H
 #define METRICS_H
 
+#include <stdint.h>
+
+// /proc/meminfo digest, (source in KiB) converted to MiB
+typedef struct meminfo_t {
+    uint16_t MemTotalKiB;
+    uint16_t MemTotalMiB;
+    uint16_t MemAvailMiB; // -1 ~ no data
+    double   MemAvailPct; // percent of total memory that is available
+} meminfo_t;
+
 double cpuLoad(void);
 double cpuTemp(void);
+
+meminfo_t memInfo(void);
 
 #endif

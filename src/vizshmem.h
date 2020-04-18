@@ -20,15 +20,15 @@
  *
  */
 
+#ifndef VISSY_VIZSHMEM_H
+#define VISSY_VIZSHMEM_H
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "vissy.h"
-
-#ifndef VISSY_VIZSHMEM_H
-#define VISSY_VIZSHMEM_H
 
 void vissySHMEMFinalize(void);
 bool setupSHMEM(void);

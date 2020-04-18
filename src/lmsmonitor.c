@@ -224,7 +224,8 @@ void print_help(char *executable) {
         " -r show remaining time rather than track time\n"
         " -S scrollermode: 0 (cylon), 1 (infinity left), 2 infinity (right)\n"
         " -v enable visualization sequence when playing (Pi only)\n"
-        " -x specifies OLED address if default does not work - use i2cdetect to "
+        " -x specifies OLED address if default does not work - use i2cdetect "
+        "to "
         "find address (Pi only)\n"
         " -z no splash screen\n\n",
         APPNAME, VERSION);
@@ -248,20 +249,16 @@ void setupPlayMode(void) {
 
 bool isPlaying(void) { return playing; }
 
-bool acquireOptLock(void) 
-{
+bool acquireOptLock(void) {
 
     char buff[128] = {0};
     bool ret = true;
-    if (glopt)
-    {
+    if (glopt) {
         uint8_t test = 0;
-        while (pthread_mutex_trylock(&glopt->update) != 0)
-        {
-            if (test>30)
-            {
+        while (pthread_mutex_trylock(&glopt->update) != 0) {
+            if (test > 30) {
                 ret = false;
-                strcpy(buff,"options mutex acquire failed\n");
+                strcpy(buff, "options mutex acquire failed\n");
                 putMSG(buff, LL_DEBUG);
                 break;
             }
@@ -270,11 +267,9 @@ bool acquireOptLock(void)
         }
     }
     return ret;
-
 }
 
-void softClockRefresh(bool rc=true)
-{
+void softClockRefresh(bool rc = true) {
     if (rc != glopt->refreshClock)
         if (acquireOptLock()) {
             glopt->refreshClock = rc;
@@ -282,8 +277,7 @@ void softClockRefresh(bool rc=true)
         }
 }
 
-void softVisualizeRefresh(bool rv=true)
-{
+void softVisualizeRefresh(bool rv = true) {
     if (glopt->visualize)
         if (rv != glopt->refreshViz)
             if (acquireOptLock()) {
@@ -292,8 +286,7 @@ void softVisualizeRefresh(bool rv=true)
             }
 }
 
-void softPlayRefresh(bool r=true)
-{
+void softPlayRefresh(bool r = true) {
     if (r != glopt->refreshLMS)
         if (acquireOptLock()) {
             glopt->refreshLMS = r;
@@ -301,10 +294,8 @@ void softPlayRefresh(bool r=true)
         }
 }
 
-void setLastTime(char *tm)
-{
-    if (strcmp(glopt->lastTime, tm) != 0)
-    {
+void setLastTime(char *tm) {
+    if (strcmp(glopt->lastTime, tm) != 0) {
         if (acquireOptLock()) {
             drawTimeTextL(tm, glopt->lastTime, ((glopt->showTemp) ? -1 : 1));
             //drawTimeTextS(tm, glopt->lastTime, 17);
@@ -314,17 +305,15 @@ void setLastTime(char *tm)
     }
 }
 
-void setSleepTime(int st)
-{
-    if(st != glopt->sleepTime)
+void setSleepTime(int st) {
+    if (st != glopt->sleepTime)
         if (acquireOptLock()) {
             glopt->sleepTime = st;
             pthread_mutex_unlock(&glopt->update);
         }
 }
 
-void putCPUMetrics(int y)
-{
+void putCPUMetrics(int y) {
     if (acquireOptLock()) {
         sprintf(glopt->lastLoad, "%.0f%%", cpuLoad());
         sprintf(glopt->lastTemp, "%.1fC", cpuTemp());
@@ -335,8 +324,7 @@ void putCPUMetrics(int y)
     }
 }
 
-void softClockReset(bool cd=true)
-{
+void softClockReset(bool cd = true) {
     if (acquireOptLock()) {
         strcpy(glopt->lastTime, "XX:XX");
         strcpy(glopt->lastTemp, "00000");
@@ -348,8 +336,7 @@ void softClockReset(bool cd=true)
     }
 }
 
-void setLastVolume(int vol)
-{
+void setLastVolume(int vol) {
     if (vol != glopt->lastVolume)
         if (acquireOptLock()) {
             glopt->lastVolume = vol;
@@ -357,17 +344,26 @@ void setLastVolume(int vol)
         }
 }
 
-void setLastBits(char *lb)
-{
-    if (strcmp(lb, glopt->lastBits) !=0)
+void setLastBits(char *lb) {
+    if (strcmp(lb, glopt->lastBits) != 0)
         if (acquireOptLock()) {
             strncpy(glopt->lastBits, lb, 32);
             pthread_mutex_unlock(&glopt->update);
         }
 }
 
-void softPlayReset(void)
-{
+void setLastModes(int8_t lm[]) {
+    if ((lm[SHUFFLE_BUCKET] != glopt->lastModes[SHUFFLE_BUCKET]) ||
+        (lm[REPEAT_BUCKET] != glopt->lastModes[REPEAT_BUCKET])) {
+        if (acquireOptLock()) {
+            glopt->lastModes[SHUFFLE_BUCKET] = lm[SHUFFLE_BUCKET];
+            glopt->lastModes[REPEAT_BUCKET] = lm[REPEAT_BUCKET];
+            pthread_mutex_unlock(&glopt->update);
+        }
+    }
+}
+
+void softPlayReset(void) {
     if (acquireOptLock()) {
         glopt->lastBits[0] = 0;
         glopt->lastVolume = -1;
@@ -376,8 +372,7 @@ void softPlayReset(void)
     }
 }
 
-void setNagDone(bool refresh=true)
-{
+void setNagDone(bool refresh = true) {
     if (acquireOptLock()) {
         if (refresh)
             glopt->refreshLMS = true;
@@ -420,8 +415,7 @@ void cycleVisualize(size_t timer_id, void *user_data) {
         if (playing) {
             instrument(__LINE__, __FILE__, "isPlaying");
             if (isVisualizeActive()) {
-                instrument(__LINE__, __FILE__,
-                           "Active Visualization");
+                instrument(__LINE__, __FILE__, "Active Visualization");
                 vis_type_t current = {0};
                 vis_type_t updated = {0};
                 strncpy(current, getVisMode(), 2);
@@ -430,6 +424,7 @@ void cycleVisualize(size_t timer_id, void *user_data) {
                     softlySoftly = true;
                     ///softClear();
                 }
+                setInitRefresh();
             } else {
                 currentMeter();
             }
@@ -440,15 +435,19 @@ void cycleVisualize(size_t timer_id, void *user_data) {
     }
 }
 
-void sampleDetails( double *samplerate, int *samplesize, long *actVolume)
-{
-    *samplerate = tags[SAMPLERATE].valid
-                    ? strtof(tags[SAMPLERATE].tagData, NULL) / 1000
-                    : 44.1;
-    *samplesize = tags[SAMPLESIZE].valid
-                    ? strtol(tags[SAMPLESIZE].tagData, NULL, 10)
-                    : 16;
-    *actVolume = tags[VOLUME].valid ? strtol(tags[VOLUME].tagData, NULL, 10) : 0;
+void sampleDetails(audio_t *audio) {
+    audio->samplerate = tags[SAMPLERATE].valid
+                            ? strtof(tags[SAMPLERATE].tagData, NULL) / 1000
+                            : 44.1;
+    audio->samplesize = tags[SAMPLESIZE].valid
+                            ? strtol(tags[SAMPLESIZE].tagData, NULL, 10)
+                            : 16;
+    audio->volume =
+        tags[VOLUME].valid ? strtol(tags[VOLUME].tagData, NULL, 10) : 0;
+    audio->repeat =
+        tags[REPEAT].valid ? strtol(tags[REPEAT].tagData, NULL, 10) : 0;
+    audio->shuffle =
+        tags[SHUFFLE].valid ? strtol(tags[SHUFFLE].tagData, NULL, 10) : 0;
 }
 
 #endif
@@ -498,6 +497,7 @@ int main(int argc, char *argv[]) {
         .refreshClock = false,
         .refreshViz = false,
         .lastVolume = -1,
+        .lastModes = {0, 0},
     };
 
     if (pthread_mutex_init(&lmsopt.update, NULL) != 0) {
@@ -549,8 +549,8 @@ int main(int argc, char *argv[]) {
                 }
                 break;
             case 'a':
-                printf("All-In-One coming soon\n"); 
-                lmsopt.allInOne = true; 
+                printf("All-In-One coming soon\n");
+                lmsopt.allInOne = true;
                 break;
             case 'b': lmsopt.astral = true; break;
             case 'm':
@@ -580,9 +580,9 @@ int main(int argc, char *argv[]) {
             case 'z': lmsopt.splash = false; break;
 
             case 'S':
-                short sm; 
+                int sm;
                 sscanf(optarg, "%d", &sm);
-                setScrollMode(sm); 
+                setScrollMode(sm);
                 break;
             case 'B': printf("TODO\n"); break;
 
@@ -618,11 +618,10 @@ int main(int argc, char *argv[]) {
     signature(argv[0]);
 
 #ifdef __arm__
-    sprintf(stbl, "%s %s\n", 
-        labelIt("Verbosity", LABEL_WIDTH, "."),
-        getVerboseStr());
+    sprintf(stbl, "%s %s\n", labelIt("Verbosity", LABEL_WIDTH, "."),
+            getVerboseStr());
     putMSG(stbl, LL_QUIET);
-    printOledSetup(); // feedback and "debug"
+    printOledSetup();    // feedback and "debug"
     printScrollerMode(); // feedback and "debug"
 #endif
     thatMAC = playerMAC();
@@ -677,8 +676,8 @@ int main(int argc, char *argv[]) {
         timer_initialize();
         viztimer = timer_start(60 * 1000, toggleVisualize, TIMER_PERIODIC,
                                (void *)NULL);
-        vizcycletimer = timer_start(99 * 1000, cycleVisualize, TIMER_PERIODIC, 
-                               (void *)NULL);
+        vizcycletimer = timer_start(99 * 1000, cycleVisualize, TIMER_PERIODIC,
+                                    (void *)NULL);
 
         sprintf(stbl, "%s %s\n", labelIt("Downmix VU+SA", LABEL_WIDTH, "."),
                 ((lmsopt.downmix) ? "Yes" : "No"));
@@ -728,7 +727,7 @@ int main(int argc, char *argv[]) {
                     playingPage();
                 else
                     setupPlayMode();
-                // Threaded logic in play - DO NOT MODIFY
+                    // Threaded logic in play - DO NOT MODIFY
 #else
                 playingPage();
 #endif
@@ -798,18 +797,18 @@ void clockPage(void) {
     char buff[255];
 
     if (glopt->refreshClock) {
-instrument(__LINE__, __FILE__, "clock reset");
+        instrument(__LINE__, __FILE__, "clock reset");
         softClockReset();
         softClockRefresh(false);
     }
-instrument(__LINE__, __FILE__, "clockPage");
+    instrument(__LINE__, __FILE__, "clockPage");
 
     setNagDone();
     softPlayReset();
     softVisualizeRefresh(true);
     setSleepTime(SLEEP_TIME_LONG);
 
-instrument(__LINE__, __FILE__, "cpu Metrics?");
+    instrument(__LINE__, __FILE__, "cpu Metrics?");
     if (glopt->showTemp)
         putCPUMetrics(39);
 
@@ -824,7 +823,8 @@ instrument(__LINE__, __FILE__, "cpu Metrics?");
         setLastTime(buff);
 
     // colon (blink)
-    drawTimeBlinkL(((loctm.tm_sec % 2) ? ' ' : ':'),((glopt->showTemp) ? -1 : 1));
+    drawTimeBlinkL(((loctm.tm_sec % 2) ? ' ' : ':'),
+                   ((glopt->showTemp) ? -1 : 1));
     //drawTimeBlinkS(((loctm.tm_sec % 2) ? ' ' : ':'), 17);
 
     // seconds
@@ -840,10 +840,9 @@ instrument(__LINE__, __FILE__, "cpu Metrics?");
     refreshDisplay();
 }
 
-void allInOnePage(void)
-{
+void allInOnePage(void) {
 
-/*
+    /*
 [I] 10%  [I][           ]
             [           ]
 [HH:MM]     [           ]
@@ -853,58 +852,64 @@ void allInOnePage(void)
 */
 
     char buff[BSIZE] = {0};
-    int audio = 3; // 2 HD 3 SD 4 DSD
-    long actVolume = -1;
-    double samplerate = 44.1;
-    int samplesize = 16;
-    sampleDetails(&samplerate, &samplesize, &actVolume);
+
+    audio_t audioDetail = {.samplerate = 44.1,
+                           .samplesize = 16,
+                           .volume = -1,
+                           .audioIcon = 3, // 2 HD 3 SD 4 DSD
+                           .repeat = 0,
+                           .shuffle = 0};
+
+    sampleDetails(&audioDetail);
 
     softClockReset(false);
 
-    if (actVolume != glopt->lastVolume) {
-        if (0 == actVolume)
+    if (audioDetail.volume != glopt->lastVolume) {
+        if (0 == audioDetail.volume)
             strncpy(buff, "  mute", 32);
         else
-            sprintf(buff, "  %ld%% ", actVolume);
-        putVolume((0 != actVolume), buff);
-        setLastVolume(actVolume);
+            sprintf(buff, "  %d%% ", audioDetail.volume);
+        putVolume((0 != audioDetail.volume), buff);
+        setLastVolume(audioDetail.volume);
     }
 
-    if (1 == samplesize)
-        audio++;
-    else
-        if (16 != samplesize)
-            audio--;
+    if (1 == audioDetail.samplesize)
+        audioDetail.audioIcon++;
+    else if (16 != audioDetail.samplesize)
+        audioDetail.audioIcon--;
 
     strcpy(buff, "");
-    putAudio(audio, buff, false);
+    putAudio(audioDetail, buff, false);
+    ////setLastBits(buff);
+    ////setLastModes(lastModes);
 
 }
 
-
 #endif
 
-void playingPage(void)
-{
+void playingPage(void) {
 
-    long actVolume = -1;
-    int audio = 3; // 2 HD 3 SD 4 DSD
     long pTime, dTime, rTime;
     char buff[BSIZE] = {0};
 
 #ifdef __arm__
+
+    audio_t audioDetail = {.samplerate = 44.1,
+                           .samplesize = 16,
+                           .volume = -1,
+                           .audioIcon = 3, // 2 HD 3 SD 4 DSD
+                           .repeat = 0,
+                           .shuffle = 0};
 
     if (glopt->refreshLMS) {
         resetDisplay(1);
         softPlayRefresh(false);
     }
 
-    double samplerate = 44.1;
-    int samplesize = 16;
-    sampleDetails(&samplerate, &samplesize, &actVolume);
+    sampleDetails(&audioDetail);
 
     if (glopt->downmix)
-        setDownmix(samplesize, samplerate);
+        setDownmix(audioDetail.samplesize, audioDetail.samplerate);
     else
         setDownmix(0, 0);
 
@@ -912,8 +917,7 @@ void playingPage(void)
         if (activeScroller()) {
             scrollerPause();
         }
-        if (glopt->refreshViz)
-        {
+        if (glopt->refreshViz) {
             clearDisplay();
         }
         softVisualizeRefresh(false);
@@ -932,23 +936,24 @@ void playingPage(void)
         softClockReset(false);
         softVisualizeRefresh(true);
 
-        if (actVolume != glopt->lastVolume) {
-            if (0 == actVolume)
+        if (audioDetail.volume != glopt->lastVolume) {
+            if (0 == audioDetail.volume)
                 strncpy(buff, "  mute", 32);
             else
-                sprintf(buff, "  %ld%% ", actVolume);
-            putVolume((0 != actVolume), buff);
-            setLastVolume(actVolume);
+                sprintf(buff, "  %d%% ", audioDetail.volume);
+            putVolume((0 != audioDetail.volume), buff);
+            setLastVolume(audioDetail.volume);
         }
 
-        audio = 3;
-        if (1 == samplesize) {
-            sprintf(buff, "DSD%.0f", (samplerate / 44.1));
-            audio++;
+        audioDetail.audioIcon = 3;
+        if (1 == audioDetail.samplesize) {
+            sprintf(buff, "DSD%.0f", (audioDetail.samplerate / 44.1));
+            audioDetail.audioIcon++;
         } else {
-            sprintf(buff, "%db/%.1fkHz", samplesize, samplerate);
-            if (16 != samplesize)
-                audio--;
+            sprintf(buff, "%db/%.1f", audioDetail.samplesize,
+                    audioDetail.samplerate);
+            if (16 != audioDetail.samplesize)
+                audioDetail.audioIcon--;
         }
 
         if (strstr(buff, ".0") != NULL) {
@@ -959,9 +964,13 @@ void playingPage(void)
                 free(foo);
         }
 
-        if (strcmp(glopt->lastBits, buff) != 0) {
-            putAudio(audio, buff);
+        int8_t lastModes[2] = {audioDetail.shuffle, audioDetail.repeat};
+        if ((strcmp(glopt->lastBits, buff) != 0) ||
+            (glopt->lastModes[SHUFFLE_BUCKET] != lastModes[SHUFFLE_BUCKET]) ||
+            (glopt->lastModes[REPEAT_BUCKET] != lastModes[REPEAT_BUCKET])) {
+            putAudio(audioDetail, buff);
             setLastBits(buff);
+            setLastModes(lastModes);
         }
 
 #endif

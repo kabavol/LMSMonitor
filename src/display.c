@@ -60,7 +60,7 @@ int8_t oledAddress = 0x00;
 int8_t icons[NUMNOTES][4];
 uint16_t _char_width = 6;
 uint16_t _char_height = 8;
-short scrollMode = SCROLL_MODE_CYLON;
+int scrollMode = SCROLL_MODE_CYLON;
 sme scroll[MAX_LINES];
 
 int maxCharacter(void) { return (int)(maxXPixel() / _char_width); }
@@ -82,6 +82,36 @@ double deg2Rad(double angDeg) { return (PI * angDeg / 180.0); }
 double rad2Deg(double angRad) { return (180.0 * angRad / PI); }
 
 #ifdef __arm__
+
+meter_chan_t lastVU = {-1000, -1000};
+meter_chan_t overVU = {0, 0};
+meter_chan_t dampVU = {-1000, -1000};
+meter_chan_t lastPK = {-1000, -1000};
+
+// caps and previous state
+bin_chan_t caps;
+bin_chan_t last_bin;
+bin_chan_t last_caps;
+
+void resetLastData(void) {
+    for (int channel = 0; channel < 2; channel++) {
+        lastVU.metric[channel] = -1000;
+        lastPK.metric[channel] = -1000;
+        overVU.metric[channel] = 0;
+        dampVU.metric[channel] = -1000;
+        for (int bin = 0; bin < MAX_FREQUENCY_BINS; bin++) {
+            last_bin.bin[channel][bin] = -1;
+            last_caps.bin[channel][bin] = -1;
+        }
+    }
+}
+
+bool initRefresh = true;
+void setInitRefresh(void)
+{
+    initRefresh = true;
+    resetLastData();
+}
 
 void fontMetrics(void) {
     int16_t x, y, x1, y1;
@@ -141,7 +171,7 @@ bool setOledAddress(int8_t oa) {
     return true;
 }
 
-void setScrollMode(short sm) {
+void setScrollMode(int sm) {
     if ((sm >= SCROLL_MODE_CYLON) && (sm < SCROLL_MODE_MAX))
         if (sm != scrollMode)
             scrollMode = sm;
@@ -204,13 +234,22 @@ void clearDisplay() {
 }
 
 void vumeter2upl(void) {
-    softClear();
+    if (initRefresh)
+    {
+        softClear();
+//        initRefresh = false;
+    }
     display.drawBitmap(0, 0, vu2up128x64, 128, 64, WHITE);
 }
 
 void vumeterDownmix(bool inv) {
-    //if (inv)
-    //    softClear();  // display.drawBitmap(0, 0, vudm128x64, 128, 64, BLACK);
+
+    if (initRefresh)
+    {
+        softClear();
+        initRefresh = false;
+        resetLastData();
+    }
     if (inv)
         display.drawBitmap(0, 0, vudm128x64, 128, 64, BLACK);
     else
@@ -218,8 +257,13 @@ void vumeterDownmix(bool inv) {
 }
 
 void peakMeterH(bool inv) {
-    //if (inv)
-    //    softClear();  // display.drawBitmap(0, 0, peak_rms, 128, 64, BLACK);
+
+    if (initRefresh)
+    {
+        softClear();
+        initRefresh = false;
+        resetLastData();
+    }
     if (inv)
         display.drawBitmap(0, 0, peak_rms, 128, 64, BLACK);
     else
@@ -237,13 +281,9 @@ void splashScreen(void) {
     dodelay(180);
 }
 
-meter_chan_t lastVU = {-1000, -1000};
-meter_chan_t overVU = {0, 0};
-meter_chan_t dampVU = {-1000, -1000};
-
 void downmixVU(struct vissy_meter_t *vissy_meter) {
 
-    vumeterDownmix(true);
+    //vumeterDownmix(true);
 
     double hMeter = (double)maxYPixel() + 2.00;
     double rMeter = (double)hMeter - 5.00;
@@ -326,10 +366,10 @@ void stereoVU(struct vissy_meter_t *vissy_meter, char *downmix) {
         return;
     }
 
+    vumeter2upl();
+
     lastVU.metric[0] = thisVU.metric[0];
     lastVU.metric[1] = thisVU.metric[1];
-
-    vumeter2upl();
 
     double hMeter = (double)maxYPixel() + 2;
     double rMeter = (double)hMeter - 8.00;
@@ -379,22 +419,23 @@ void stereoVU(struct vissy_meter_t *vissy_meter, char *downmix) {
     }
 }
 
-// caps and previous state
-bin_chan_t caps;
-bin_chan_t last_bin;
-bin_chan_t last_caps;
-
 void downmixSpectrum(struct vissy_meter_t *vissy_meter) {
 
-    int bins = 12;
     int wsa = maxXPixel() - 2;
     int hsa = maxYPixel() - 4;
 
-    double wbin = (double)wsa / (double)(bins + 1); // 12 bar display, downmixed
+    double wbin = (double)wsa / (double)(MAX_FREQUENCY_BINS + 1); // 12 bar display, downmixed
     //wbin = 9.00;                                    // fix
 
-    display.fillRect(1, 1, (int)wbin, hsa, BLACK);
-    display.fillRect(wsa - 6, 1, (int)wbin, hsa, BLACK);
+    if (initRefresh)
+    {
+        softClear();
+        initRefresh = false;
+        resetLastData();
+    }
+
+    //display.fillRect(1, 1, (int)wbin, hsa, BLACK);
+    //display.fillRect(wsa - 6, 1, (int)wbin, hsa, BLACK);
 
     // SA scaling
     double multiSA = (double)hsa / 31.00;
@@ -402,7 +443,7 @@ void downmixSpectrum(struct vissy_meter_t *vissy_meter) {
     int ofs = int(wbin * 0.75);
     //ofs = 6; // fix
 
-    for (int bin = 0; bin < bins; bin++) {
+    for (int bin = 0; bin < MAX_FREQUENCY_BINS; bin++) {
 
         int divisor = 0;
         double test = 0.00;
@@ -427,11 +468,17 @@ void downmixSpectrum(struct vissy_meter_t *vissy_meter) {
         test /= (double)divisor;
         oob = (multiSA * test);
 
+/*
         if (last_bin.bin[DOWNMIX][bin] > 0)
+        {
             lob = (int)(multiSA * last_bin.bin[DOWNMIX][bin]);
+            display.fillRect(ofs + (int)(bin * wbin), hsa - (int)lob, (int)wbin - 1,
+                             (int)lob, BLACK);
+        }
+*/
 
-        display.fillRect(ofs + (int)(bin * wbin), hsa - (int)lob, (int)wbin - 1,
-                         (int)lob, BLACK);
+        if (last_bin.bin[DOWNMIX][bin] != (int)test)
+            display.fillRect(ofs + (int)(bin * wbin), 1, (int)wbin - 1, hsa, BLACK);
         display.fillRect(ofs + (int)(bin * wbin), hsa - (int)oob, (int)wbin - 1,
                          (int)oob, WHITE);
         last_bin.bin[DOWNMIX][bin] = (int)test;
@@ -439,7 +486,7 @@ void downmixSpectrum(struct vissy_meter_t *vissy_meter) {
         if (test >= caps.bin[DOWNMIX][bin]) {
             caps.bin[DOWNMIX][bin] = (int)test;
         } else if (caps.bin[DOWNMIX][bin] > 0) {
-            caps.bin[DOWNMIX][bin]--;
+            caps.bin[DOWNMIX][bin] -= CAPS_DECAY;
             if (caps.bin[DOWNMIX][bin] < 0) {
                 caps.bin[DOWNMIX][bin] = 0;
             }
@@ -475,13 +522,12 @@ void stereoSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
         return;
     }
 
-    int bins = 12;
     int wsa = maxXPixel() - 2;
     int hsa = maxYPixel() - 4;
 
     // 2.5.5.5 ...
     //int wbin = wsa / (2 + (bins * 2)); // 12 bar display
-    double wbin = (double)wsa / (double)((bins + 1) * 2); // 12 bar display
+    double wbin = (double)wsa / (double)((MAX_FREQUENCY_BINS + 1) * 2); // 12 bar display
     wbin = 5.00;                                          // fix
 
     // SA scaling
@@ -493,7 +539,7 @@ void stereoSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
         //int ofs = int(wbin/2) + 2 + (channel * ((wsa+2) / 2));
         int ofs = int(wbin * 0.75) + (channel * ((wsa + 2) / 2));
         ofs = 2 + (channel * ((wsa + 2) / 2)); // fix
-        for (int bin = 0; bin < bins; bin++) {
+        for (int bin = 0; bin < MAX_FREQUENCY_BINS; bin++) {
             double test = 0.00;
             int lob = (int)(multiSA / 2.00);
             int oob = (int)(multiSA / 2.00);
@@ -515,7 +561,7 @@ void stereoSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
             if (test >= caps.bin[channel][bin]) {
                 caps.bin[channel][bin] = test;
             } else if (caps.bin[channel][bin] > 0) {
-                caps.bin[channel][bin]--;
+                caps.bin[channel][bin] -= CAPS_DECAY;
                 if (caps.bin[channel][bin] < 0) {
                     caps.bin[channel][bin] = 0;
                 }
@@ -541,30 +587,19 @@ void stereoSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
 
     // finesse
     display.fillRect(0, maxYPixel() - 4, maxXPixel(), 4, BLACK);
+    display.fillRect(2, maxYPixel() - 1, maxXPixel()-4, 1, WHITE);
 
     // track detail scroller...
 }
 
 void ovoidSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
 
-    // a spectrum that is centered and horizontal
-
-    /*
-   left hi-lo right lo-hi
-        +++++ +++++
-      +++++++ ++++++
-    +++++++++ ++++++++
-      +++++++ ++++++
-       ++++++ ++++++
-         ++++ +++++++
-    */
-
-    int bins = 12;
+    // a spectrum, centered and horizontal
 
     int wsa = (maxXPixel() - 6) / 2;
     int hsa = maxYPixel() - 2;
 
-    double hbin = (double)hsa / (double)(bins + 1); // 12 bar display
+    double hbin = (double)hsa / (double)(MAX_FREQUENCY_BINS); // 12 bar display
 
     // SA scaling
     double multiSA = (double)wsa / 31.00; // max input is 31
@@ -573,12 +608,14 @@ void ovoidSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
 
         int ofs = 2;
         int mod = (0 == channel) ? -1 : 1;
-        for (int bin = 0; bin < bins; bin++) {
+        for (int bin = 0; bin < MAX_FREQUENCY_BINS; bin++) {
+
+            double test = (double)vissy_meter->sample_bin_chan[channel][bin];
             int lob = (int)(multiSA / 2.00);
             int oob = (int)(multiSA / 2.00);
+            //int xpos = (0 == channel) ? 2 : (maxXPixel() - 2);
             if (bin < vissy_meter->numFFT[channel])
-                oob = (int)(multiSA *
-                            (double)vissy_meter->sample_bin_chan[channel][bin]);
+                oob = (int)(multiSA * test);
 
             if (last_bin.bin[channel][bin])
                 lob = int(multiSA * last_bin.bin[channel][bin]);
@@ -589,15 +626,97 @@ void ovoidSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
             display.fillRect((wsa + mod) + ((channel - 1) * oob), ofs, oob,
                              hbin - 1, WHITE);
 
-            last_bin.bin[channel][bin] =
-                vissy_meter->sample_bin_chan[channel][bin];
+            if (test >= caps.bin[channel][bin]) {
+                caps.bin[channel][bin] = (int)test;
+            } else if (caps.bin[channel][bin] > 0) {
+                caps.bin[channel][bin] -= CAPS_DECAY;
+                if (caps.bin[channel][bin] < 0) {
+                    caps.bin[channel][bin] = 0;
+                }
+            }
+            int coot = 0;
+            if (last_caps.bin[channel][bin] > 0) {
+                if (last_bin.bin[channel][bin] < last_caps.bin[channel][bin]) {
+                    coot = (int)(multiSA * last_caps.bin[channel][bin]);
+                    display.fillRect((wsa + mod) + ((channel - 1) * coot), ofs, 1,
+                                    hbin - 1, BLACK);
+                }
+            }
+            if (caps.bin[channel][bin] > 0) {
+                coot = (int)(multiSA * caps.bin[channel][bin]);
+                display.fillRect((wsa + mod) + ((channel - 1) * coot), ofs, 1,
+                                hbin - 1, WHITE);
+            }
+
+            last_caps.bin[channel][bin] = caps.bin[channel][bin];
+            last_bin.bin[channel][bin] = (int)test;
 
             ofs += hbin;
         }
     }
 }
 
-meter_chan_t lastPK = {-1000, -1000};
+void mirrorSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
+
+    // a spectrum, mirrored horizontal
+
+    int wsa = (maxXPixel() - 6) / 2;
+    int hsa = maxYPixel() - 2;
+
+    double hbin = (double)hsa / (double)(MAX_FREQUENCY_BINS); // 12 bar display - no padding
+
+//    int clx = hsa - (hbin * MAX_FREQUENCY_BINS);
+
+    // SA scaling
+    double multiSA = (double)wsa / 31.00; // max input is 31
+
+    for (int channel = 0; channel < 2; channel++) {
+
+        int ofs = 1;
+        int mod = (0 == channel) ? 0 : -1;
+        int xpos = (0 == channel) ? 2 : (maxXPixel() - 2);
+        for (int bin = 0; bin < MAX_FREQUENCY_BINS; bin++) {
+
+            double test = (double)vissy_meter->sample_bin_chan[channel][bin];
+            int lob = (int)(multiSA / 2.00);
+            int oob = (int)(multiSA / 2.00);
+            if (bin < vissy_meter->numFFT[channel])
+                oob = (int)(multiSA * test);
+
+            if (last_bin.bin[channel][bin])
+                lob = int(multiSA * last_bin.bin[channel][bin]);
+            else
+                lob = oob;
+            display.fillRect(xpos + (mod * lob), ofs, lob,
+                             hbin - 1, BLACK);
+            display.fillRect(xpos + (mod * oob), ofs, oob,
+                             hbin - 1, WHITE);
+
+            int coot = 0;
+            if (last_caps.bin[channel][bin] > 0) {
+                if (last_bin.bin[channel][bin] < last_caps.bin[channel][bin]) {
+                    coot = (int)(multiSA * last_caps.bin[channel][bin]);
+                    display.fillRect(xpos + (mod * coot), ofs, 1,
+                                    hbin - 1, BLACK);
+                }
+            }
+            if (caps.bin[channel][bin] > 0) {
+                coot = (int)(multiSA * caps.bin[channel][bin]);
+                display.fillRect(xpos + (mod * coot), ofs, 1,
+                                hbin - 1, WHITE);
+            }
+
+            last_caps.bin[channel][bin] = caps.bin[channel][bin];
+            last_bin.bin[channel][bin] = (int)test;
+
+            ofs += hbin;
+        }
+    }
+
+//    display.fillRect(0, maxYPixel() - clx, maxXPixel(), clx, BLACK);
+
+}
+
 void stereoPeakH(struct vissy_meter_t *vissy_meter, char *downmix) {
 
     // intermediate variable so we can easily switch metrics
@@ -609,7 +728,7 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter, char *downmix) {
         (lastPK.metric[1] == meter.metric[1]))
         return;
 
-    peakMeterH(true);
+    //peakMeterH(true);
 
     int level[19] = {-36, -30, -20, -17, -13, -10, -8, -7, -6, -5,
                      -4,  -3,  -2,  -1,  0,   2,   3,  5,  8};
@@ -725,23 +844,47 @@ void putVolume(bool v, char *buff) {
     display.drawBitmap(0, 0, dest, w, w, WHITE);
 }
 
-void putAudio(int a, char *buff, bool full = true) {
+void putAudio(audio_t audio, char *buff, bool full = true) {
+
+    int w = 8;
+    int start = 0;
+    uint8_t dest[w];
 
     if (full) {
         char pad[32];
-        sprintf(pad, "   %s  ", buff); // ensue we cleanup
+        sprintf(pad, "   %s   ", buff); // ensure we cleanup
         int x = maxXPixel() - (strlen(pad) * _char_width);
         putText(x, 0, pad);
     }
 
-    int w = 8;
-    int start = a * w;
-    uint8_t dest[w];
+    // shuffle
+    int x = (maxXPixel() / 2) - (2 * (w + 1));
+    if (0 != audio.shuffle) {
+        start = (6 + audio.shuffle) * w;
+        memcpy(dest, volume8x8 + start, sizeof dest);
+        display.fillRect(x, 0, w, w, BLACK);
+        display.drawBitmap(x, 0, dest, w, w, WHITE);
+    }
+    else
+        display.fillRect(x, 0, w, w, BLACK);
+
+    // repeat
+    x = (maxXPixel() / 2) - (3 * (w + 1));
+    if (0 != audio.repeat) {
+        start = (4 + audio.repeat) * w;
+        memcpy(dest, volume8x8 + start, sizeof dest);
+        display.fillRect(x, 0, w, w, BLACK);
+        display.drawBitmap(x, 0, dest, w, w, WHITE);
+    }
+    else
+        display.fillRect(x, 0, w, w, BLACK);
+
+    start = audio.audioIcon * w;
     memcpy(dest, volume8x8 + start, sizeof dest);
     if (full)
         display.drawBitmap(maxXPixel() - (w + 2), 0, dest, w, w, WHITE);
     else
-        display.drawBitmap((maxXPixel() / 2) - (w + 2), 0, dest, w, w, WHITE);
+        display.drawBitmap((maxXPixel() / 2) - (w + 1), 0, dest, w, w, WHITE);
 }
 
 void scrollerFinalize(void) {
@@ -755,7 +898,7 @@ void scrollerFinalize(void) {
 }
 
 void baselineScroller(Scroller *s) {
-    short sm = scrollMode;
+    int sm = scrollMode;
     if (SCROLL_MODE_RANDOM == scrollMode) {
         srandom(time(NULL));
         sm = random() % SCROLL_MODE_MAX;
@@ -825,7 +968,7 @@ bool putScrollable(int line, char *buff) {
                     strncpy(scroll[line].text, temp, MAXSCROLL_DATA - 1);
                     tlen = strlen(scroll[line].text);
                     scroll[line].textPix = tlen * _char_width;
-                    short sm = scrollMode;
+                    int sm = scrollMode;
                     if (SCROLL_MODE_RANDOM == scrollMode) {
                         srandom(time(NULL));
                         sm = random() % SCROLL_MODE_MAX;

@@ -56,6 +56,7 @@ Six visualizer modes are supported
 - Stereo VU Meters - dBfs metered
 - Stereo 12-band Spectrum Analysis
 - Stereo 12-band "tornado" Spectrum Analysis
+- Stereo 12-band "mirror" Spectrum Analysis
 - Stereo Peak Meter - dBfs metered
 - Large Downmix (visual data only) VU meter
 - Large Downmix (visual data only) Spectrum
@@ -103,12 +104,12 @@ To ensure smooth running perfform the following:
 chmod +x gomonitor
 ```
 
-With that you can manually start the monitor specifying the visualization you'd like to display, vu, sa or pk
+With that you can manually start the monitor specifying the visualization you'd like to display, vu, sa, pk, st, sm or rn
 
 For example:
 
 ```bash
-./gomonitor sa
+./gomonitor rn
 ```
 
 You should see the monitor logo screen appear.  You're pretty much done
@@ -132,9 +133,11 @@ Additional supported commands may also be specified, here we request a specific 
 the visualization parameter must always be specified first
 
 ### Coming soon
+
 - DONE! Audio visualizer support: stereo VU meters
 - DONE! Audio visualizer support: spectrum analyzer
 - DONE! Audio visualizer support: tornado spectrum analyzer
+- DONE! Audio visualizer support: mirror spectrum analyzer
 - DONE! Audio visualizer support: horizontal Peak RMS
 - DONE! Audio visualizer support: random and multiple meters
 - DONE! Set display brightness, day and night modes.
@@ -147,6 +150,10 @@ the visualization parameter must always be specified first
 - 128 x 128 OLED support: TBD
 - Color 128 x 128 color TFT support: TBD
 - Weather: TBD
+
+## Like The App - Git The Shirt
+
+Team Badger shirts are here <https://www.zazzle.com/team_badger_t_shirt-235604841593837420>
 
 ## Credits
 
