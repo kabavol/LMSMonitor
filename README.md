@@ -1,3 +1,6 @@
+I'm sorry, I don't currently have a device that uses a picore player, so I'm not developing this program any further. I ask all those interested, use [shunte88's fork.](https://github.com/shunte88/LMSMonitor)
+I would like to thanks to shunte88 for continuing the work!
+
 # LMSMonitor
 OLED information display control program for [piCorePlayer](https://sites.google.com/site/picoreplayer/) or other Raspberry Pi and Logitech Media Player (LMS) based audio device.
 
