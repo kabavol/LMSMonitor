@@ -133,13 +133,13 @@ typedef struct Scroller {
     char *text;
 } sme;
 
-typedef struct {
+typedef struct DrawTime {
     int charWidth;
     int charHeight;
     int bufferLen;
     int xPos;
     int yPos;
-    const uint8_t font[];
+    bool largeFont;
 } DrawTime; // generic font header!
 
 void printFontMetrics(void);
@@ -192,11 +192,8 @@ void putTextToCenter(int y, char *buff);
 void clearLine(int y);
 void clearDisplay();
 
-void drawTimeBlinkL(uint8_t cc, int y);
-void drawTimeTextL(char *buff, char *last, int y);
-
-void drawTimeBlinkS(uint8_t cc, int y);
-void drawTimeTextS(char *buff, char *last, int y);
+void drawTimeBlink(uint8_t cc, DrawTime *dt);
+void drawTimeText(char *buff, char *last, DrawTime *dt);
 
 void refreshDisplay(void);
 void refreshDisplayScroller(void);

@@ -5,9 +5,9 @@
  *	(c) 2020 Stuart Hunter
  *
  *	TODO:
- *          Done - Automatic server discovery
- *          Done - Get playerID automatically
- *          Reconnect to server
+ *          DONE - Automatic server discovery
+ *          DONE - Get playerID automatically
+ *          Reconnect to server (after bounce)
  *
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -63,6 +63,7 @@
 #include "metrics.h"
 #include "astral.h"
 #include "lmsmonitor.h"
+#include "oledimg.h"
 // clang-format on
 struct MonitorAttrs *glopt;
 
@@ -294,11 +295,10 @@ void softPlayRefresh(bool r = true) {
         }
 }
 
-void setLastTime(char *tm) {
+void setLastTime(char *tm, DrawTime dt) {
     if (strcmp(glopt->lastTime, tm) != 0) {
         if (acquireOptLock()) {
-            drawTimeTextL(tm, glopt->lastTime, ((glopt->showTemp) ? -1 : 1));
-            //drawTimeTextS(tm, glopt->lastTime, 17);
+            drawTimeText(tm, glopt->lastTime, &dt);
             strncpy(glopt->lastTime, tm, 32);
             pthread_mutex_unlock(&glopt->update);
         }
@@ -422,7 +422,6 @@ void cycleVisualize(size_t timer_id, void *user_data) {
                 strncpy(updated, currentMeter(), 2);
                 if (strcmp(current, updated) != 0) {
                     softlySoftly = true;
-                    ///softClear();
                 }
                 setInitRefresh();
             } else {
@@ -674,9 +673,9 @@ int main(int argc, char *argv[]) {
         size_t viztimer;
         size_t vizcycletimer;
         timer_initialize();
-        viztimer = timer_start(60 * 1000, toggleVisualize, TIMER_PERIODIC,
+        viztimer = timer_start(120 * 1000, toggleVisualize, TIMER_PERIODIC,
                                (void *)NULL);
-        vizcycletimer = timer_start(99 * 1000, cycleVisualize, TIMER_PERIODIC,
+        vizcycletimer = timer_start(237 * 1000, cycleVisualize, TIMER_PERIODIC,
                                     (void *)NULL);
 
         sprintf(stbl, "%s %s\n", labelIt("Downmix VU+SA", LABEL_WIDTH, "."),
@@ -796,6 +795,14 @@ void clockPage(void) {
 
     char buff[255];
 
+    DrawTime dt = {
+        .charWidth = 25,
+        .charHeight = 44,
+        .bufferLen = LCD25X44_LEN,
+        .xPos = 2,
+        .yPos = ((glopt->showTemp) ? -1 : 1),
+        .largeFont = true};
+
     if (glopt->refreshClock) {
         instrument(__LINE__, __FILE__, "clock reset");
         softClockReset();
@@ -820,12 +827,12 @@ void clockPage(void) {
     // time
     sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
     if (strcmp(glopt->lastTime, buff) != 0)
-        setLastTime(buff);
+        setLastTime(buff, dt);
 
     // colon (blink)
-    drawTimeBlinkL(((loctm.tm_sec % 2) ? ' ' : ':'),
-                   ((glopt->showTemp) ? -1 : 1));
-    //drawTimeBlinkS(((loctm.tm_sec % 2) ? ' ' : ':'), 17);
+    ///drawTimeBlinkL(((loctm.tm_sec % 2) ? ' ' : ':'),
+    ///               ((glopt->showTemp) ? -1 : 1));
+    drawTimeBlink(((loctm.tm_sec % 2) ? ' ' : ':'), &dt);
 
     // seconds
     drawHorizontalBargraph(
@@ -853,6 +860,15 @@ void allInOnePage(void) {
 
     char buff[BSIZE] = {0};
 
+    DrawTime dt = {
+        .charWidth = 15,
+        .charHeight = 21,
+        .bufferLen = LCD15X21_LEN,
+        .xPos = 0, // assign next
+        .yPos = 17,
+        .largeFont = false};
+    dt.xPos = 49 + (2 * dt.charWidth);
+
     audio_t audioDetail = {.samplerate = 44.1,
                            .samplesize = 16,
                            .volume = -1,
@@ -878,10 +894,28 @@ void allInOnePage(void) {
     else if (16 != audioDetail.samplesize)
         audioDetail.audioIcon--;
 
-    strcpy(buff, "");
-    putAudio(audioDetail, buff, false);
-    ////setLastBits(buff);
-    ////setLastModes(lastModes);
+    strcpy(buff, " "); // this we'll ignore
+    int8_t lastModes[2] = {audioDetail.shuffle, audioDetail.repeat};
+    if ((strcmp(glopt->lastBits, buff) != 0) ||
+        (glopt->lastModes[SHUFFLE_BUCKET] != lastModes[SHUFFLE_BUCKET]) ||
+        (glopt->lastModes[REPEAT_BUCKET] != lastModes[REPEAT_BUCKET])) {
+        putAudio(audioDetail, buff, false);
+        setLastBits(buff);
+        setLastModes(lastModes);
+    }
+
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    time_t now = tv.tv_sec;
+    struct tm loctm = *localtime(&now);
+
+    // time
+    sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
+    if (strcmp(glopt->lastTime, buff) != 0)
+        setLastTime(buff, dt);
+
+    // colon (blink)
+    drawTimeBlink(((loctm.tm_sec % 2) ? ' ' : ':'), &dt);
 
 }
 

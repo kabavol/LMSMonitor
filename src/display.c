@@ -178,6 +178,7 @@ void setScrollMode(int sm) {
 
 void bigChar(uint8_t cc, int x, int y, int len, int w, int h,
              const uint8_t font[], uint16_t color) {
+    //             const uint8_t font[], uint16_t color) {
     // need fix for space, and minus sign
     int start = (cc - 48) * len;
     uint8_t dest[len];
@@ -647,7 +648,7 @@ void ovoidSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
         }
     }
 
-    if (maxbin > 30) {
+    if (maxbin > 28) {
         // cleanup...
         display.fillRect(0, 0, 1, maxXPixel(), BLACK);
         display.fillRect(maxXPixel() - 1, 0, 1, maxXPixel(), BLACK);
@@ -726,7 +727,7 @@ void mirrorSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
             ofs += hbin;
         }
     }
-    if (maxbin > 30) {
+    if (maxbin > 28) {
         // cleanup...
         display.fillRect((maxXPixel() / 2) - 1, 0, 2, maxXPixel(), BLACK);
     }
@@ -793,61 +794,34 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter, char *downmix) {
     lastPK.metric[1] = meter.metric[1];
 }
 
-void drawTimeBlinkS(uint8_t cc, int y) {
-    int w = 15;
-    int h = 21;
-    int x = 49 + (2 * w);
+void drawTimeBlink(uint8_t cc, DrawTime *dt) {
+    int x = dt->xPos + (2 * dt->charWidth);
     if (32 == cc) // a space - colon off
-        bigChar(':', x, y, LCD15X21_LEN, w, h, microlcd, BLACK);
+        bigChar(':', x, dt->yPos, dt->bufferLen, dt->charWidth,
+                dt->charHeight, ((dt->largeFont) ? lcd25x44 : microlcd), BLACK);
     else
-        bigChar(cc, x, y, LCD15X21_LEN, w, h, microlcd, WHITE);
+        bigChar(cc, x, dt->yPos, dt->bufferLen, dt->charWidth,
+                dt->charHeight, ((dt->largeFont) ? lcd25x44 : microlcd), WHITE);
 }
 
-void drawTimeBlinkL(uint8_t cc, int y) {
-    int w = 25;
-    int h = 44;
-    int x = 2 + (2 * w);
-    if (32 == cc) // a space - colon off
-        bigChar(':', x, y, LCD25X44_LEN, w, h, lcd25x44, BLACK);
-    else
-        bigChar(cc, x, y, LCD25X44_LEN, w, h, lcd25x44, WHITE);
-}
-
-void drawTimeTextS(char *buff, char *last, int y) {
+void drawTimeText(char *buff, char *last, DrawTime *dt) {
     // digit walk and "blit"
-    int x = 49;
-    int w = 15;
-    int h = 21;
+    int x = dt->xPos;
     for (size_t i = 0; i < strlen(buff); i++) {
         // selective updates, less "blink"
         if (buff[i] != last[i]) {
             if ('X' == last[i])
-                display.fillRect(x, y - 1, w, h + 2, BLACK);
+                display.fillRect(x, dt->yPos - 1, dt->charWidth,
+                                 dt->charHeight + 2, BLACK);
             else
-                bigChar(last[i], x, y, LCD15X21_LEN, w, h, microlcd,
+                bigChar(last[i], x, dt->yPos, dt->bufferLen, dt->charWidth,
+                        dt->charHeight, ((dt->largeFont) ? lcd25x44 : microlcd),
                         BLACK); // soft erase
-            bigChar(buff[i], x, y, LCD15X21_LEN, w, h, microlcd, WHITE);
+            bigChar(buff[i], x, dt->yPos, dt->bufferLen, dt->charWidth,
+                    dt->charHeight, ((dt->largeFont) ? lcd25x44 : microlcd),
+                    WHITE);
         }
-        x += w;
-    }
-}
-
-void drawTimeTextL(char *buff, char *last, int y) {
-    // digit walk and "blit"
-    int x = 2;
-    int w = 25;
-    int h = 44;
-    for (size_t i = 0; i < strlen(buff); i++) {
-        // selective updates, less "blink"
-        if (buff[i] != last[i]) {
-            if ('X' == last[i])
-                display.fillRect(x, 0, w, display.height() - 14, BLACK);
-            else
-                bigChar(last[i], x, y, LCD25X44_LEN, w, h, lcd25x44,
-                        BLACK); // soft erase
-            bigChar(buff[i], x, y, LCD25X44_LEN, w, h, lcd25x44, WHITE);
-        }
-        x += w;
+        x += dt->charWidth;
     }
 }
 
