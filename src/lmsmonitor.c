@@ -74,8 +74,11 @@ struct MonitorAttrs *glopt;
 #define SLEEP_TIME_LONG 160
 #define CHRPIXEL 8
 #define LINE_NUM 5
+#define A1LINE_NUM 2
+#define A1SCROLLER 5
 
 char stbl[BSIZE];
+char remTime[9];
 tag *tags;
 bool playing = false;
 bool softlySoftly = false;
@@ -88,6 +91,7 @@ tagtypes_t layout[LINE_NUM][3] = {
 	{TITLE,        MAXTAG_TYPES, MAXTAG_TYPES},
 	{ALBUMARTIST,  CONDUCTOR,    MAXTAG_TYPES},
 };
+
 // clang-format on
 
 bool freed = false;
@@ -305,6 +309,14 @@ void setLastTime(char *tm, DrawTime dt) {
     }
 }
 
+void setLastRemainingTime(char *rtm, DrawTime rdt) {
+    if (strcmp(remTime, rtm) != 0) {
+        drawRemTimeText(rtm, remTime, &rdt);
+        drawTimeBlink(':', &rdt);
+        strncpy(remTime, rtm, 9);
+    }
+}
+
 void setSleepTime(int st) {
     if (st != glopt->sleepTime)
         if (acquireOptLock()) {
@@ -399,6 +411,7 @@ void toggleVisualize(size_t timer_id, void *user_data) {
                 instrument(__LINE__, __FILE__, "activate Visualize");
                 activateVisualizer();
             }
+            setupPlayMode();
             softlySoftly = true;
             softVisualizeRefresh(true);
         }
@@ -548,8 +561,9 @@ int main(int argc, char *argv[]) {
                 }
                 break;
             case 'a':
-                printf("All-In-One coming soon\n");
                 lmsopt.allInOne = true;
+                lmsopt.downmix = true;
+                lmsopt.visualize = true;
                 break;
             case 'b': lmsopt.astral = true; break;
             case 'm':
@@ -596,10 +610,20 @@ int main(int argc, char *argv[]) {
 
 #ifdef __arm__
 
-    if (!(lmsopt.meterMode)) {
+    if (lmsopt.allInOne) {
         char vinit[3] = {0};
-        strcpy(vinit, VMODE_RN); // intermediate - pointers be damned!
+        strcpy(vinit, VMODE_A1);
         setVisList(vinit);
+        lmsopt.meterMode = true;
+        lmsopt.downmix = true;   // safe
+        lmsopt.visualize = true; // safe
+        instrument(__LINE__, __FILE__, "allInOne setup");
+    } else {
+        if (!(lmsopt.meterMode)) {
+            char vinit[3] = {0};
+            strcpy(vinit, VMODE_RN); // intermediate - pointers be damned!
+            setVisList(vinit);
+        }
     }
 
     // init OLED display
@@ -675,11 +699,17 @@ int main(int argc, char *argv[]) {
         timer_initialize();
         viztimer = timer_start(120 * 1000, toggleVisualize, TIMER_PERIODIC,
                                (void *)NULL);
-        vizcycletimer = timer_start(237 * 1000, cycleVisualize, TIMER_PERIODIC,
-                                    (void *)NULL);
-
-        sprintf(stbl, "%s %s\n", labelIt("Downmix VU+SA", LABEL_WIDTH, "."),
-                ((lmsopt.downmix) ? "Yes" : "No"));
+        // if all-in-one we're fixed so no cycle setup
+        if (!(lmsopt.allInOne)) {
+            instrument(__LINE__, __FILE__, "activate visualization cycling");
+            vizcycletimer = timer_start(237 * 1000, cycleVisualize,
+                                        TIMER_PERIODIC, (void *)NULL);
+            sprintf(stbl, "%s %s\n", labelIt("Downmix VU+SA", LABEL_WIDTH, "."),
+                    ((lmsopt.downmix) ? "Yes" : "No"));
+        } else {
+            sprintf(stbl, "%s %s\n", labelIt("Downmix A1", LABEL_WIDTH, "."),
+                    ((lmsopt.downmix) ? "Yes" : "No"));
+        }
 
     } else {
         sprintf(stbl, "%s Inactive\n",
@@ -690,6 +720,12 @@ int main(int argc, char *argv[]) {
     clearDisplay(); // clears the  splash if shown
 
     printFontMetrics();
+
+    A1Attributes aio = {
+        .artist = {0},
+        .title = {0},
+        .compound = {0},
+    };
 
     // bitmap capture
 #ifdef CAPTURE_BMP
@@ -722,11 +758,17 @@ int main(int argc, char *argv[]) {
                 instrument(__LINE__, __FILE__, "isPlaying");
 
                 // Threaded logic in play - DO NOT MODIFY
-                if (!isVisualizeActive())
+                if (!isVisualizeActive()) {
+                    clearScrollable(A1SCROLLER);
                     playingPage();
-                else
-                    setupPlayMode();
-                    // Threaded logic in play - DO NOT MODIFY
+                } else {
+                    if (strncmp(currentMeter(), VMODE_A1, 2) == 0) 
+                    {
+                        allInOnePage(&aio);
+                    }
+                    //setupPlayMode(); // 
+                }
+                // Threaded logic in play - DO NOT MODIFY
 #else
                 playingPage();
 #endif
@@ -795,13 +837,12 @@ void clockPage(void) {
 
     char buff[255];
 
-    DrawTime dt = {
-        .charWidth = 25,
-        .charHeight = 44,
-        .bufferLen = LCD25X44_LEN,
-        .xPos = 2,
-        .yPos = ((glopt->showTemp) ? -1 : 1),
-        .largeFont = true};
+    DrawTime dt = {.charWidth = 25,
+                   .charHeight = 44,
+                   .bufferLen = LCD25X44_LEN,
+                   .xPos = 2,
+                   .yPos = ((glopt->showTemp) ? -1 : 1),
+                   .largeFont = true};
 
     if (glopt->refreshClock) {
         instrument(__LINE__, __FILE__, "clock reset");
@@ -830,14 +871,13 @@ void clockPage(void) {
         setLastTime(buff, dt);
 
     // colon (blink)
-    ///drawTimeBlinkL(((loctm.tm_sec % 2) ? ' ' : ':'),
-    ///               ((glopt->showTemp) ? -1 : 1));
     drawTimeBlink(((loctm.tm_sec % 2) ? ' ' : ':'), &dt);
 
     // seconds
     drawHorizontalBargraph(
         2, 48, maxXPixel() - 4, 4,
         (int)((100 * (loctm.tm_sec + ((double)tv.tv_usec / 1000000)) / 60)));
+
     // date
     strftime(buff, sizeof(buff), "%A %Y-%m-%02d", &loctm);
     putTextToCenter(54, buff);
@@ -847,27 +887,40 @@ void clockPage(void) {
     refreshDisplay();
 }
 
-void allInOnePage(void) {
+void allInOnePage(A1Attributes *aio) {
 
-    /*
+/*
 [I] 10%  [I][           ]
-            [           ]
+[HH:MM]     [           ]
 [HH:MM]     [           ]
             [           ]
-[Artist scroller        ]
 [Compound Track scroller]
 */
 
-    char buff[BSIZE] = {0};
+    tagtypes_t a1layout[A1LINE_NUM][3] = {
+        {TITLE, MAXTAG_TYPES, MAXTAG_TYPES},
+        {COMPOSER, ARTIST, MAXTAG_TYPES},
+    };
 
-    DrawTime dt = {
-        .charWidth = 15,
-        .charHeight = 21,
-        .bufferLen = LCD15X21_LEN,
-        .xPos = 0, // assign next
-        .yPos = 17,
-        .largeFont = false};
-    dt.xPos = 49 + (2 * dt.charWidth);
+    char buff[BSIZE] = {0};
+    char artist[255] = {0};
+    char title[255] = {0};
+
+    DrawTime dt = {.charWidth = 12,
+                   .charHeight = 17,
+                   .bufferLen = LCD12X17_LEN,
+                   .xPos = 2,
+                   .yPos = 10,
+                   .largeFont = false};
+
+    DrawTime rdt = {.charWidth = 12,
+                    .charHeight = 17,
+                    .bufferLen = LCD12X17_LEN,
+                    .xPos = 2,
+                    .yPos = 28,
+                    .largeFont = false};
+
+    setA1Downmix();
 
     audio_t audioDetail = {.samplerate = 44.1,
                            .samplesize = 16,
@@ -877,7 +930,6 @@ void allInOnePage(void) {
                            .shuffle = 0};
 
     sampleDetails(&audioDetail);
-
     softClockReset(false);
 
     if (audioDetail.volume != glopt->lastVolume) {
@@ -904,6 +956,39 @@ void allInOnePage(void) {
         setLastModes(lastModes);
     }
 
+    // setup compound scrollers
+    bool filled = false;
+    bool changed = false;
+    for (int line = 0; line < A1LINE_NUM; line++) {
+        filled = false;
+        int myline = line + 5;
+        for (tagtypes_t *t = a1layout[line]; *t != MAXTAG_TYPES; t++) {
+            if (tags[*t].valid) {
+                filled = true;
+                if (tags[*t].changed) {
+                    changed = true;
+                    if (0 == line)
+                        strncpy(aio->title, tags[*t].tagData, 255);
+                    else
+                        strncpy(aio->artist, tags[*t].tagData, 255);
+                }
+            }
+        }
+    }
+    if (changed) {
+        sprintf(buff, "%s - %s", aio->artist, aio->title);
+        if ((strcmp(buff, aio->compound) != 0) ||
+            (0 == strlen(aio->compound)) ||
+            (!isScrollerActive(A1SCROLLER))) // safe
+        {
+            strncpy(aio->compound, buff, 255);
+            if (putScrollable(A1SCROLLER, aio->compound)) {
+                setSleepTime(SLEEP_TIME_SHORT);
+            }
+        }
+    }
+
+    // display time
     struct timeval tv;
     gettimeofday(&tv, NULL);
     time_t now = tv.tv_sec;
@@ -913,17 +998,22 @@ void allInOnePage(void) {
     sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
     if (strcmp(glopt->lastTime, buff) != 0)
         setLastTime(buff, dt);
-
     // colon (blink)
     drawTimeBlink(((loctm.tm_sec % 2) ? ' ' : ':'), &dt);
 
+    uint16_t rTime =
+        (tags[REMAINING].valid) ? strtol(tags[REMAINING].tagData, NULL, 10) : 0;
+
+    // not hourly compliant!
+    sprintf(buff, "%02d:%02d", rTime / 60, rTime % 60);
+    setLastRemainingTime(buff, rdt);
 }
 
 #endif
 
 void playingPage(void) {
 
-    long pTime, dTime, rTime;
+    uint16_t pTime, dTime, rTime;
     char buff[BSIZE] = {0};
 
 #ifdef __arm__
@@ -959,6 +1049,7 @@ void playingPage(void) {
         softClockReset(false);
         setNagDone();
         setSleepTime(SLEEP_TIME_SHORT);
+
     } else {
 #endif
         sprintf(buff, "________________________\n");
@@ -1053,16 +1144,16 @@ void playingPage(void) {
                     : 0;
 
 #ifdef __arm__
-        sprintf(buff, "%02ld:%02ld", pTime / 60, pTime % 60);
+        sprintf(buff, "%02d:%02d", pTime / 60, pTime % 60);
         int tlen = strlen(buff);
         clearLine(56);
         putText(1, 56, buff);
 
         // this is limited to sub hour programing - a stream may be 1+ hours
         if (glopt->remaining)
-            sprintf(buff, "-%02ld:%02ld", rTime / 60, rTime % 60);
+            sprintf(buff, "-%02d:%02d", rTime / 60, rTime % 60);
         else
-            sprintf(buff, "%02ld:%02ld", dTime / 60, dTime % 60);
+            sprintf(buff, "%02d:%02d", dTime / 60, dTime % 60);
 
         int dlen = strlen(buff);
         putText(maxXPixel() - (dlen * charWidth()) - 1, 56, buff);
@@ -1077,7 +1168,7 @@ void playingPage(void) {
                                (pTime * 100) / (dTime == 0 ? 1 : dTime));
 #endif
 
-        sprintf(buff, "%3ld:%02ld  %5s  %3ld:%02ld", pTime / 60, pTime % 60,
+        sprintf(buff, "%3d:%02d  %5s  %3d:%02d", pTime / 60, pTime % 60,
                 (tags[MODE].valid) ? tags[MODE].tagData : "", dTime / 60,
                 dTime % 60);
         sprintf(stbl, "%s\n\n", buff);

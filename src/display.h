@@ -26,12 +26,12 @@
 #define PROGMEM
 #endif
 
+#include "gfxfont.h"
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "gfxfont.h"
 //#include "../font/NotoSansRegular5lms.h"
 
 #include "visdata.h"
@@ -49,37 +49,28 @@
 
 #define NUMNOTES 10
 #define NAGNOTE_HEIGHT 16
-#define NAGNOTE_WIDTH  16
+#define NAGNOTE_WIDTH 16
 
-#define SCROLL_MODE_CYLON  0 // cylon sweep with pause
+#define SCROLL_MODE_CYLON 0  // cylon sweep with pause
 #define SCROLL_MODE_INFSIN 1 // infinity scroll left (sinister)
 #define SCROLL_MODE_INFDEX 2 // infinity scroll right (dexter)
 #define SCROLL_MODE_RANDOM 3 // randomize the above
 #define SCROLL_MODE_MAX 4
 
 #define SHUFFLE_BUCKET 0
-#define REPEAT_BUCKET  1
+#define REPEAT_BUCKET 1
 #define MAX_FREQUENCY_BINS 12
 // frequency cap decay
 #define CAPS_DECAY 0.075
 
-static const char * scrollerMode[] = {
-    "Cylon (Default)",
-    "Infinity (Sinister)",
-    "Infinity (Dexter)",
-    "Randomized"
-};
+static const char *scrollerMode[] = {"Cylon (Default)", "Infinity (Sinister)",
+                                     "Infinity (Dexter)", "Randomized"};
 
-typedef enum PageMode {
-    DETAILS,
-    CLOCK,
-    VISUALIZER,
-    ALLINONE
-} PageMode;
+typedef enum PageMode { DETAILS, CLOCK, VISUALIZER, ALLINONE } PageMode;
 
 typedef struct audio_t {
-    double samplerate; 
-    int8_t samplesize; 
+    double samplerate;
+    int8_t samplesize;
     int8_t volume;
     int8_t audioIcon;
     int8_t repeat;
@@ -89,10 +80,10 @@ typedef struct audio_t {
 typedef struct MonitorAttrs {
     int8_t oledAddrL;
     int8_t oledAddrR;
-    int  vizHeight;
-    int  vizWidth;
+    int vizHeight;
+    int vizWidth;
     bool allInOne;
-    int  sleepTime;
+    int sleepTime;
     bool astral;
     bool showTemp;
     bool downmix;
@@ -106,7 +97,7 @@ typedef struct MonitorAttrs {
     bool refreshLMS;
     bool refreshClock;
     bool refreshViz;
-    int  lastVolume;
+    int lastVolume;
     uint8_t lastModes[2]; // shuffle[0] + repeat[1]
     char lastBits[16];
     char lastTime[6];
@@ -142,6 +133,16 @@ typedef struct DrawTime {
     bool largeFont;
 } DrawTime; // generic font header!
 
+typedef struct DrawVisualize {
+    int xPos;
+    int yPos;
+    double wMeter;
+    double hMeter;
+    double rMeter;
+    bool finesse;
+    char downmix[5];
+} DrawVisualize;
+
 void printFontMetrics(void);
 
 void setInitRefresh(void);
@@ -168,22 +169,23 @@ bool putScrollable(int y, char *buff);
 void scrollerFinalize(void);
 void setScrollActive(int line, bool active);
 bool activeScroller(void);
+bool isScrollerActive(int line);
 
 void resetDisplay(int fontSize);
 int initDisplay(void);
 void closeDisplay(void);
 void softClear(void);
 
-void stereoVU(struct vissy_meter_t *vissy_meter, char *downmix);
-void stereoSpectrum(struct vissy_meter_t *vissy_meter, char *downmix);
-void ovoidSpectrum(struct vissy_meter_t *vissy_meter, char *downmix);
-void mirrorSpectrum(struct vissy_meter_t *vissy_meter, char *downmix);
-void reflectSpectrum(struct vissy_meter_t *vissy_meter, char *downmix);
-void stereoPeakH(struct vissy_meter_t *vissy_meter, char *downmix);
+void stereoVU(struct vissy_meter_t *vissy_meter, struct DrawVisualize *layout);
+void stereoSpectrum(struct vissy_meter_t *vissy_meter, struct DrawVisualize *layout);
+void ovoidSpectrum(struct vissy_meter_t *vissy_meter, struct DrawVisualize *layout);
+void mirrorSpectrum(struct vissy_meter_t *vissy_meter, struct DrawVisualize *layout);
+void reflectSpectrum(struct vissy_meter_t *vissy_meter, struct DrawVisualize *layout);
+void stereoPeakH(struct vissy_meter_t *vissy_meter, struct DrawVisualize *layout);
 
 // audio attributes
 void putVolume(bool v, char *buff);
-void putAudio(audio_t audio, char *buff, bool full=true);
+void putAudio(audio_t audio, char *buff, bool full = true);
 
 void putText(int x, int y, char *buff);
 void putTextCenterColor(int y, char *buff, uint16_t color);
@@ -194,6 +196,7 @@ void clearDisplay();
 
 void drawTimeBlink(uint8_t cc, DrawTime *dt);
 void drawTimeText(char *buff, char *last, DrawTime *dt);
+void drawRemTimeText(char *buff, char *last, DrawTime *dt);
 
 void refreshDisplay(void);
 void refreshDisplayScroller(void);

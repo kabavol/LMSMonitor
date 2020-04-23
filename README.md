@@ -145,7 +145,7 @@ the visualization parameter must always be specified first
 - DONE! Downmix visual data and display on one large Spectrum.
 - DONE! Make OLED driver user selectable
 - DONE! Make OLED I2C address user selectable
-- All-In-One display, track details and downmix visualizer in one 
+- DONE: All-In-One display, clock, track details and downmix visualizer in one 
 - Dual OLED visualizer mode: TBD
 - 128 x 128 OLED support: TBD
 - Color 128 x 128 color TFT support: TBD

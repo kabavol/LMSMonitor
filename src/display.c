@@ -278,13 +278,12 @@ void splashScreen(void) {
     dodelay(180);
 }
 
-void downmixVU(struct vissy_meter_t *vissy_meter) {
+void downmixVU(struct vissy_meter_t *vissy_meter,
+               struct DrawVisualize *layout) {
 
-    //vumeterDownmix(true);
-
-    double hMeter = (double)maxYPixel() + 2.00;
-    double rMeter = (double)hMeter - 5.00;
-    double wMeter = (double)maxXPixel();
+    double hMeter = (double)maxYPixel() + 2.00; // layout->hMeter;
+    double rMeter = (double)hMeter - 5.00;      // layout->rMeter;
+    double wMeter = (double)maxXPixel();        // layout->wMeter;
     double xpivot = wMeter / 2.00;
     double rad = (180.00 / PI); // 180/pi
     double divisor = 0.00;
@@ -345,7 +344,7 @@ void downmixVU(struct vissy_meter_t *vissy_meter) {
     display.fillCircle((int16_t)xpivot, (int16_t)hMeter, r - 4, BLACK);
 }
 
-void stereoVU(struct vissy_meter_t *vissy_meter, char *downmix) {
+void stereoVU(struct vissy_meter_t *vissy_meter, struct DrawVisualize *layout) {
 
     meter_chan_t thisVU = {vissy_meter->sample_accum[0],
                            vissy_meter->sample_accum[1]};
@@ -358,8 +357,8 @@ void stereoVU(struct vissy_meter_t *vissy_meter, char *downmix) {
         return;
 
     // VU Mode
-    if (strncmp(downmix, "N", 1) != 0) {
-        downmixVU(vissy_meter);
+    if (strncmp(layout->downmix, "N", 1) != 0) {
+        downmixVU(vissy_meter, layout);
         return;
     }
 
@@ -416,14 +415,18 @@ void stereoVU(struct vissy_meter_t *vissy_meter, char *downmix) {
     }
 }
 
-void downmixSpectrum(struct vissy_meter_t *vissy_meter) {
+void downmixSpectrum(struct vissy_meter_t *vissy_meter,
+                     struct DrawVisualize *layout) {
 
-    int wsa = maxXPixel() - 2;
-    int hsa = maxYPixel() - 4;
+    int wsa = (int)layout->wMeter;
+    if (0 == wsa)
+        wsa = maxXPixel() - 2;
+    int hsa = (int)layout->hMeter;
+    if (0 == hsa)
+        hsa = maxYPixel() - 4;
 
     double wbin = (double)wsa /
                   (double)(MAX_FREQUENCY_BINS + 1); // 12 bar display, downmixed
-    //wbin = 9.00;                                    // fix
 
     if (initRefresh) {
         softClear();
@@ -434,7 +437,9 @@ void downmixSpectrum(struct vissy_meter_t *vissy_meter) {
     // SA scaling
     double multiSA = (double)hsa / 31.00;
 
-    int ofs = (int)(wbin * 0.75);
+    int ofs = layout->xPos;
+    if (0 == ofs)
+        ofs = (int)(wbin * 0.75);
 
     for (int bin = 0; bin < MAX_FREQUENCY_BINS; bin++) {
 
@@ -495,15 +500,22 @@ void downmixSpectrum(struct vissy_meter_t *vissy_meter) {
     }
 
     // finesse
-    display.fillRect(0, maxYPixel() - 4, maxXPixel(), 4, BLACK);
-    // track detail scroller...
+    if (layout->finesse)
+        display.fillRect(layout->xPos-1, hsa, wsa, 4, BLACK);
+
+    wbin *= MAX_FREQUENCY_BINS;
+
+    display.fillRect(layout->xPos-1, hsa, wbin, 1, BLACK);
+    display.fillRect(layout->xPos-1, hsa+1, wbin, 1, WHITE);
+
 }
 
-void stereoSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
+void stereoSpectrum(struct vissy_meter_t *vissy_meter,
+                    struct DrawVisualize *layout) {
 
     // SA mode
-    if (strncmp(downmix, "N", 1) != 0) {
-        downmixSpectrum(vissy_meter);
+    if (strncmp(layout->downmix, "N", 1) != 0) {
+        downmixSpectrum(vissy_meter, layout);
         return;
     }
 
@@ -575,7 +587,8 @@ void stereoSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
     // track detail scroller...
 }
 
-void ovoidSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
+void ovoidSpectrum(struct vissy_meter_t *vissy_meter,
+                   struct DrawVisualize *layout) {
 
     // a spectrum, centered and horizontal
 
@@ -648,14 +661,16 @@ void ovoidSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
         }
     }
 
-    if (maxbin > 28) {
+    if (maxbin > 26) {
         // cleanup...
-        display.fillRect(0, 0, 1, maxXPixel(), BLACK);
-        display.fillRect(maxXPixel() - 1, 0, 1, maxXPixel(), BLACK);
+        //printf("%d maxed on ovoidSpectrum\n",maxbin);
+        display.fillRect(0, 0, 2, maxXPixel(), BLACK);
+        display.fillRect(maxXPixel() - 2, 0, 2, maxXPixel(), BLACK);
     }
 }
 
-void mirrorSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
+void mirrorSpectrum(struct vissy_meter_t *vissy_meter,
+                    struct DrawVisualize *layout) {
 
     // a spectrum, mirrored horizontal
 
@@ -727,13 +742,15 @@ void mirrorSpectrum(struct vissy_meter_t *vissy_meter, char *downmix) {
             ofs += hbin;
         }
     }
-    if (maxbin > 28) {
+    if (maxbin > 26) {
         // cleanup...
-        display.fillRect((maxXPixel() / 2) - 1, 0, 2, maxXPixel(), BLACK);
+        //printf("%d maxed on mirrorSpectrum\n",maxbin);
+        display.fillRect((maxXPixel() / 2) - 1, 0, 3, maxXPixel(), BLACK);
     }
 }
 
-void stereoPeakH(struct vissy_meter_t *vissy_meter, char *downmix) {
+void stereoPeakH(struct vissy_meter_t *vissy_meter,
+                 struct DrawVisualize *layout) {
 
     // intermediate variable so we can easily switch metrics
     meter_chan_t meter = {vissy_meter->sample_accum[0],
@@ -797,28 +814,62 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter, char *downmix) {
 void drawTimeBlink(uint8_t cc, DrawTime *dt) {
     int x = dt->xPos + (2 * dt->charWidth);
     if (32 == cc) // a space - colon off
-        bigChar(':', x, dt->yPos, dt->bufferLen, dt->charWidth,
-                dt->charHeight, ((dt->largeFont) ? lcd25x44 : microlcd), BLACK);
+        bigChar(':', x, dt->yPos, dt->bufferLen, dt->charWidth, dt->charHeight,
+                ((dt->largeFont) ? lcd25x44 : lcd12x17 //lcd15x21
+                 ),
+                BLACK);
     else
-        bigChar(cc, x, dt->yPos, dt->bufferLen, dt->charWidth,
-                dt->charHeight, ((dt->largeFont) ? lcd25x44 : microlcd), WHITE);
+        bigChar(cc, x, dt->yPos, dt->bufferLen, dt->charWidth, dt->charHeight,
+                ((dt->largeFont) ? lcd25x44 : lcd12x17 //lcd15x21
+                 ),
+                WHITE);
 }
 
 void drawTimeText(char *buff, char *last, DrawTime *dt) {
     // digit walk and "blit"
     int x = dt->xPos;
+    size_t ll = strlen(last);
     for (size_t i = 0; i < strlen(buff); i++) {
         // selective updates, less "blink"
-        if (buff[i] != last[i]) {
-            if ('X' == last[i])
+        if ((i > ll) || (buff[i] != last[i])) {
+            if ((i > ll) || ('X' == last[i])) {
                 display.fillRect(x, dt->yPos - 1, dt->charWidth,
                                  dt->charHeight + 2, BLACK);
-            else
+            } else {
+                bigChar(
+                    last[i], x, dt->yPos, dt->bufferLen, dt->charWidth,
+                    //dt->charHeight, ((dt->largeFont) ? hand23x48 : lcd12x17), //lcd15x21),
+                    dt->charHeight,
+                    ((dt->largeFont) ? lcd25x44 : lcd12x17), //lcd15x21),
+                    BLACK);                                  // soft erase
+            }
+            bigChar(
+                buff[i], x, dt->yPos, dt->bufferLen, dt->charWidth,
+                //dt->charHeight, ((dt->largeFont) ? hand23x48 : lcd12x17), //lcd15x21),
+                dt->charHeight,
+                ((dt->largeFont) ? lcd25x44 : lcd12x17), //lcd15x21),
+                WHITE);
+        }
+        x += dt->charWidth;
+    }
+}
+
+void drawRemTimeText(char *buff, char *last, DrawTime *dt) {
+    int x = dt->xPos;
+    size_t ll = strlen(last);
+    for (size_t i = 0; i < strlen(buff); i++) {
+        // selective updates, less "blink"
+        if ((i > ll) || (buff[i] != last[i])) {
+            if ((i > ll) || ('X' == last[i])) {
+                display.fillRect(x, dt->yPos - 1, dt->charWidth,
+                                 dt->charHeight + 2, BLACK);
+            } else {
                 bigChar(last[i], x, dt->yPos, dt->bufferLen, dt->charWidth,
-                        dt->charHeight, ((dt->largeFont) ? lcd25x44 : microlcd),
-                        BLACK); // soft erase
+                        dt->charHeight, lcd12x17, //lcd15x21,
+                        BLACK);                   // soft erase
+            }
             bigChar(buff[i], x, dt->yPos, dt->bufferLen, dt->charWidth,
-                    dt->charHeight, ((dt->largeFont) ? lcd25x44 : microlcd),
+                    dt->charHeight, lcd12x17, //lcd15x21,
                     WHITE);
         }
         x += dt->charWidth;
@@ -975,7 +1026,6 @@ bool putScrollable(int line, char *buff) {
 #define SCAN_TIME 100
 #define PAUSE_TIME 5000
 
-// ?? thread safe ??
 void *scrollLine(void *input) {
 
     sme *s;
@@ -1075,7 +1125,19 @@ void scrollerInit(void) {
             return;
         } else {
             baselineScroller(&scroll[line]);
-            scroll[line].ypos = line * (2 + _char_height);
+            switch (line) {
+                case 5:
+                    scroll[line].ypos = 50;
+                    break;
+                case 6:
+                    scroll[line].ypos = 70; // out of bounds
+                    break;
+                default:
+                scroll[line].ypos = line * (2 + _char_height);
+            }
+
+            ////printf("%d = %d\n",line, scroll[line].ypos); 
+
             scroll[line].line = line; // dang, dumb to have missed this !?!
             scroll[line].scrollMe = scrollLine;
             scroll[line].scrollMode = scrollMode;
@@ -1086,14 +1148,20 @@ void scrollerInit(void) {
     }
 }
 
+bool isScrollerActive(int line) {
+    bool ret = false;
+    if (acquireLock(line)) {
+        if (scroll[line].active)
+            ret = true;
+        pthread_mutex_unlock(&scroll[line].scrollox);
+    }
+    return ret;
+}
+
 bool activeScroller(void) {
     bool ret = false;
     for (int line = 0; line < maxLine(); line++) {
-        if (acquireLock(line)) {
-            if (scroll[line].active)
-                ret = true;
-            pthread_mutex_unlock(&scroll[line].scrollox);
-        }
+        ret = isScrollerActive(line);
         if (ret)
             break;
     }

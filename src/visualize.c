@@ -38,7 +38,7 @@ bool vis_is_active = false;
 vis_type_t vis_mode = {0};
 vis_type_t vis_list[5] = {{0}, {0}, {0}, {0}, {0}};
 uint8_t num_modes = 1;
-char downmix[5] = {0};
+DrawVisualize downmix = {0, 0, 0, 0, 0, 0, {0}};
 
 size_t lenVisList(void) { return (sizeof(vis_list) / sizeof(vis_type_t)); }
 void activateVisualizer(void) {
@@ -73,11 +73,27 @@ void deactivateVisualizer(void) {
 
 void setDownmix(int samplesize, float samplerate) {
     if (0 == samplesize)
-        strcpy(downmix, "N");
+        strcpy(downmix.downmix, "N");
     else if (1 == samplesize)
-        sprintf(downmix, "D%.0f", (samplerate / 44.1));
+        sprintf(downmix.downmix, "D%.0f", (samplerate / 44.1));
     else
-        sprintf(downmix, "M%d", samplesize);
+        sprintf(downmix.downmix, "M%d", samplesize);
+}
+
+void setDownmixAttrs(int x, int y, int width, int height, int radius) {
+    downmix.xPos = x;
+    downmix.yPos = y;
+    downmix.hMeter = height;
+    downmix.wMeter = width;
+    downmix.rMeter = radius;
+    // workable hack for presentation tweaks
+    if (0 == (radius+x)) downmix.finesse = true;
+}
+
+// hackety-hack - don't look back...
+void setA1Downmix(void) {
+    setDownmixAttrs(66, 2, 60, 40, 0);
+    setDownmix(16,44.1);
 }
 
 void sayVisList(void) {
@@ -120,6 +136,7 @@ void setVisList(char *vlist) {
         // validate and silently assign to default if "bogus"
         if ((strncmp(p, VMODE_VU, 2) != 0) && (strncmp(p, VMODE_SA, 2) != 0) &&
             (strncmp(p, VMODE_ST, 2) != 0) && (strncmp(p, VMODE_RN, 2) != 0) &&
+            (strncmp(p, VMODE_A1, 2) != 0) &&
             (strncmp(p, VMODE_PK, 2) != 0) && (strncmp(p, VMODE_SM, 2) != 0)) {
             strcpy(p, VMODE_NA);
         }
@@ -166,10 +183,9 @@ void visualize(struct vissy_meter_t *vissy_meter) {
 
     if (vis_is_active) {
 
-//        if (0 == (visgood % 3)) {
-
-            if (isEmptyStr(downmix)) {
-                strcpy(downmix, "N");
+            if (isEmptyStr(downmix.downmix)) {
+                setDownmix(0, 0);
+                setDownmixAttrs(0, 0, maxXPixel()-2,maxYPixel()-4, 0);
                 instrument(__LINE__, __FILE__, "<-Fixed Downmix");
             }
             if (isEmptyStr(vis_mode)) {
@@ -184,12 +200,12 @@ void visualize(struct vissy_meter_t *vissy_meter) {
                 {
                 case VEMODE_VU:
                     instrument(__LINE__, __FILE__, "->Visualize VU");
-                    stereoVU(vissy_meter, downmix);
+                    stereoVU(vissy_meter, &downmix);
                     instrument(__LINE__, __FILE__, "<-Visualize VU");
                     break;
                 case VEMODE_PK:
                     instrument(__LINE__, __FILE__, "->Visualize PK");
-                    stereoPeakH(vissy_meter, downmix);
+                    stereoPeakH(vissy_meter, &downmix);
                     instrument(__LINE__, __FILE__, "<-Visualize PK");
                     break;
                 }
@@ -197,19 +213,26 @@ void visualize(struct vissy_meter_t *vissy_meter) {
             case VEMODE_SA:
                 switch(getMode(vis_mode))
                 {
+                case VEMODE_A1:
+                    // need all-in-one setup to have occured
+                    instrument(__LINE__, __FILE__, "->Visualize A1");
+                    if (0 == downmix.xPos) {
+                        instrument(__LINE__, __FILE__, "<-A1 not setup!");
+                        setA1Downmix();
+                    }
                 case VEMODE_SA:
                     instrument(__LINE__, __FILE__, "->Visualize SA");
-                    stereoSpectrum(vissy_meter, downmix);
+                    stereoSpectrum(vissy_meter, &downmix);
                     instrument(__LINE__, __FILE__, "<-Visualize SA");
                     break;
                 case VEMODE_ST:
                     instrument(__LINE__, __FILE__, "->Visualize ST");
-                    ovoidSpectrum(vissy_meter, downmix);
+                    ovoidSpectrum(vissy_meter, &downmix);
                     instrument(__LINE__, __FILE__, "<-Visualize ST");
                     break;
                 case VEMODE_SM:
                     instrument(__LINE__, __FILE__, "->Visualize SM");
-                    mirrorSpectrum(vissy_meter, downmix);
+                    mirrorSpectrum(vissy_meter, &downmix);
                     instrument(__LINE__, __FILE__, "<-Visualize SM");
                     break;
                 }
@@ -217,11 +240,4 @@ void visualize(struct vissy_meter_t *vissy_meter) {
         }
         lastTest = true;
     
-    //}
-    // stream is too fast for display
-    // a 1:20 consumption ratio plays
-    // happier w/ the display
-    //visgood++;
-    //if (visgood > 20)
-    //    visgood = 0;
 }
