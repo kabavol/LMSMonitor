@@ -98,6 +98,7 @@ typedef struct MonitorAttrs {
     bool refreshClock;
     bool refreshViz;
     int lastVolume;
+    int clockFont;
     uint8_t lastModes[2]; // shuffle[0] + repeat[1]
     char lastBits[16];
     char lastTime[6];
@@ -130,7 +131,7 @@ typedef struct DrawTime {
     int bufferLen;
     int xPos;
     int yPos;
-    bool largeFont;
+    int font;
 } DrawTime; // generic font header!
 
 typedef struct DrawVisualize {

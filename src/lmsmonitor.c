@@ -221,6 +221,7 @@ void print_help(char *executable) {
         "only)\n"
         " -c display clock when not playing (Pi only)\n"
         " -d downmix audio and display a single large meter, SA and VU only\n"
+        " -f font used by clock, see list below for details\n"
         " -i increment verbose level\n"
         " -k show CPU load and temperature (clock mode)\n"
         " -m if visualization on specify one or more meter modes, sa, vu, "
@@ -236,6 +237,7 @@ void print_help(char *executable) {
         APPNAME, VERSION);
 #ifdef __arm__
     printOledTypes();
+    printOledFontTypes();
 #endif
     signature(executable);
 }
@@ -521,8 +523,9 @@ int main(int argc, char *argv[]) {
     strcpy(lmsopt.lastBits, "LMS");
     strcpy(lmsopt.lastTemp, "00000");
     strcpy(lmsopt.lastTime, "XX:XX");
-
+    lmsopt.clockFont = MON_FONT_CLASSIC;
     glopt = &lmsopt;
+    strcpy(remTime, "XXXXX");
 
 #endif
 
@@ -539,7 +542,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     opterr = 0;
-    while ((aName = getopt(argc, argv, "n:o:m:x:B:S:abcdhikprtvz")) != -1) {
+    while ((aName = getopt(argc, argv, "n:o:m:x:B:S:f:abcdhikprtvz")) != -1) {
         switch (aName) {
             case 'n': playerName = optarg; break;
 
@@ -581,6 +584,19 @@ int main(int argc, char *argv[]) {
 
             case 'd': lmsopt.downmix = true; break;
 
+            case 'f':
+                if (optarg) {
+                    int oled;
+                    sscanf(optarg, "%d", &oled);
+                    if (oled < MON_FONT_CLASSIC || oled >= MON_FONT_LCD1521) {
+                        printf("*** invalid oled font %d\n", oled);
+                        print_help(argv[0]);
+                        exit(EXIT_FAILURE);
+                    } else {
+                        lmsopt.clockFont = oled;
+                    }
+                }
+                break;
             case 'k': lmsopt.showTemp = true; break;
 
             case 'r': lmsopt.remaining = true; break;
@@ -601,198 +617,200 @@ int main(int argc, char *argv[]) {
 
 #endif
 
-            case 'h':
-                print_help(argv[0]);
-                exit(EXIT_SUCCESS);
-                break;
-        }
+        case 'h':
+            print_help(argv[0]);
+            exit(EXIT_SUCCESS);
+            break;
     }
+}
 
 #ifdef __arm__
 
-    if (lmsopt.allInOne) {
+if (lmsopt.allInOne) {
+    char vinit[3] = {0};
+    strcpy(vinit, VMODE_A1);
+    setVisList(vinit);
+    lmsopt.meterMode = true;
+    lmsopt.downmix = true;   // safe
+    lmsopt.visualize = true; // safe
+    instrument(__LINE__, __FILE__, "allInOne setup");
+} else {
+    if (!(lmsopt.meterMode)) {
         char vinit[3] = {0};
-        strcpy(vinit, VMODE_A1);
+        strcpy(vinit, VMODE_RN); // intermediate - pointers be damned!
         setVisList(vinit);
-        lmsopt.meterMode = true;
-        lmsopt.downmix = true;   // safe
-        lmsopt.visualize = true; // safe
-        instrument(__LINE__, __FILE__, "allInOne setup");
-    } else {
-        if (!(lmsopt.meterMode)) {
-            char vinit[3] = {0};
-            strcpy(vinit, VMODE_RN); // intermediate - pointers be damned!
-            setVisList(vinit);
-        }
     }
+}
 
-    // init OLED display
-    if (initDisplay() == EXIT_FAILURE) {
-        exit(EXIT_FAILURE);
-    }
-    // throw up splash if not nixed by caller
-    if (lmsopt.splash)
-        splashScreen();
-    else
-        displayBrightness(MAX_BRIGHTNESS);
+// init OLED display
+if (initDisplay() == EXIT_FAILURE) {
+    exit(EXIT_FAILURE);
+}
+// throw up splash if not nixed by caller
+if (lmsopt.splash)
+    splashScreen();
+else
+    displayBrightness(MAX_BRIGHTNESS);
 
 #endif
 
-    signature(argv[0]);
+signature(argv[0]);
 
 #ifdef __arm__
-    sprintf(stbl, "%s %s\n", labelIt("Verbosity", LABEL_WIDTH, "."),
-            getVerboseStr());
-    putMSG(stbl, LL_QUIET);
-    printOledSetup();    // feedback and "debug"
-    printScrollerMode(); // feedback and "debug"
+sprintf(stbl, "%s %s\n", labelIt("Verbosity", LABEL_WIDTH, "."),
+        getVerboseStr());
+putMSG(stbl, LL_QUIET);
+printOledSetup();    // feedback and "debug"
+printScrollerMode(); // feedback and "debug"
+sprintf(stbl, "%s %s\n", labelIt("OLED Clock Font", LABEL_WIDTH, "."),
+        oled_font_str[lmsopt.clockFont]);
+putMSG(stbl, LL_QUIET);
 #endif
-    thatMAC = playerMAC();
+thatMAC = playerMAC();
 
-    // init here - splash delay mucks the refresh flagging
-    if ((tags = initSliminfo(playerName)) == NULL) {
-        exit(EXIT_FAILURE);
-    }
+// init here - splash delay mucks the refresh flagging
+if ((tags = initSliminfo(playerName)) == NULL) {
+    exit(EXIT_FAILURE);
+}
 
 #ifdef __arm__
-    // setup brightness event (sunrise/sunset)
-    if ((lmsopt.astral) && (initAstral())) {
-        size_t astraltimer;
-        timer_initialize();
-        astraltimer = timer_start(60 * 5 * 1000, checkAstral, TIMER_PERIODIC,
-                                  (void *)NULL);
-    }
+// setup brightness event (sunrise/sunset)
+if ((lmsopt.astral) && (initAstral())) {
+    size_t astraltimer;
+    timer_initialize();
+    astraltimer =
+        timer_start(60 * 5 * 1000, checkAstral, TIMER_PERIODIC, (void *)NULL);
+}
 #endif
 
 #ifdef __arm__
 
-    // init for visualize mechanism here
-    if (strcmp(thatMAC, thisMAC) != 0) {
-        if (lmsopt.visualize) {
+// init for visualize mechanism here
+if (strcmp(thatMAC, thisMAC) != 0) {
+    if (lmsopt.visualize) {
 #ifdef SSE_VIZDATA
-            // go SSE for visualizer
-            opt.host = getPlayerIP();
-            opt.port = 8022;
-            opt.endpoint = "/visionon?subscribe=SA-VU";
-            lmsopt.visualize = setupSSE(opt);
+        // go SSE for visualizer
+        opt.host = getPlayerIP();
+        opt.port = 8022;
+        opt.endpoint = "/visionon?subscribe=SA-VU";
+        lmsopt.visualize = setupSSE(opt);
 #else
-            printf("SSE not supported, deactivating visualizer\n");
-            lmsopt.visualize = false;
+        printf("SSE not supported, deactivating visualizer\n");
+        lmsopt.visualize = false;
 #endif
-        }
-    } else {
-
-        if (lmsopt.visualize) {
-            // go SHMEM for visualizer
-            lmsopt.visualize = setupSHMEM();
-        }
     }
-
-    // if we had a clean setup
-    // init visualizer mode and
-    // timer toggle
+} else {
 
     if (lmsopt.visualize) {
-        sayVisList();
-        size_t viztimer;
-        size_t vizcycletimer;
-        timer_initialize();
-        viztimer = timer_start(120 * 1000, toggleVisualize, TIMER_PERIODIC,
-                               (void *)NULL);
-        // if all-in-one we're fixed so no cycle setup
-        if (!(lmsopt.allInOne)) {
-            instrument(__LINE__, __FILE__, "activate visualization cycling");
-            vizcycletimer = timer_start(237 * 1000, cycleVisualize,
-                                        TIMER_PERIODIC, (void *)NULL);
-            sprintf(stbl, "%s %s\n", labelIt("Downmix VU+SA", LABEL_WIDTH, "."),
-                    ((lmsopt.downmix) ? "Yes" : "No"));
-        } else {
-            sprintf(stbl, "%s %s\n", labelIt("Downmix A1", LABEL_WIDTH, "."),
-                    ((lmsopt.downmix) ? "Yes" : "No"));
+        // go SHMEM for visualizer
+        lmsopt.visualize = setupSHMEM();
+    }
+}
+
+// if we had a clean setup
+// init visualizer mode and
+// timer toggle
+
+if (lmsopt.visualize) {
+    sayVisList();
+    size_t viztimer;
+    size_t vizcycletimer;
+    timer_initialize();
+    viztimer =
+        timer_start(120 * 1000, toggleVisualize, TIMER_PERIODIC, (void *)NULL);
+    // if all-in-one we're fixed so no cycle setup
+    if (!(lmsopt.allInOne)) {
+        instrument(__LINE__, __FILE__, "activate visualization cycling");
+        vizcycletimer = timer_start(237 * 1000, cycleVisualize, TIMER_PERIODIC,
+                                    (void *)NULL);
+        sprintf(stbl, "%s %s\n", labelIt("Downmix VU+SA", LABEL_WIDTH, "."),
+                ((lmsopt.downmix) ? "Yes" : "No"));
+    } else {
+        sprintf(stbl, "%s %s\n", labelIt("Downmix A1", LABEL_WIDTH, "."),
+                ((lmsopt.downmix) ? "Yes" : "No"));
+    }
+
+} else {
+    sprintf(stbl, "%s Inactive\n", labelIt("Visualization", LABEL_WIDTH, "."));
+}
+putMSG(stbl, LL_INFO);
+
+clearDisplay(); // clears the  splash if shown
+
+printFontMetrics();
+
+A1Attributes aio = {
+    .artist = {0},
+    .title = {0},
+    .compound = {0},
+};
+
+// bitmap capture
+#ifdef CAPTURE_BMP
+//setSnapOn();
+//setSnapOff();
+#endif
+#endif
+
+while (true) {
+
+    if (isRefreshed()) {
+
+#ifdef __arm__
+        instrument(__LINE__, __FILE__, "isRefreshed");
+        if (softlySoftly) {
+            softlySoftly = false;
+            softPlayReset();
+            softClockReset(false);
+            instrument(__LINE__, __FILE__, "Softly Softly <-");
+            clearDisplay(); // refreshDisplay();
         }
 
-    } else {
-        sprintf(stbl, "%s Inactive\n",
-                labelIt("Visualization", LABEL_WIDTH, "."));
-    }
-    putMSG(stbl, LL_INFO);
-
-    clearDisplay(); // clears the  splash if shown
-
-    printFontMetrics();
-
-    A1Attributes aio = {
-        .artist = {0},
-        .title = {0},
-        .compound = {0},
-    };
-
-    // bitmap capture
-#ifdef CAPTURE_BMP
-    //setSnapOn();
-    //setSnapOff();
 #endif
-#endif
+        playing = (strcmp("play", tags[MODE].tagData) == 0);
 
-    while (true) {
-
-        if (isRefreshed()) {
-
-#ifdef __arm__
-            instrument(__LINE__, __FILE__, "isRefreshed");
-            if (softlySoftly) {
-                softlySoftly = false;
-                softPlayReset();
-                softClockReset(false);
-                instrument(__LINE__, __FILE__, "Softly Softly <-");
-                clearDisplay(); // refreshDisplay();
-            }
-
-#endif
-            playing = (strcmp("play", tags[MODE].tagData) == 0);
-
-            if (playing) {
+        if (playing) {
 
 #ifdef __arm__
 
-                instrument(__LINE__, __FILE__, "isPlaying");
+            instrument(__LINE__, __FILE__, "isPlaying");
 
-                // Threaded logic in play - DO NOT MODIFY
-                if (!isVisualizeActive()) {
-                    clearScrollable(A1SCROLLER);
-                    playingPage();
-                } else {
-                    if (strncmp(currentMeter(), VMODE_A1, 2) == 0) 
-                    {
-                        allInOnePage(&aio);
-                    }
-                    //setupPlayMode(); // 
+            // Threaded logic in play - DO NOT MODIFY
+            if (!isVisualizeActive()) {
+                clearScrollable(A1SCROLLER);
+                playingPage();
+                strcpy(remTime, "XXXXX");
+            } else {
+                if (strncmp(currentMeter(), VMODE_A1, 2) == 0) {
+                    allInOnePage(&aio);
                 }
-                // Threaded logic in play - DO NOT MODIFY
+            }
+            // Threaded logic in play - DO NOT MODIFY
 #else
                 playingPage();
 #endif
-            } else {
+        } else {
 #ifdef __arm__
-                instrument(__LINE__, __FILE__, "activeScroller test");
-                if (activeScroller()) {
-                    scrollerPause();
-                }
-                instrument(__LINE__, __FILE__, "clock test");
-                if (lmsopt.clock)
-                    clockPage();
-                else
-                    saverPage();
+            instrument(__LINE__, __FILE__, "activeScroller test");
+            if (activeScroller()) {
+                scrollerPause();
+            }
+            strcpy(remTime, "XXXXX");
+            instrument(__LINE__, __FILE__, "clock test");
+            if (lmsopt.clock)
+                clockPage();
+            else
+                saverPage();
 #endif
-            } // playing
+        } // playing
 
-            askRefresh();
+        askRefresh();
 
-        } // isRefreshed
+    } // isRefreshed
 
 #ifdef __arm__
-        if (lmsopt.nagDone)
-            refreshDisplay();
+    if (lmsopt.nagDone)
+        refreshDisplay();
 #endif
 
 #ifdef __arm__
@@ -801,17 +819,17 @@ int main(int argc, char *argv[]) {
 
 #ifdef __arm__
 
-        if (lmsopt.sleepTime < 1)
-            setSleepTime(SLEEP_TIME_LONG);
-        dodelay(lmsopt.sleepTime);
+    if (lmsopt.sleepTime < 1)
+        setSleepTime(SLEEP_TIME_LONG);
+    dodelay(lmsopt.sleepTime);
 #else
         dodelay(SLEEP_TIME_LONG);
 #endif
 
-    } // main loop
+} // main loop
 
-    before_exit();
-    return 0;
+before_exit();
+return 0;
 }
 
 #ifdef __arm__
@@ -842,7 +860,7 @@ void clockPage(void) {
                    .bufferLen = LCD25X44_LEN,
                    .xPos = 2,
                    .yPos = ((glopt->showTemp) ? -1 : 1),
-                   .largeFont = true};
+                   .font = glopt->clockFont};
 
     if (glopt->refreshClock) {
         instrument(__LINE__, __FILE__, "clock reset");
@@ -889,7 +907,7 @@ void clockPage(void) {
 
 void allInOnePage(A1Attributes *aio) {
 
-/*
+    /*
 [I] 10%  [I][           ]
 [HH:MM]     [           ]
 [HH:MM]     [           ]
@@ -911,14 +929,14 @@ void allInOnePage(A1Attributes *aio) {
                    .bufferLen = LCD12X17_LEN,
                    .xPos = 2,
                    .yPos = 10,
-                   .largeFont = false};
+                   .font = MON_FONT_LCD1217};
 
     DrawTime rdt = {.charWidth = 12,
                     .charHeight = 17,
                     .bufferLen = LCD12X17_LEN,
                     .xPos = 2,
                     .yPos = 28,
-                    .largeFont = false};
+                    .font = MON_FONT_LCD1217};
 
     setA1Downmix();
 

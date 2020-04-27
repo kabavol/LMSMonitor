@@ -815,13 +815,12 @@ void drawTimeBlink(uint8_t cc, DrawTime *dt) {
     int x = dt->xPos + (2 * dt->charWidth);
     if (32 == cc) // a space - colon off
         bigChar(':', x, dt->yPos, dt->bufferLen, dt->charWidth, dt->charHeight,
-                ((dt->largeFont) ? lcd25x44 : lcd12x17 //lcd15x21
-                 ),
+                getOledFont(dt->font), // ? soldeco25x44 /*lcd25x44*/ : lcd12x17 //lcd15x21
+                //),
                 BLACK);
     else
         bigChar(cc, x, dt->yPos, dt->bufferLen, dt->charWidth, dt->charHeight,
-                ((dt->largeFont) ? lcd25x44 : lcd12x17 //lcd15x21
-                 ),
+                getOledFont(dt->font),
                 WHITE);
 }
 
@@ -838,16 +837,14 @@ void drawTimeText(char *buff, char *last, DrawTime *dt) {
             } else {
                 bigChar(
                     last[i], x, dt->yPos, dt->bufferLen, dt->charWidth,
-                    //dt->charHeight, ((dt->largeFont) ? hand23x48 : lcd12x17), //lcd15x21),
                     dt->charHeight,
-                    ((dt->largeFont) ? lcd25x44 : lcd12x17), //lcd15x21),
-                    BLACK);                                  // soft erase
+                    getOledFont(dt->font),
+                    BLACK); // soft erase
             }
             bigChar(
                 buff[i], x, dt->yPos, dt->bufferLen, dt->charWidth,
-                //dt->charHeight, ((dt->largeFont) ? hand23x48 : lcd12x17), //lcd15x21),
                 dt->charHeight,
-                ((dt->largeFont) ? lcd25x44 : lcd12x17), //lcd15x21),
+                getOledFont(dt->font),
                 WHITE);
         }
         x += dt->charWidth;
@@ -865,11 +862,11 @@ void drawRemTimeText(char *buff, char *last, DrawTime *dt) {
                                  dt->charHeight + 2, BLACK);
             } else {
                 bigChar(last[i], x, dt->yPos, dt->bufferLen, dt->charWidth,
-                        dt->charHeight, lcd12x17, //lcd15x21,
+                        dt->charHeight, getOledFont(dt->font),
                         BLACK);                   // soft erase
             }
             bigChar(buff[i], x, dt->yPos, dt->bufferLen, dt->charWidth,
-                    dt->charHeight, lcd12x17, //lcd15x21,
+                    dt->charHeight, getOledFont(dt->font),
                     WHITE);
         }
         x += dt->charWidth;
