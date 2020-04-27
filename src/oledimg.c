@@ -46,6 +46,9 @@ const uint8_t * getOledFont(int font)
         case MON_FONT_NB1999:
             return nb1999s25x44;
             break;
+        case MON_FONT_ROBOTO:
+            return roboto25x44;
+            break;
         case MON_FONT_LCD1521:
             return lcd15x21;
             break;
