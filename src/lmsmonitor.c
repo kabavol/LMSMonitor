@@ -80,7 +80,8 @@ struct MonitorAttrs *glopt;
 char stbl[BSIZE];
 char remTime[9];
 tag *tags;
-bool playing = false;
+//bool playing = false;
+#define playing isTrackPlaying()
 bool softlySoftly = false;
 
 // clang-format off
@@ -242,6 +243,16 @@ void print_help(char *executable) {
     signature(executable);
 }
 
+bool isTrackPlaying(void) { 
+    bool p = false;
+    p = (strcmp("play", tags[MODE].tagData) == 0);
+#ifdef __arm__
+    setPlaying(p);
+#endif
+    return p; 
+}
+
+
 #ifdef __arm__
 
 void setupPlayMode(void) {
@@ -253,8 +264,6 @@ void setupPlayMode(void) {
         }
     }
 }
-
-bool isPlaying(void) { return playing; }
 
 bool acquireOptLock(void) {
 
@@ -433,10 +442,15 @@ void cycleVisualize(size_t timer_id, void *user_data) {
                 instrument(__LINE__, __FILE__, "Active Visualization");
                 vis_type_t current = {0};
                 vis_type_t updated = {0};
-                strncpy(current, getVisMode(), 2);
-                strncpy(updated, currentMeter(), 2);
+printf("here\n");
+                strncpy(current, getVisMode(), 3);
+                strncpy(updated, currentMeter(), 3);
                 if (strcmp(current, updated) != 0) {
                     softlySoftly = true;
+                    if (0 == strncmp(VMODE_A1S, updated, 3))
+                        setA1Downmix(VEMODE_A1S);
+                    else if (0 == strncmp(VMODE_A1V, updated, 3))
+                        setA1Downmix(VEMODE_A1V);
                 }
                 setInitRefresh();
             } else {
@@ -542,6 +556,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     opterr = 0;
+    int a1test = 0;
     while ((aName = getopt(argc, argv, "n:o:m:x:B:S:f:abcdhikprtvz")) != -1) {
         switch (aName) {
             case 'n': playerName = optarg; break;
@@ -567,6 +582,7 @@ int main(int argc, char *argv[]) {
                 lmsopt.allInOne = true;
                 lmsopt.downmix = true;
                 lmsopt.visualize = true;
+                a1test++;
                 break;
             case 'b': lmsopt.astral = true; break;
             case 'm':
@@ -627,12 +643,10 @@ int main(int argc, char *argv[]) {
 #ifdef __arm__
 
 if (lmsopt.allInOne) {
-    char vinit[3] = {0};
-    strcpy(vinit, VMODE_A1);
-    setVisList(vinit);
     lmsopt.meterMode = true;
     lmsopt.downmix = true;   // safe
     lmsopt.visualize = true; // safe
+    setA1VisList();
     instrument(__LINE__, __FILE__, "allInOne setup");
 } else {
     if (!(lmsopt.meterMode)) {
@@ -716,17 +730,29 @@ if (lmsopt.visualize) {
     size_t viztimer;
     size_t vizcycletimer;
     timer_initialize();
-    viztimer =
-        timer_start(120 * 1000, toggleVisualize, TIMER_PERIODIC, (void *)NULL);
-    // if all-in-one we're fixed so no cycle setup
+
+    // if the A1 factor is normal then cycle - else fixed visualize
+
+    if (a1test <= 1) {
+        viztimer =
+            timer_start(120 * 1000, toggleVisualize, TIMER_PERIODIC, (void *)NULL);
+    }else{
+        activateVisualizer(); // fixed all-in-one (when playing)
+    }
+
     if (!(lmsopt.allInOne)) {
         instrument(__LINE__, __FILE__, "activate visualization cycling");
-        vizcycletimer = timer_start(237 * 1000, cycleVisualize, TIMER_PERIODIC,
+        vizcycletimer = timer_start(254 * 1000, cycleVisualize, TIMER_PERIODIC,
                                     (void *)NULL);
         sprintf(stbl, "%s %s\n", labelIt("Downmix VU+SA", LABEL_WIDTH, "."),
                 ((lmsopt.downmix) ? "Yes" : "No"));
     } else {
-        sprintf(stbl, "%s %s\n", labelIt("Downmix A1", LABEL_WIDTH, "."),
+        // faster cycle for A1 - unless A1 factor high
+        int r = ((1 == a1test) ? 127 : 254);
+        instrument(__LINE__, __FILE__, "activate All-In-One visualization cycling");
+        vizcycletimer = timer_start(r * 1000, cycleVisualize, TIMER_PERIODIC,
+                                    (void *)NULL);
+        sprintf(stbl, "%s %s\n", labelIt("Downmix A1 (VU+SA)", LABEL_WIDTH, "."),
                 ((lmsopt.downmix) ? "Yes" : "No"));
     }
 
@@ -767,9 +793,7 @@ while (true) {
         }
 
 #endif
-        playing = (strcmp("play", tags[MODE].tagData) == 0);
-
-        if (playing) {
+        if (isTrackPlaying()) {
 
 #ifdef __arm__
 
@@ -781,7 +805,7 @@ while (true) {
                 playingPage();
                 strcpy(remTime, "XXXXX");
             } else {
-                if (strncmp(currentMeter(), VMODE_A1, 2) == 0) {
+                if (strncmp(getVisMode(), VMODE_A1, 2) == 0) {
                     allInOnePage(&aio);
                 }
             }
@@ -796,7 +820,7 @@ while (true) {
                 scrollerPause();
             }
             strcpy(remTime, "XXXXX");
-            instrument(__LINE__, __FILE__, "clock test");
+            instrument(__LINE__, __FILE__, "display clock test");
             if (lmsopt.clock)
                 clockPage();
             else
@@ -937,9 +961,7 @@ void allInOnePage(A1Attributes *aio) {
                     .xPos = 2,
                     .yPos = 28,
                     .font = MON_FONT_LCD1217};
-
-    setA1Downmix();
-
+   
     audio_t audioDetail = {.samplerate = 44.1,
                            .samplesize = 16,
                            .volume = -1,
@@ -950,11 +972,13 @@ void allInOnePage(A1Attributes *aio) {
     sampleDetails(&audioDetail);
     softClockReset(false);
 
+    // check softly -> paint a rectangle to cover visualization
+
     if (audioDetail.volume != glopt->lastVolume) {
         if (0 == audioDetail.volume)
             strncpy(buff, "  mute", 32);
         else
-            sprintf(buff, "  %d%% ", audioDetail.volume);
+            sprintf(buff, "  %d%%  ", audioDetail.volume);
         putVolume((0 != audioDetail.volume), buff);
         setLastVolume(audioDetail.volume);
     }
@@ -1025,6 +1049,9 @@ void allInOnePage(A1Attributes *aio) {
     // not hourly compliant!
     sprintf(buff, "%02d:%02d", rTime / 60, rTime % 60);
     setLastRemainingTime(buff, rdt);
+    if (rTime < 2) // fingers crossed - won't catch a hard stop
+        softClockReset(false);
+
 }
 
 #endif

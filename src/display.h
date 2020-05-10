@@ -140,6 +140,8 @@ typedef struct DrawVisualize {
     double wMeter;
     double hMeter;
     double rMeter;
+    int iWidth;
+    int iHeight;
     bool finesse;
     char downmix[5];
 } DrawVisualize;

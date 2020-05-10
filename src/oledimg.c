@@ -49,6 +49,21 @@ const uint8_t * getOledFont(int font)
         case MON_FONT_ROBOTO:
             return roboto25x44;
             break;
+        case MON_FONT_NOTO2544:
+            return noto25x44;
+            break;
+        case MON_FONT_NOTF2544:
+            return notof25x44;
+            break;
+        case MON_FONT_COLT2544:
+            return colby25x44;
+            break;
+        case MON_FONT_TTYP2544:
+            return ttypongo25x44;
+            break;
+        case MON_FONT_SHLP2544:
+            return shleep25x44;
+            break;
         case MON_FONT_LCD1521:
             return lcd15x21;
             break;
@@ -68,6 +83,8 @@ const uint8_t * getOledFont(int font)
 
 void printOledFontTypes(void)
 {
-    for (int font=0; font < MON_FONT_MAX; font++)
-        printf("%s\n",oled_font_str[font]);
+    // display clock fonts only
+    fprintf(stdout, "\nOLED Clock Fonts:\n");
+    for (int font=0; font < MON_FONT_LCD1521; font++)
+        fprintf(stdout, "   %2d ...: %s\n", font, oled_font_str[font]);
 }

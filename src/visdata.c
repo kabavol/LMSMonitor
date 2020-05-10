@@ -36,6 +36,10 @@ const int getMode(const char *mode)
         return VEMODE_ST;
     else if (0 == strncmp(mode, VMODE_SM, 2))
         return VEMODE_SM;
+    else if (0 == strncmp(mode, VMODE_A1S, 3))
+        return VEMODE_A1S;
+    else if (0 == strncmp(mode, VMODE_A1V, 3))
+        return VEMODE_A1V;
     else if (0 == strncmp(mode, VMODE_A1, 2))
         return VEMODE_A1;
     else if (0 == strncmp(mode, VMODE_TY, 2))

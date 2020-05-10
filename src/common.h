@@ -20,7 +20,7 @@
  */
 
 #ifndef COMMON_H
-#define COMMON_H 1
+#define COMMON_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -29,7 +29,7 @@
 #define BSIZE 4096
 
 #define APPNAME "LMSMonitor"
-#define VERSION "0.4.35"
+#define VERSION "0.4.39"
 
 #define LABEL_WIDTH 22
 #define LL_QUIET 0

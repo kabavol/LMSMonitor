@@ -23,13 +23,16 @@
 
 #include "visdata.h"
 
+void setA1VisList(void);
+void setPlaying(bool p);
+
 void setVisList(char *vlist);
 bool setVisMode(vis_type_t mode);
 const char *getVisMode(void);
 void sayVisList(void);
 void setDownmix(int samplesize, float samplerate);
-void setDownmixAttrs(int x, int y, int width, int height, int radius);
-void setA1Downmix(void);
+void setDownmixAttrs(int x, int y, int width, int height, int radius, int gWidth=128, int gHeight=64);
+void setA1Downmix(int mode);
 
 void visualize(struct vissy_meter_t *vissy_meter);
 const bool isVisualizeActive(void);

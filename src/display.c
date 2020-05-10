@@ -254,6 +254,19 @@ void vumeterDownmix(bool inv) {
         display.drawBitmap(0, 0, vudm128x64, 128, 64, WHITE);
 }
 
+void vumeterSwoosh(bool inv, struct DrawVisualize *layout) {
+
+    if (initRefresh) {
+        softClear();
+        initRefresh = false;
+        resetLastData();
+    }
+    if (inv)
+        display.drawBitmap(layout->xPos, layout->yPos, vusw64x32, layout->iWidth, layout->iHeight, BLACK);
+    else
+        display.drawBitmap(layout->xPos, layout->yPos, vusw64x32, layout->iWidth, layout->iHeight, WHITE);
+}
+
 void peakMeterH(bool inv) {
 
     if (initRefresh) {
@@ -281,10 +294,19 @@ void splashScreen(void) {
 void downmixVU(struct vissy_meter_t *vissy_meter,
                struct DrawVisualize *layout) {
 
-    double hMeter = (double)maxYPixel() + 2.00; // layout->hMeter;
-    double rMeter = (double)hMeter - 5.00;      // layout->rMeter;
-    double wMeter = (double)maxXPixel();        // layout->wMeter;
-    double xpivot = wMeter / 2.00;
+    double wMeter = (double)layout->wMeter;
+    if (0 == wMeter)
+        wMeter = (double)maxXPixel();
+    double hMeter = (double)layout->hMeter;
+    if (0 == hMeter)
+        hMeter = (double)maxYPixel() + 2.00;
+
+
+    double rMeter = (double)layout->rMeter;
+    if (0 == rMeter)
+        rMeter = (double)hMeter - 5.00;
+
+    double xpivot = (double)layout->xPos + wMeter / 2.00;
     double rad = (180.00 / PI); // 180/pi
     double divisor = 0.00;
     double mv_downmix = 0.000; // downmix meter position
@@ -301,8 +323,11 @@ void downmixVU(struct vissy_meter_t *vissy_meter,
         display.drawLine((int16_t)xpivot + 1, (int16_t)hMeter, ax, ay, BLACK);
     }
 
-    vumeterDownmix(false);
-
+    if (0 == layout->xPos)
+        vumeterDownmix(false);
+    else
+        vumeterSwoosh(false, layout);
+    
     meter_chan_t thisVU = {vissy_meter->sample_accum[0],
                            vissy_meter->sample_accum[1]};
 
@@ -334,14 +359,23 @@ void downmixVU(struct vissy_meter_t *vissy_meter,
     display.drawLine((int16_t)xpivot + 1, (int16_t)hMeter, ax, ay, WHITE);
     display.drawLine((int16_t)xpivot + 2, (int16_t)hMeter, ax, ay, BLACK);
 
-    // finesse
-    display.fillRect((int16_t)xpivot - 3, maxYPixel() - 6, maxXPixel() / 2, 6,
-                     BLACK);
-
-    uint16_t r = 7;
-    display.fillCircle((int16_t)xpivot, (int16_t)hMeter, r, WHITE);
-    display.drawCircle((int16_t)xpivot, (int16_t)hMeter, r - 2, BLACK);
-    display.fillCircle((int16_t)xpivot, (int16_t)hMeter, r - 4, BLACK);
+    if (maxYPixel() == layout->iHeight)
+    {
+        // finesse
+        display.fillRect((int16_t)xpivot - 3, maxYPixel() - 6, maxXPixel() / 2, 6,
+                        BLACK);
+        uint16_t r = 7;
+        display.fillCircle((int16_t)xpivot, (int16_t)hMeter, r, WHITE);
+        display.drawCircle((int16_t)xpivot, (int16_t)hMeter, r - 2, BLACK);
+        display.fillCircle((int16_t)xpivot, (int16_t)hMeter, r - 4, BLACK);
+    }
+    else
+    {
+        display.fillRect(layout->xPos-1, layout->yPos+hMeter, wMeter, 5, BLACK);
+        display.fillRect(layout->xPos-1, layout->yPos+hMeter+1, wMeter, 1, WHITE);
+        display.fillRect(layout->xPos-1, layout->yPos+hMeter+3, wMeter, 1, WHITE);
+    }
+    
 }
 
 void stereoVU(struct vissy_meter_t *vissy_meter, struct DrawVisualize *layout) {
@@ -503,10 +537,13 @@ void downmixSpectrum(struct vissy_meter_t *vissy_meter,
     if (layout->finesse)
         display.fillRect(layout->xPos-1, hsa, wsa, 4, BLACK);
 
+    ofs = layout->xPos;
+    if (0 == ofs)
+        ofs = (int)(wbin * 0.75);
     wbin *= MAX_FREQUENCY_BINS;
 
-    display.fillRect(layout->xPos-1, hsa, wbin, 1, BLACK);
-    display.fillRect(layout->xPos-1, hsa+1, wbin, 1, WHITE);
+    display.fillRect(ofs-1, hsa, wbin, 1, BLACK);
+    display.fillRect(ofs-1, hsa+1, wbin, 1, WHITE);
 
 }
 
