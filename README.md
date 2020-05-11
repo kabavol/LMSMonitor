@@ -12,14 +12,15 @@ options:
  -b automatically set brightness of display at sunset and sunrise (pi only)
  -c display clock when not playing (Pi only)
  -d downmix audio and display a single large meter, SA and VU only
+ -f font used by clock, see list below for details
  -i increment verbose level
  -k show CPU load and temperature (clock mode)
  -m if visualization on specify one or more meter modes, sa, vu, pk, st, or rn for random
  -o specifies OLED "driver" type (see options below)
  -r show remaining time rather than track time
- -t enable print info to stdout
+ -S scrollermode: 0 (cylon), 1 (infinity left), 2 infinity (right)
  -v enable visualization sequence when playing (Pi only)
- -x specify OLED address if default does not work - use i2cdetect to find address (Pi only)
+ -x specifies OLED address if default does not work - use i2cdetect to find address (Pi only)
  -z no splash screen
 
 Supported OLED types:
@@ -28,7 +29,23 @@ Supported OLED types:
     4 ...: Seeed I2C 128x64
     6* ..: SH1106 I2C 128x64
     7 ...: SH1106 SPI 128x64
+
 * is default
+
+OLED Clock Fonts:
+    0 ...: Classic LCD Clock Font
+    1 ...: Deco-Solid Font
+    2 ...: Deco-Hollow Font
+    3 ...: LCD 25x44
+    4 ...: Festus Hollow 25x44
+    5 ...: Festus Solid 25x44
+    6 ...: Space 1999
+    7 ...: Roboto Thin
+    8 ...: noto 25x44
+    9 ...: noto fancy 25x44
+   10 ...: Colby Typo 25x44
+   11 ...: TTY Pongo 25x44
+   12 ...: Windswept 3D 25x44
 
 ```
 
