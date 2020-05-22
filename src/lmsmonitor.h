@@ -23,11 +23,18 @@
 #ifndef LMSMON_H
 #define LMSMON_H
 
+#include <stdint.h>
+
 bool isPlaying(void);
 bool lockOptions(void);
 bool acquireOptLock(void);
 
 typedef struct A1Attributes {
+    bool hubActive;
+    int8_t lFrame;
+    int8_t rFrame;
+    int8_t mxframe;
+    int8_t flows;
     char artist[255];
     char title[255];
     char compound[255];

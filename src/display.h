@@ -63,10 +63,18 @@
 // frequency cap decay
 #define CAPS_DECAY 0.075
 
+#define A1SCROLLPOS 50
+#define TXSCROLLPOS 8
+
 static const char *scrollerMode[] = {"Cylon (Default)", "Infinity (Sinister)",
                                      "Infinity (Dexter)", "Randomized"};
 
 typedef enum PageMode { DETAILS, CLOCK, VISUALIZER, ALLINONE } PageMode;
+
+typedef struct point_t {
+    int x;
+    int y;
+} point_t;
 
 typedef struct audio_t {
     double samplerate;
@@ -83,6 +91,7 @@ typedef struct MonitorAttrs {
     int vizHeight;
     int vizWidth;
     bool allInOne;
+    bool tapeUX;
     int sleepTime;
     bool astral;
     bool showTemp;
@@ -112,8 +121,7 @@ typedef struct Scroller {
     bool initialized;
     int textPix;
     int line;
-    int xpos;
-    int ypos;
+    point_t pos;
     bool nystagma;
     int lolimit;
     int hilimit;
@@ -129,14 +137,12 @@ typedef struct DrawTime {
     int charWidth;
     int charHeight;
     int bufferLen;
-    int xPos;
-    int yPos;
+    point_t pos;
     int font;
 } DrawTime; // generic font header!
 
 typedef struct DrawVisualize {
-    int xPos;
-    int yPos;
+    point_t pos;
     double wMeter;
     double hMeter;
     double rMeter;
@@ -145,6 +151,9 @@ typedef struct DrawVisualize {
     bool finesse;
     char downmix[5];
 } DrawVisualize;
+
+void compactCassette(void);
+void cassetteHub(int xpos, int frame, int mxframe, int direction);
 
 void printFontMetrics(void);
 
@@ -171,6 +180,7 @@ void clearScrollable(int line);
 bool putScrollable(int y, char *buff);
 void scrollerFinalize(void);
 void setScrollActive(int line, bool active);
+void setScrollPosition(int line, int ypos);
 bool activeScroller(void);
 bool isScrollerActive(int line);
 
@@ -190,6 +200,7 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter, struct DrawVisualize *layout
 void putVolume(bool v, char *buff);
 void putAudio(audio_t audio, char *buff, bool full = true);
 
+void putTextMaxWidth(int x, int y, int w, char *buff);
 void putText(int x, int y, char *buff);
 void putTextCenterColor(int y, char *buff, uint16_t color);
 void putTextToCenter(int y, char *buff);
@@ -212,6 +223,7 @@ uint16_t charWidth(void);
 uint16_t charHeight(void);
 
 void drawHorizontalBargraph(int x, int y, int w, int h, int percent);
+void drawHorizontalCheckerBar(int x, int y, int w, int h, int percent);
 void drawRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
 
 void setSnapOn(void);

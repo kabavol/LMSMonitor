@@ -155,6 +155,7 @@ void playingPage(void);
 #ifdef __arm__
 void saverPage(void);
 void clockPage(void);
+void cassettePage(A1Attributes *aio);
 #endif
 
 static char *get_mac_address() {
@@ -218,8 +219,8 @@ void print_help(char *executable) {
         "options:\n"
         " -a all-in-one. One screen to rule them all. Track and visualizer on "
         "one screen (pi only)\n"
-        " -b automatically set brightness of display at sunset and sunrise (pi "
-        "only)\n"
+        " -b automatically set brightness of display at sunset and sunrise"
+        " (pi only)\n"
         " -c display clock when not playing (Pi only)\n"
         " -d downmix audio and display a single large meter, SA and VU only\n"
         " -f font used by clock, see list below for details\n"
@@ -232,8 +233,7 @@ void print_help(char *executable) {
         " -S scrollermode: 0 (cylon), 1 (infinity left), 2 infinity (right)\n"
         " -v enable visualization sequence when playing (Pi only)\n"
         " -x specifies OLED address if default does not work - use i2cdetect "
-        "to "
-        "find address (Pi only)\n"
+        "to find address (Pi only)\n"
         " -z no splash screen\n\n",
         APPNAME, VERSION);
 #ifdef __arm__
@@ -429,6 +429,23 @@ void toggleVisualize(size_t timer_id, void *user_data) {
     }
 }
 
+void hubSpin(size_t timer_id, void *user_data) {
+
+    A1Attributes *aio;
+    aio = ((struct A1Attributes*)user_data);
+    if (aio->hubActive) {
+        aio->lFrame+=aio->flows; // clockwise (-1) or anticlockwise (1)
+        if (aio->lFrame<0) aio->lFrame = aio->mxframe; // roll
+        if (aio->lFrame>aio->mxframe) aio->lFrame = 0; // roll
+        aio->rFrame+=aio->flows; 
+        if (aio->rFrame<0) aio->rFrame = aio->mxframe;
+        if (aio->rFrame>aio->mxframe) aio->rFrame = 0;
+        cassetteHub(38,aio->lFrame, aio->mxframe, -aio->flows);
+        cassetteHub(80,aio->rFrame, aio->mxframe, -aio->flows);
+    }
+
+}
+
 void checkAstral(size_t timer_id, void *user_data) { brightnessEvent(); }
 
 void cycleVisualize(size_t timer_id, void *user_data) {
@@ -442,7 +459,6 @@ void cycleVisualize(size_t timer_id, void *user_data) {
                 instrument(__LINE__, __FILE__, "Active Visualization");
                 vis_type_t current = {0};
                 vis_type_t updated = {0};
-printf("here\n");
                 strncpy(current, getVisMode(), 3);
                 strncpy(updated, currentMeter(), 3);
                 if (strcmp(current, updated) != 0) {
@@ -510,6 +526,7 @@ int main(int argc, char *argv[]) {
         .vizHeight = 64,
         .vizWidth = 128,
         .allInOne = false,
+        .tapeUX = false,
         .sleepTime = SLEEP_TIME_LONG,
         .astral = false,
         .showTemp = false,
@@ -521,7 +538,7 @@ int main(int argc, char *argv[]) {
         .extended = false,
         .remaining = false,
         .splash = true,
-        .refreshLMS = false,
+        .refreshLMS = true, // fresh up!
         .refreshClock = false,
         .refreshViz = false,
         .lastVolume = -1,
@@ -557,7 +574,7 @@ int main(int argc, char *argv[]) {
 
     opterr = 0;
     int a1test = 0;
-    while ((aName = getopt(argc, argv, "n:o:m:x:B:S:f:abcdhikprtvz")) != -1) {
+    while ((aName = getopt(argc, argv, "n:o:m:x:B:S:f:abcdhikprtuvz")) != -1) {
         switch (aName) {
             case 'n': playerName = optarg; break;
 
@@ -616,6 +633,8 @@ int main(int argc, char *argv[]) {
             case 'k': lmsopt.showTemp = true; break;
 
             case 'r': lmsopt.remaining = true; break;
+
+            case 'u': lmsopt.tapeUX = true; break;
 
             case 'x':
                 lmsopt.oledAddrL = (int)strtol(optarg, NULL, 16);
@@ -721,6 +740,17 @@ if (strcmp(thatMAC, thisMAC) != 0) {
     }
 }
 
+A1Attributes aio = {
+    .hubActive = false,
+    .lFrame = 1,  // left hub
+    .rFrame = 4,  // right hub
+    .mxframe = 6, // max frames
+    .flows = 1,   // clockwise (-1) or anticlockwise (1)
+    .artist = {0},
+    .title = {0},
+    .compound = {0},
+};
+
 // if we had a clean setup
 // init visualizer mode and
 // timer toggle
@@ -758,18 +788,17 @@ if (lmsopt.visualize) {
 
 } else {
     sprintf(stbl, "%s Inactive\n", labelIt("Visualization", LABEL_WIDTH, "."));
+    if (lmsopt.tapeUX) {
+        size_t hubtimer;
+        hubtimer = timer_start(200, hubSpin, TIMER_PERIODIC,
+                                    (void *)&aio);
+    }
 }
 putMSG(stbl, LL_INFO);
 
 clearDisplay(); // clears the  splash if shown
 
 printFontMetrics();
-
-A1Attributes aio = {
-    .artist = {0},
-    .title = {0},
-    .compound = {0},
-};
 
 // bitmap capture
 #ifdef CAPTURE_BMP
@@ -801,8 +830,14 @@ while (true) {
 
             // Threaded logic in play - DO NOT MODIFY
             if (!isVisualizeActive()) {
-                clearScrollable(A1SCROLLER);
-                playingPage();
+                if (!lmsopt.tapeUX)
+                {
+                    clearScrollable(A1SCROLLER);
+                    playingPage();
+                } else
+                {
+                    cassettePage(&aio);
+                }
                 strcpy(remTime, "XXXXX");
             } else {
                 if (strncmp(getVisMode(), VMODE_A1, 2) == 0) {
@@ -821,10 +856,13 @@ while (true) {
             }
             strcpy(remTime, "XXXXX");
             instrument(__LINE__, __FILE__, "display clock test");
-            if (lmsopt.clock)
+            if (lmsopt.clock) {
+                if ((lmsopt.tapeUX)&&(aio.hubActive))
+                    aio.hubActive = false;
                 clockPage();
-            else
+            }else{
                 saverPage();
+            }
 #endif
         } // playing
 
@@ -882,8 +920,7 @@ void clockPage(void) {
     DrawTime dt = {.charWidth = 25,
                    .charHeight = 44,
                    .bufferLen = LCD25X44_LEN,
-                   .xPos = 2,
-                   .yPos = ((glopt->showTemp) ? -1 : 1),
+                   .pos = {2, ((glopt->showTemp) ? -1 : 1)},
                    .font = glopt->clockFont};
 
     if (glopt->refreshClock) {
@@ -929,6 +966,82 @@ void clockPage(void) {
     refreshDisplay();
 }
 
+void cassettePage(A1Attributes *aio) {
+
+    tagtypes_t a1layout[A1LINE_NUM][3] = {
+        {TITLE, MAXTAG_TYPES, MAXTAG_TYPES},
+        {COMPOSER, ARTIST, MAXTAG_TYPES},
+    };
+
+    char buff[BSIZE] = {0};
+    char artist[255] = {0};
+    char title[255] = {0};
+
+    if (glopt->refreshLMS) {
+        resetDisplay(1);
+        softPlayRefresh(false);
+        compactCassette();
+    }
+
+    setNagDone(false); // do not set refreshLMS
+    softClockReset(false);
+    softVisualizeRefresh(true);
+
+    if (!aio->hubActive)
+        aio->hubActive = true;
+    
+    // setup compound scrollers
+    bool filled = false;
+    bool changed = false;
+    for (int line = 0; line < A1LINE_NUM; line++) {
+        filled = false;
+        int myline = line + 5;
+        for (tagtypes_t *t = a1layout[line]; *t != MAXTAG_TYPES; t++) {
+            if (tags[*t].valid) {
+                filled = true;
+                if (tags[*t].changed) {
+                    changed = true;
+                    if (0 == line)
+                        strncpy(aio->title, tags[*t].tagData, 255);
+                    else
+                        strncpy(aio->artist, tags[*t].tagData, 255);
+                }
+            }
+        }
+    }
+
+    if (changed) {
+        sprintf(buff, "%s - %s", aio->artist, aio->title);
+        if ((strcmp(buff, aio->compound) != 0) ||
+            (0 == strlen(aio->compound))) // safe
+        {
+            putTextMaxWidth(19, 9, 15, aio->title);
+            setSleepTime(SLEEP_TIME_SAVER);
+        }
+    }
+
+    uint16_t pTime, dTime;
+    int xpos = 54; int ypos = 24;
+    int barmax = 15;
+    pTime = (tags[TIME].valid) ? strtol(tags[TIME].tagData, NULL, 10) : 0;
+    dTime =
+        (tags[DURATION].valid) ? strtol(tags[DURATION].tagData, NULL, 10) : 0;
+    // we want to emulate the tape moving from hub to hub as a track plays
+    // wndow 19 wide, lHub starts at 15 wide, rHub starts at 0 wide
+    // as the track progresses lHub shrinks, rHub expands
+    // time and duration give us the percent complete -> transpose to emulate
+    double pct = (pTime * 100.00) / (dTime == 0 ? 1 : dTime);
+    // lHub
+    drawHorizontalCheckerBar(xpos, ypos, barmax, 7, 100-(int)pct);
+    // rHub
+    barmax = (int)(15*(pct/100.00));
+    xpos+=(20-barmax); // +right max and shift for 100% (right justified bar)
+    drawHorizontalCheckerBar(xpos, ypos, barmax, 7, 100);
+    compactCassette();
+    if ((pct>99.6)&&(aio->hubActive))
+        aio->hubActive = false;
+}
+
 void allInOnePage(A1Attributes *aio) {
 
     /*
@@ -951,15 +1064,13 @@ void allInOnePage(A1Attributes *aio) {
     DrawTime dt = {.charWidth = 12,
                    .charHeight = 17,
                    .bufferLen = LCD12X17_LEN,
-                   .xPos = 2,
-                   .yPos = 10,
+                   .pos = {2,10},
                    .font = MON_FONT_LCD1217};
 
     DrawTime rdt = {.charWidth = 12,
                     .charHeight = 17,
                     .bufferLen = LCD12X17_LEN,
-                    .xPos = 2,
-                    .yPos = 28,
+                    .pos = {2, 28},
                     .font = MON_FONT_LCD1217};
    
     audio_t audioDetail = {.samplerate = 44.1,
@@ -1024,6 +1135,7 @@ void allInOnePage(A1Attributes *aio) {
             (!isScrollerActive(A1SCROLLER))) // safe
         {
             strncpy(aio->compound, buff, 255);
+            setScrollPosition(A1SCROLLER, A1SCROLLPOS);
             if (putScrollable(A1SCROLLER, aio->compound)) {
                 setSleepTime(SLEEP_TIME_SHORT);
             }

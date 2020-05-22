@@ -262,9 +262,9 @@ void vumeterSwoosh(bool inv, struct DrawVisualize *layout) {
         resetLastData();
     }
     if (inv)
-        display.drawBitmap(layout->xPos, layout->yPos, vusw64x32, layout->iWidth, layout->iHeight, BLACK);
+        display.drawBitmap(layout->pos.x, layout->pos.y, vusw64x32, layout->iWidth, layout->iHeight, BLACK);
     else
-        display.drawBitmap(layout->xPos, layout->yPos, vusw64x32, layout->iWidth, layout->iHeight, WHITE);
+        display.drawBitmap(layout->pos.x, layout->pos.y, vusw64x32, layout->iWidth, layout->iHeight, WHITE);
 }
 
 void peakMeterH(bool inv) {
@@ -291,6 +291,40 @@ void splashScreen(void) {
     dodelay(180);
 }
 
+void compactCassette(void) {
+    display.drawBitmap(0, 0, cassette, 128, 64, WHITE);
+}
+
+void drawHorizontalCheckerBar(int x, int y, int w, int h, int percent) {
+    if ((w>0)&&(h>2)) {
+        display.fillRect(x, y, w, h, BLACK);
+        int p = (int)((double)w * (percent/100.00));
+        if (p>0)
+            for (int16_t ix = x; ix < (x + p); ix++) {
+                for (int16_t iy = y; iy < (y + h); iy++) {
+                    // checker fill
+                    display.drawPixel(ix, iy,(((ix%2)==(iy%2))?0:1));
+                }
+            }
+    }
+}
+
+void cassetteHub(int xpos, int frame, int mxframe, int direction) {
+    int w = 20;
+    int prev = frame + direction;
+    if (prev < 0) prev = mxframe;
+    if (prev > mxframe) prev = 0;
+    uint8_t dest[w];
+    int ypos = 23;
+    int start = prev * w;
+    memcpy(dest, hub10x10 + start, sizeof dest);
+    drawRectangle(xpos, ypos, w/2, w/2, BLACK);
+    display.drawBitmap(xpos, ypos, dest, w/2, w/2, BLACK);
+    start = frame * w;
+    memcpy(dest, hub10x10 + start, sizeof dest);
+    display.drawBitmap(xpos, ypos, dest, w/2, w/2, WHITE);
+}
+
 void downmixVU(struct vissy_meter_t *vissy_meter,
                struct DrawVisualize *layout) {
 
@@ -306,7 +340,7 @@ void downmixVU(struct vissy_meter_t *vissy_meter,
     if (0 == rMeter)
         rMeter = (double)hMeter - 5.00;
 
-    double xpivot = (double)layout->xPos + wMeter / 2.00;
+    double xpivot = (double)layout->pos.x + wMeter / 2.00;
     double rad = (180.00 / PI); // 180/pi
     double divisor = 0.00;
     double mv_downmix = 0.000; // downmix meter position
@@ -323,7 +357,7 @@ void downmixVU(struct vissy_meter_t *vissy_meter,
         display.drawLine((int16_t)xpivot + 1, (int16_t)hMeter, ax, ay, BLACK);
     }
 
-    if (0 == layout->xPos)
+    if (0 == layout->pos.x)
         vumeterDownmix(false);
     else
         vumeterSwoosh(false, layout);
@@ -371,9 +405,9 @@ void downmixVU(struct vissy_meter_t *vissy_meter,
     }
     else
     {
-        display.fillRect(layout->xPos-1, layout->yPos+hMeter, wMeter, 5, BLACK);
-        display.fillRect(layout->xPos-1, layout->yPos+hMeter+1, wMeter, 1, WHITE);
-        display.fillRect(layout->xPos-1, layout->yPos+hMeter+3, wMeter, 1, WHITE);
+        display.fillRect(layout->pos.x-1, layout->pos.y+hMeter, wMeter, 5, BLACK);
+        display.fillRect(layout->pos.x-1, layout->pos.y+hMeter+1, wMeter, 1, WHITE);
+        display.fillRect(layout->pos.x-1, layout->pos.y+hMeter+3, wMeter, 1, WHITE);
     }
     
 }
@@ -471,7 +505,7 @@ void downmixSpectrum(struct vissy_meter_t *vissy_meter,
     // SA scaling
     double multiSA = (double)hsa / 31.00;
 
-    int ofs = layout->xPos;
+    int ofs = layout->pos.x;
     if (0 == ofs)
         ofs = (int)(wbin * 0.75);
 
@@ -535,9 +569,9 @@ void downmixSpectrum(struct vissy_meter_t *vissy_meter,
 
     // finesse
     if (layout->finesse)
-        display.fillRect(layout->xPos-1, hsa, wsa, 4, BLACK);
+        display.fillRect(layout->pos.x-1, hsa, wsa, 4, BLACK);
 
-    ofs = layout->xPos;
+    ofs = layout->pos.x;
     if (0 == ofs)
         ofs = (int)(wbin * 0.75);
     wbin *= MAX_FREQUENCY_BINS;
@@ -849,37 +883,37 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter,
 }
 
 void drawTimeBlink(uint8_t cc, DrawTime *dt) {
-    int x = dt->xPos + (2 * dt->charWidth);
+    int x = dt->pos.x + (2 * dt->charWidth);
     if (32 == cc) // a space - colon off
-        bigChar(':', x, dt->yPos, dt->bufferLen, dt->charWidth, dt->charHeight,
+        bigChar(':', x, dt->pos.y, dt->bufferLen, dt->charWidth, dt->charHeight,
                 getOledFont(dt->font), // ? soldeco25x44 /*lcd25x44*/ : lcd12x17 //lcd15x21
                 //),
                 BLACK);
     else
-        bigChar(cc, x, dt->yPos, dt->bufferLen, dt->charWidth, dt->charHeight,
+        bigChar(cc, x, dt->pos.y, dt->bufferLen, dt->charWidth, dt->charHeight,
                 getOledFont(dt->font),
                 WHITE);
 }
 
 void drawTimeText(char *buff, char *last, DrawTime *dt) {
     // digit walk and "blit"
-    int x = dt->xPos;
+    int x = dt->pos.x;
     size_t ll = strlen(last);
     for (size_t i = 0; i < strlen(buff); i++) {
         // selective updates, less "blink"
         if ((i > ll) || (buff[i] != last[i])) {
             if ((i > ll) || ('X' == last[i])) {
-                display.fillRect(x, dt->yPos - 1, dt->charWidth,
+                display.fillRect(x, dt->pos.y - 1, dt->charWidth,
                                  dt->charHeight + 2, BLACK);
             } else {
                 bigChar(
-                    last[i], x, dt->yPos, dt->bufferLen, dt->charWidth,
+                    last[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
                     dt->charHeight,
                     getOledFont(dt->font),
                     BLACK); // soft erase
             }
             bigChar(
-                buff[i], x, dt->yPos, dt->bufferLen, dt->charWidth,
+                buff[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
                 dt->charHeight,
                 getOledFont(dt->font),
                 WHITE);
@@ -889,20 +923,20 @@ void drawTimeText(char *buff, char *last, DrawTime *dt) {
 }
 
 void drawRemTimeText(char *buff, char *last, DrawTime *dt) {
-    int x = dt->xPos;
+    int x = dt->pos.x;
     size_t ll = strlen(last);
     for (size_t i = 0; i < strlen(buff); i++) {
         // selective updates, less "blink"
         if ((i > ll) || (buff[i] != last[i])) {
             if ((i > ll) || ('X' == last[i])) {
-                display.fillRect(x, dt->yPos - 1, dt->charWidth,
+                display.fillRect(x, dt->pos.y - 1, dt->charWidth,
                                  dt->charHeight + 2, BLACK);
             } else {
-                bigChar(last[i], x, dt->yPos, dt->bufferLen, dt->charWidth,
+                bigChar(last[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
                         dt->charHeight, getOledFont(dt->font),
                         BLACK);                   // soft erase
             }
-            bigChar(buff[i], x, dt->yPos, dt->bufferLen, dt->charWidth,
+            bigChar(buff[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
                     dt->charHeight, getOledFont(dt->font),
                     WHITE);
         }
@@ -982,7 +1016,7 @@ void baselineScroller(Scroller *s) {
     s->nystagma = true;
     s->lolimit = 1000;
     s->hilimit = -1000;
-    s->xpos = maxXPixel() + 1;
+    s->pos.x = maxXPixel() + 1;
     s->forward = false;
     s->scrollMode = sm;
     s->textPix = -1;
@@ -1075,13 +1109,13 @@ void *scrollLine(void *input) {
 
                     switch (s->scrollMode) {
                         case SCROLL_MODE_INFSIN:
-                            putTextToCenter(s->ypos, s->text);
+                            putTextToCenter(s->pos.y, s->text);
                             sinisterRotate(s->text);
                             timer = 3 * SCAN_TIME;
                             break;
 
                         case SCROLL_MODE_INFDEX:
-                            putTextToCenter(s->ypos, s->text);
+                            putTextToCenter(s->pos.y, s->text);
                             dexterRotate(s->text);
                             timer = 3 * SCAN_TIME;
                             break;
@@ -1089,35 +1123,34 @@ void *scrollLine(void *input) {
                         default:
                             // cylon sweep
                             if (s->forward)
-                                s->xpos++;
+                                s->pos.x++;
                             else
-                                s->xpos--;
-                            clearLine(s->ypos);
-                            display.setCursor(s->xpos, s->ypos);
+                                s->pos.x--;
+                            clearLine(s->pos.y);
+                            display.setCursor(s->pos.x, s->pos.y);
                             display.print(s->text);
 
-                            if (-(_char_width / 2) == s->xpos) {
-                                //if (0 == s->xpos) {
+                            if (-(_char_width / 2) == s->pos.x) {
                                 if (!s->forward)
                                     timer = PAUSE_TIME;
                                 s->forward = false;
                             }
 
                             if ((maxXPixel() - (int)(1.5 * _char_width)) ==
-                                ((s->textPix) + s->xpos))
+                                ((s->textPix) + s->pos.x))
                                 s->forward = true;
 
                             // need to test for "nystagma" - where text is just shy
                             // of being with static limits and gets to a point
                             // where it rapidly bounces left to right and back again
-                            // more than annoying and needs to pin to xpos=0 and
+                            // more than annoying and needs to pin to pos.x=0 and
                             // deactivate - implement test - check length limits
                             // and travel test
                     }
 
                     // address annoying pixels
-                    display.fillRect(0, s->ypos, 2, _char_height + 2, BLACK);
-                    display.fillRect(maxXPixel() - 2, s->ypos, 2,
+                    display.fillRect(0, s->pos.y, 2, _char_height + 2, BLACK);
+                    display.fillRect(maxXPixel() - 2, s->pos.y, 2,
                                      _char_height + 2, BLACK);
                 }
                 pthread_mutex_unlock(&s->scrollox);
@@ -1161,16 +1194,14 @@ void scrollerInit(void) {
             baselineScroller(&scroll[line]);
             switch (line) {
                 case 5:
-                    scroll[line].ypos = 50;
+                    scroll[line].pos.y = A1SCROLLPOS;
                     break;
                 case 6:
-                    scroll[line].ypos = 70; // out of bounds
+                    scroll[line].pos.y = 70; // out of bounds
                     break;
                 default:
-                scroll[line].ypos = line * (2 + _char_height);
+                    scroll[line].pos.y = line * (2 + _char_height);
             }
-
-            ////printf("%d = %d\n",line, scroll[line].ypos); 
 
             scroll[line].line = line; // dang, dumb to have missed this !?!
             scroll[line].scrollMe = scrollLine;
@@ -1275,10 +1306,26 @@ void refreshDisplayScroller(void) {
         display.display();
 }
 
+void putTextMaxWidth(int x, int y, int w, char *buff) {
+    int tlen = strlen(buff);
+    display.setTextSize(1);
+    display.fillRect(x, y, w * _char_width, _char_height, BLACK);
+    int px = x;
+    if (tlen < w) {
+        px = (maxXPixel() - (tlen * _char_width)) / 2;
+    }
+    else
+    {
+        buff[w] = {0}; // simple chop - safe!
+    }
+    display.setCursor(px, y);
+    display.print(buff);
+}
+
 void putText(int x, int y, char *buff) {
     display.setTextSize(1);
     display.fillRect(x, y, (int16_t)strlen(buff) * _char_width, _char_height,
-                     0);
+                     BLACK);
     display.setCursor(x, y);
     display.print(buff);
 }
@@ -1351,6 +1398,16 @@ void nagSaverNotes(void) {
                 ((random() % 3 + (1 * (random() % 2)) == 1) ? -1 : 1);
         }
     }
+}
+
+void setScrollPosition(int line, int ypos) {
+    if (acquireLock(line)) {
+        if (ypos != scroll[line].pos.y) {
+            scroll[line].pos.y = ypos;
+        }
+        pthread_mutex_unlock(&scroll[line].scrollox);
+    }
+
 }
 
 #endif

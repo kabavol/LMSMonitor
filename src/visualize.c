@@ -38,7 +38,7 @@ bool vis_is_active = false;
 vis_type_t vis_mode = {0};
 vis_type_t vis_list[5] = {{0}, {0}, {0}, {0}, {0}};
 uint8_t num_modes = 1;
-DrawVisualize downmix = {0, 0, 0, 0, 0, 128, 64, true, {0}};
+DrawVisualize downmix = {{0, 0}, 0, 0, 0, 128, 64, true, {0}};
 bool play_is_active = false;
 
 size_t lenVisList(void) { return (sizeof(vis_list) / sizeof(vis_type_t)); }
@@ -90,8 +90,8 @@ void setDownmix(int samplesize, float samplerate) {
 }
 
 void setDownmixAttrs(int x, int y, int width, int height, int radius, int gWidth=128, int gHeight=64) {
-    downmix.xPos = x;
-    downmix.yPos = y;
+    downmix.pos.x = x;
+    downmix.pos.y = y;
     downmix.hMeter = height;
     downmix.wMeter = width;
     downmix.iWidth = gWidth;
@@ -222,7 +222,7 @@ void visualize(struct vissy_meter_t *vissy_meter) {
                     case VEMODE_A1V:
                         // need all-in-one setup to have occured
                         instrument(__LINE__, __FILE__, "->Visualize A1 (VU)");
-                        if (0 == downmix.xPos) {
+                        if (0 == downmix.pos.x) {
                             instrument(__LINE__, __FILE__, "<-A1 (VU) not setup!");
                             setA1Downmix(VEMODE_A1V);
                         }
@@ -244,7 +244,7 @@ void visualize(struct vissy_meter_t *vissy_meter) {
                     case VEMODE_A1S:
                         // need all-in-one setup to have occured
                         instrument(__LINE__, __FILE__, "->Visualize A1 (SA)");
-                        if (0 == downmix.xPos) {
+                        if (0 == downmix.pos.x) {
                             instrument(__LINE__, __FILE__, "<-A1 (SA) not setup!");
                             setA1Downmix(VEMODE_A1S);
                         }
