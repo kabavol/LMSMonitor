@@ -197,23 +197,29 @@ void softClear(void) { display.fillScreen(BLACK); }
 
 void displayBrightness(int bright) { display.setBrightness(bright); }
 
-int initDisplay(void) {
+int initDisplay(struct MonitorAttrs dopts) {
 
-    // IIC specific - what about SPI ??
-
-    // if strstr(SPI) else
-    if (0 != oledAddress) {
-        if (!display.init(OLED_I2C_RESET, oledType, oledAddress)) {
+    if (OLED_SH1106_SPI_128x64 == oledType) {
+        if (!display.init(dopts.spiDC, dopts.oledRST, dopts.spiCS, oledType)){
             return EXIT_FAILURE;
         }
     } else {
-        if (!display.init(OLED_I2C_RESET, oledType)) {
-            return EXIT_FAILURE;
+        if (0 != oledAddress) {
+            if (!display.init(dopts.oledRST, oledType, oledAddress)) {
+                return EXIT_FAILURE;
+            }
+        } else {
+            if (!display.init(dopts.oledRST, oledType)) {
+                return EXIT_FAILURE;
+            }
         }
     }
-
     display.begin();
-    //display.setFont(&NotoSans_Regular5pt7b);
+    // flip (rotate 180) if requested
+    if (dopts.flipDisplay) {
+        display.sendCommand(0xA0);
+        display.sendCommand(0xC0);
+    }
     display.setFont();
     fontMetrics();
     display.setBrightness(0);
@@ -262,9 +268,11 @@ void vumeterSwoosh(bool inv, struct DrawVisualize *layout) {
         resetLastData();
     }
     if (inv)
-        display.drawBitmap(layout->pos.x, layout->pos.y, vusw64x32, layout->iWidth, layout->iHeight, BLACK);
+        display.drawBitmap(layout->pos.x, layout->pos.y, vusw64x32,
+                           layout->iWidth, layout->iHeight, BLACK);
     else
-        display.drawBitmap(layout->pos.x, layout->pos.y, vusw64x32, layout->iWidth, layout->iHeight, WHITE);
+        display.drawBitmap(layout->pos.x, layout->pos.y, vusw64x32,
+                           layout->iWidth, layout->iHeight, WHITE);
 }
 
 void peakMeterH(bool inv) {
@@ -291,19 +299,43 @@ void splashScreen(void) {
     dodelay(180);
 }
 
+void putTapeType(audio_t audio) {
+    int w = 6; int h = 4;
+    int start = 0;
+    uint8_t dest[w];
+    start = audio.audioIcon * (w-2);
+    int x = 99; int y = 29;
+    memcpy(dest, cmedia + start, sizeof dest);
+    display.fillRect(x, y, w, w, BLACK);
+    display.drawBitmap(x, y, dest, w, h, WHITE);
+}
+
+void putIFDetail(int icon, int xpos, int ypos, char *host)
+{
+    // 15,12,
+    int s = 24; int h = 12;
+    int start = 0;
+    uint8_t dest[s];
+    start = icon * s;
+    memcpy(dest, netconn15x12 + start, sizeof dest);
+    display.fillRect(xpos, ypos, 45, h, BLACK);
+    display.drawBitmap(xpos, ypos, dest, 15, h, WHITE);
+    putText(xpos+18, ypos, host);
+}
+
 void compactCassette(void) {
     display.drawBitmap(0, 0, cassette, 128, 64, WHITE);
 }
 
 void drawHorizontalCheckerBar(int x, int y, int w, int h, int percent) {
-    if ((w>0)&&(h>2)) {
+    if ((w > 0) && (h > 2)) {
         display.fillRect(x, y, w, h, BLACK);
-        int p = (int)((double)w * (percent/100.00));
-        if (p>0)
+        int p = (int)((double)w * (percent / 100.00));
+        if (p > 0)
             for (int16_t ix = x; ix < (x + p); ix++) {
                 for (int16_t iy = y; iy < (y + h); iy++) {
                     // checker fill
-                    display.drawPixel(ix, iy,(((ix%2)==(iy%2))?0:1));
+                    display.drawPixel(ix, iy, (((ix % 2) == (iy % 2)) ? 0 : 1));
                 }
             }
     }
@@ -312,17 +344,19 @@ void drawHorizontalCheckerBar(int x, int y, int w, int h, int percent) {
 void cassetteHub(int xpos, int frame, int mxframe, int direction) {
     int w = 20;
     int prev = frame + direction;
-    if (prev < 0) prev = mxframe;
-    if (prev > mxframe) prev = 0;
+    if (prev < 0)
+        prev = mxframe;
+    if (prev > mxframe)
+        prev = 0;
     uint8_t dest[w];
     int ypos = 23;
     int start = prev * w;
     memcpy(dest, hub10x10 + start, sizeof dest);
-    drawRectangle(xpos, ypos, w/2, w/2, BLACK);
-    display.drawBitmap(xpos, ypos, dest, w/2, w/2, BLACK);
+    drawRectangle(xpos, ypos, w / 2, w / 2, BLACK);
+    display.drawBitmap(xpos, ypos, dest, w / 2, w / 2, BLACK);
     start = frame * w;
     memcpy(dest, hub10x10 + start, sizeof dest);
-    display.drawBitmap(xpos, ypos, dest, w/2, w/2, WHITE);
+    display.drawBitmap(xpos, ypos, dest, w / 2, w / 2, WHITE);
 }
 
 void downmixVU(struct vissy_meter_t *vissy_meter,
@@ -334,7 +368,6 @@ void downmixVU(struct vissy_meter_t *vissy_meter,
     double hMeter = (double)layout->hMeter;
     if (0 == hMeter)
         hMeter = (double)maxYPixel() + 2.00;
-
 
     double rMeter = (double)layout->rMeter;
     if (0 == rMeter)
@@ -361,7 +394,7 @@ void downmixVU(struct vissy_meter_t *vissy_meter,
         vumeterDownmix(false);
     else
         vumeterSwoosh(false, layout);
-    
+
     meter_chan_t thisVU = {vissy_meter->sample_accum[0],
                            vissy_meter->sample_accum[1]};
 
@@ -393,23 +426,22 @@ void downmixVU(struct vissy_meter_t *vissy_meter,
     display.drawLine((int16_t)xpivot + 1, (int16_t)hMeter, ax, ay, WHITE);
     display.drawLine((int16_t)xpivot + 2, (int16_t)hMeter, ax, ay, BLACK);
 
-    if (maxYPixel() == layout->iHeight)
-    {
+    if (maxYPixel() == layout->iHeight) {
         // finesse
-        display.fillRect((int16_t)xpivot - 3, maxYPixel() - 6, maxXPixel() / 2, 6,
-                        BLACK);
+        display.fillRect((int16_t)xpivot - 3, maxYPixel() - 6, maxXPixel() / 2,
+                         6, BLACK);
         uint16_t r = 7;
         display.fillCircle((int16_t)xpivot, (int16_t)hMeter, r, WHITE);
         display.drawCircle((int16_t)xpivot, (int16_t)hMeter, r - 2, BLACK);
         display.fillCircle((int16_t)xpivot, (int16_t)hMeter, r - 4, BLACK);
+    } else {
+        display.fillRect(layout->pos.x - 1, layout->pos.y + hMeter, wMeter, 5,
+                         BLACK);
+        display.fillRect(layout->pos.x - 1, layout->pos.y + hMeter + 1, wMeter,
+                         1, WHITE);
+        display.fillRect(layout->pos.x - 1, layout->pos.y + hMeter + 3, wMeter,
+                         1, WHITE);
     }
-    else
-    {
-        display.fillRect(layout->pos.x-1, layout->pos.y+hMeter, wMeter, 5, BLACK);
-        display.fillRect(layout->pos.x-1, layout->pos.y+hMeter+1, wMeter, 1, WHITE);
-        display.fillRect(layout->pos.x-1, layout->pos.y+hMeter+3, wMeter, 1, WHITE);
-    }
-    
 }
 
 void stereoVU(struct vissy_meter_t *vissy_meter, struct DrawVisualize *layout) {
@@ -569,16 +601,15 @@ void downmixSpectrum(struct vissy_meter_t *vissy_meter,
 
     // finesse
     if (layout->finesse)
-        display.fillRect(layout->pos.x-1, hsa, wsa, 4, BLACK);
+        display.fillRect(layout->pos.x - 1, hsa, wsa, 4, BLACK);
 
     ofs = layout->pos.x;
     if (0 == ofs)
         ofs = (int)(wbin * 0.75);
     wbin *= MAX_FREQUENCY_BINS;
 
-    display.fillRect(ofs-1, hsa, wbin, 1, BLACK);
-    display.fillRect(ofs-1, hsa+1, wbin, 1, WHITE);
-
+    display.fillRect(ofs - 1, hsa, wbin, 1, BLACK);
+    display.fillRect(ofs - 1, hsa + 1, wbin, 1, WHITE);
 }
 
 void stereoSpectrum(struct vissy_meter_t *vissy_meter,
@@ -885,14 +916,15 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter,
 void drawTimeBlink(uint8_t cc, DrawTime *dt) {
     int x = dt->pos.x + (2 * dt->charWidth);
     if (32 == cc) // a space - colon off
-        bigChar(':', x, dt->pos.y, dt->bufferLen, dt->charWidth, dt->charHeight,
-                getOledFont(dt->font), // ? soldeco25x44 /*lcd25x44*/ : lcd12x17 //lcd15x21
-                //),
-                BLACK);
+        bigChar(
+            ':', x, dt->pos.y, dt->bufferLen, dt->charWidth, dt->charHeight,
+            getOledFont(
+                dt->font), // ? soldeco25x44 /*lcd25x44*/ : lcd12x17 //lcd15x21
+            //),
+            BLACK);
     else
         bigChar(cc, x, dt->pos.y, dt->bufferLen, dt->charWidth, dt->charHeight,
-                getOledFont(dt->font),
-                WHITE);
+                getOledFont(dt->font), WHITE);
 }
 
 void drawTimeText(char *buff, char *last, DrawTime *dt) {
@@ -906,17 +938,12 @@ void drawTimeText(char *buff, char *last, DrawTime *dt) {
                 display.fillRect(x, dt->pos.y - 1, dt->charWidth,
                                  dt->charHeight + 2, BLACK);
             } else {
-                bigChar(
-                    last[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
-                    dt->charHeight,
-                    getOledFont(dt->font),
-                    BLACK); // soft erase
+                bigChar(last[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
+                        dt->charHeight, getOledFont(dt->font),
+                        BLACK); // soft erase
             }
-            bigChar(
-                buff[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
-                dt->charHeight,
-                getOledFont(dt->font),
-                WHITE);
+            bigChar(buff[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
+                    dt->charHeight, getOledFont(dt->font), WHITE);
         }
         x += dt->charWidth;
     }
@@ -934,11 +961,10 @@ void drawRemTimeText(char *buff, char *last, DrawTime *dt) {
             } else {
                 bigChar(last[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
                         dt->charHeight, getOledFont(dt->font),
-                        BLACK);                   // soft erase
+                        BLACK); // soft erase
             }
             bigChar(buff[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
-                    dt->charHeight, getOledFont(dt->font),
-                    WHITE);
+                    dt->charHeight, getOledFont(dt->font), WHITE);
         }
         x += dt->charWidth;
     }
@@ -1193,14 +1219,11 @@ void scrollerInit(void) {
         } else {
             baselineScroller(&scroll[line]);
             switch (line) {
-                case 5:
-                    scroll[line].pos.y = A1SCROLLPOS;
-                    break;
+                case 5: scroll[line].pos.y = A1SCROLLPOS; break;
                 case 6:
                     scroll[line].pos.y = 70; // out of bounds
                     break;
-                default:
-                    scroll[line].pos.y = line * (2 + _char_height);
+                default: scroll[line].pos.y = line * (2 + _char_height);
             }
 
             scroll[line].line = line; // dang, dumb to have missed this !?!
@@ -1313,9 +1336,7 @@ void putTextMaxWidth(int x, int y, int w, char *buff) {
     int px = x;
     if (tlen < w) {
         px = (maxXPixel() - (tlen * _char_width)) / 2;
-    }
-    else
-    {
+    } else {
         buff[w] = {0}; // simple chop - safe!
     }
     display.setCursor(px, y);
@@ -1407,7 +1428,6 @@ void setScrollPosition(int line, int ypos) {
         }
         pthread_mutex_unlock(&scroll[line].scrollox);
     }
-
 }
 
 #endif
