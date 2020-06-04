@@ -61,7 +61,7 @@ enum VIZMODES {
     VEMODE_A1S = 8,
     VEMODE_A1V = 9,
     VEMODE_TY = 10 // TODO
-}; // note all-in-one modes out of "bounds"
+};                 // note all-in-one modes out of "bounds"
 
 const int getMode(const char *mode);
 

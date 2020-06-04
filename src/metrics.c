@@ -20,22 +20,20 @@
  *
  */
 
+#include "metrics.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "metrics.h"
 
-double cpuLoad(void)
-{
+double cpuLoad(void) {
     float loadavg;
     FILE *load;
     load = fopen("/proc/loadavg", "r");
     fscanf(load, "%f", &loadavg);
     fclose(load);
     return (double)(100 * loadavg);
-} 
+}
 
-double cpuTemp(void)
-{
+double cpuTemp(void) {
     float millideg;
     FILE *thermo;
     thermo = fopen("/sys/class/thermal/thermal_zone0/temp", "r");
@@ -44,8 +42,7 @@ double cpuTemp(void)
     return (int)(millideg / 10.0f) / 100.0f;
 }
 
-meminfo_t memInfo(void)
-{
+meminfo_t memInfo(void) {
     /*
     uint16_t MemTotalKiB;
     uint16_t MemTotalMiB;

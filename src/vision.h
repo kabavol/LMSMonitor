@@ -21,9 +21,9 @@
 #ifndef VISSY_VIZ_H
 #define VISSY_VIZ_H
 
-#include <stdint.h>
-#include <stdbool.h>
 #include "visdata.h"
+#include <stdbool.h>
+#include <stdint.h>
 
 void vissy_close(void);
 void vissy_check(void);

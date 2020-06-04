@@ -840,7 +840,7 @@ int main(int argc, char *argv[]) {
     putMSG(stbl, LL_INFO);
 
     clearDisplay(); // clears the  splash if shown
-    showConnect(); // connection helper
+    showConnect();  // connection helper
     clearDisplay();
 
     printFontMetrics();

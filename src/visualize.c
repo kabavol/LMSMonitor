@@ -49,8 +49,7 @@ void activateVisualizer(void) {
     instrument(__LINE__, __FILE__, "Visualize On <-");
 }
 
-void setPlaying(bool p)
-{
+void setPlaying(bool p) {
     if (p != play_is_active)
         play_is_active = p;
 }
@@ -71,9 +70,7 @@ const char *getVisMode(void) {
         return "??";
 }
 
-const bool isVisualizeActive(void) { 
-    return (vis_is_active && play_is_active); 
-}
+const bool isVisualizeActive(void) { return (vis_is_active && play_is_active); }
 
 void deactivateVisualizer(void) {
     instrument(__LINE__, __FILE__, "->Visualize Off");
@@ -89,7 +86,8 @@ void setDownmix(int samplesize, float samplerate) {
         sprintf(downmix.downmix, "M%d", samplesize);
 }
 
-void setDownmixAttrs(int x, int y, int width, int height, int radius, int gWidth=128, int gHeight=64) {
+void setDownmixAttrs(int x, int y, int width, int height, int radius,
+                     int gWidth = 128, int gHeight = 64) {
     downmix.pos.x = x;
     downmix.pos.y = y;
     downmix.hMeter = height;
@@ -223,7 +221,8 @@ void visualize(struct vissy_meter_t *vissy_meter) {
                         // need all-in-one setup to have occured
                         instrument(__LINE__, __FILE__, "->Visualize A1 (VU)");
                         if (0 == downmix.pos.x) {
-                            instrument(__LINE__, __FILE__, "<-A1 (VU) not setup!");
+                            instrument(__LINE__, __FILE__,
+                                       "<-A1 (VU) not setup!");
                             setA1Downmix(VEMODE_A1V);
                         }
                     case VEMODE_VU:
@@ -245,7 +244,8 @@ void visualize(struct vissy_meter_t *vissy_meter) {
                         // need all-in-one setup to have occured
                         instrument(__LINE__, __FILE__, "->Visualize A1 (SA)");
                         if (0 == downmix.pos.x) {
-                            instrument(__LINE__, __FILE__, "<-A1 (SA) not setup!");
+                            instrument(__LINE__, __FILE__,
+                                       "<-A1 (SA) not setup!");
                             setA1Downmix(VEMODE_A1S);
                         }
                     case VEMODE_SA:

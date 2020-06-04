@@ -43,5 +43,4 @@ typedef struct A1Attributes {
 // should not be called externally... or should it...
 void allInOnePage(A1Attributes *aio);
 
-
 #endif

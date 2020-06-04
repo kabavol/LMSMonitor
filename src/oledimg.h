@@ -50,26 +50,24 @@
 #define MON_FONT_LCD2348 15
 #define MON_FONT_MAX 16
 
-static const char * oled_font_str[] = {
-    "Classic LCD Clock Font",
-    "Deco-Solid Font",
-    "Deco-Hollow Font",
-    "LCD 25x44",
-    "Festus Hollow 25x44",
-    "Festus Solid 25x44",
-    "Space 1999",
-    "Roboto Thin",
-    "noto 25x44",
-    "noto fancy 25x44",
-    "Colby Typo 25x44",
-    "TTY Pongo 25x44",
-    "Windswept 3D 25x44",
-    "LCD 15x21",
-    "LCD 12x17",
-    "LCD 23x48"
-};
+static const char *oled_font_str[] = {"Classic LCD Clock Font",
+                                      "Deco-Solid Font",
+                                      "Deco-Hollow Font",
+                                      "LCD 25x44",
+                                      "Festus Hollow 25x44",
+                                      "Festus Solid 25x44",
+                                      "Space 1999",
+                                      "Roboto Thin",
+                                      "noto 25x44",
+                                      "noto fancy 25x44",
+                                      "Colby Typo 25x44",
+                                      "TTY Pongo 25x44",
+                                      "Windswept 3D 25x44",
+                                      "LCD 15x21",
+                                      "LCD 12x17",
+                                      "LCD 23x48"};
 
-const uint8_t * getOledFont(int font);
+const uint8_t *getOledFont(int font);
 void printOledFontTypes(void);
 
 // http://javl.github.io/image2cpp/

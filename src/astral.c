@@ -233,8 +233,9 @@ double calcSunsetUTC(double JD, double latitude, double longitude) {
 
 void brightnessEvent(void) {
 
-	time_t now;	time(&now);
-	struct tm loctm = *localtime(&now);
+    time_t now;
+    time(&now);
+    struct tm loctm = *localtime(&now);
 
     // capture for comparison
     time_t testsec = mktime(localtime(&now));
@@ -248,7 +249,7 @@ void brightnessEvent(void) {
 
     char buffer[30];
 
-    float JD = calcJD(loctm.tm_year+1900, loctm.tm_mon+1, loctm.tm_mday);
+    float JD = calcJD(loctm.tm_year + 1900, loctm.tm_mon + 1, loctm.tm_mday);
 
     double longitude = isp_locale.Longitude;
     if (longitude < 0)
@@ -258,7 +259,7 @@ void brightnessEvent(void) {
 
     time_t seconds = mktime(&loctm);
     struct tm *ptm = NULL;
-    ptm = gmtime(&seconds); 
+    ptm = gmtime(&seconds);
     int delta = ptm->tm_hour; // TZ
 
     time_t tseconds = seconds;
@@ -266,8 +267,7 @@ void brightnessEvent(void) {
     seconds = seconds - delta * 3600;
     isp_locale.sunrise = seconds;
 
-    if (isp_locale.brightness < 0)
-    {
+    if (isp_locale.brightness < 0) {
         strftime(buffer, 30, "%m-%d-%Y %T", localtime(&seconds));
         sprintf(stb, "%s %s\n", labelIt("Sunrise", LABEL_WIDTH, "."), buffer);
         putMSG(stb, LL_INFO);
@@ -279,8 +279,7 @@ void brightnessEvent(void) {
 
     isp_locale.sunset = seconds;
 
-    if (isp_locale.brightness < 0)
-    {
+    if (isp_locale.brightness < 0) {
         strftime(buffer, 30, "%m-%d-%Y %T", localtime(&seconds));
         sprintf(stb, "%s %s\n", labelIt("Sunset", LABEL_WIDTH, "."), buffer);
         putMSG(stb, LL_INFO);
@@ -296,25 +295,21 @@ void brightnessEvent(void) {
     //}
 
     int current = isp_locale.brightness;
-    if ((ssec > 0)&&(rsec > 0))
-    {
+    if ((ssec > 0) && (rsec > 0)) {
         isp_locale.brightness = isp_locale.nightbright;
-    }
-    else if (rsec < 0)
-    {
+    } else if (rsec < 0) {
         isp_locale.brightness = isp_locale.nightbright;
-    }
-    else if ((rsec > 0)&&(ssec < 0))
-    {
+    } else if ((rsec > 0) && (ssec < 0)) {
         isp_locale.brightness = isp_locale.daybright;
     }
 
-    if (current != isp_locale.brightness)
-    {
+    if (current != isp_locale.brightness) {
         if (isp_locale.brightness == isp_locale.nightbright)
-            sprintf(stb, "%s Night Mode\n", labelIt("Set Display", LABEL_WIDTH, "."));
+            sprintf(stb, "%s Night Mode\n",
+                    labelIt("Set Display", LABEL_WIDTH, "."));
         else
-            sprintf(stb, "%s Day Mode\n", labelIt("Set Display", LABEL_WIDTH, "."));
+            sprintf(stb, "%s Day Mode\n",
+                    labelIt("Set Display", LABEL_WIDTH, "."));
         putMSG(stb, LL_INFO);
         displayBrightness(isp_locale.brightness);
     }
@@ -574,9 +569,8 @@ bool initAstral(void) {
     if (http_get(host, port, uri, (char *)lookupIP)) {
         if (!isEmptyStr(lookupIP)) {
 
-            sprintf(stb, "%s %s\n", 
-                labelIt("Provider IP", LABEL_WIDTH, "."), 
-                lookupIP);
+            sprintf(stb, "%s %s\n", labelIt("Provider IP", LABEL_WIDTH, "."),
+                    lookupIP);
             putMSG(stb, LL_INFO);
 
             // now for provider details, inclusive lat/lon
@@ -589,15 +583,14 @@ bool initAstral(void) {
                 // parse
                 parseISP(jsonData, &isp_locale);
 
-                sprintf(stb,
+                sprintf(
+                    stb,
                     "%s %s\n"
                     "%s %9.4f\n"
                     "%s %9.4f\n",
-                    labelIt("Reported TZ", LABEL_WIDTH, "."), 
-                    isp_locale.Timezone,
-                    labelIt("Longitude", LABEL_WIDTH, "."), 
-                    isp_locale.Longitude,
-                    labelIt("Latitude", LABEL_WIDTH, "."), 
+                    labelIt("Reported TZ", LABEL_WIDTH, "."),
+                    isp_locale.Timezone, labelIt("Longitude", LABEL_WIDTH, "."),
+                    isp_locale.Longitude, labelIt("Latitude", LABEL_WIDTH, "."),
                     isp_locale.Latitude);
 
                 putMSG(stb, LL_INFO);

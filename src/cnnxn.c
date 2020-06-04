@@ -2,7 +2,6 @@
 #include "common.h"
 #include "display.h"
 #include <arpa/inet.h>
-#include <arpa/inet.h>
 #include <errno.h>
 #include <ifaddrs.h>
 #include <netdb.h>
@@ -23,7 +22,8 @@ void showConnect(void) {
 
     hostname = gethostname(hostbuffer, sizeof(hostbuffer));
 
-    int xpos = 10; int ypos = 4;
+    int xpos = 10;
+    int ypos = 4;
     putTextToCenter(ypos, hostbuffer);
 
     sprintf(stbl, "%s %s\n", labelIt("Hostname", LABEL_WIDTH, "."), hostbuffer);
@@ -51,11 +51,13 @@ void showConnect(void) {
                 printf("getnameinfo() failed: %s\n", gai_strerror(s));
                 return;
             }
-            sprintf(stbl, "%s %s\n", labelIt("Interface", LABEL_WIDTH, "."), ifa->ifa_name);
+            sprintf(stbl, "%s %s\n", labelIt("Interface", LABEL_WIDTH, "."),
+                    ifa->ifa_name);
             putMSG(stbl, LL_QUIET);
-            sprintf(stbl, "%s %s\n", labelIt("Address", LABEL_WIDTH, "."), host);
+            sprintf(stbl, "%s %s\n", labelIt("Address", LABEL_WIDTH, "."),
+                    host);
             putMSG(stbl, LL_QUIET);
-            int icon = ((strstr(ifa->ifa_name, "wlan") == NULL)?1:0);
+            int icon = ((strstr(ifa->ifa_name, "wlan") == NULL) ? 1 : 0);
             ypos += 16;
             putIFDetail(icon, xpos, ypos, host);
         }

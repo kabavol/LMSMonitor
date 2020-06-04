@@ -25,8 +25,8 @@
 #include <stdlib.h>
 
 typedef enum {
-  TIMER_SINGLE_SHOT = 0, // Single shot timer
-  TIMER_PERIODIC         // Period timer
+    TIMER_SINGLE_SHOT = 0, // Single shot timer
+    TIMER_PERIODIC         // Period timer
 } t_timer;
 
 typedef void (*time_handler)(size_t timer_id, void *user_data);

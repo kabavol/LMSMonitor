@@ -506,7 +506,7 @@ bool vissy_meter_calc(struct vissy_meter_t *vissy_meter, bool samode) {
                     sample = (*ptr++) >> 7;
 
                 sample_sqr[channel] = sample * sample;
-                sample_sum[channel] += ((sample < 0)?-sample:sample);
+                sample_sum[channel] += ((sample < 0) ? -sample : sample);
                 vissy_meter->sample_accum[channel] += sample_sqr[channel];
                 if (0 == channel) {
                     fin_buf[i].r =

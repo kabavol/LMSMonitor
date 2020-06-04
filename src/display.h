@@ -108,11 +108,11 @@ typedef struct MonitorAttrs {
     bool refreshViz;
     int lastVolume;
     int clockFont;
-    bool flipDisplay; // display mounted upside down
-    uint8_t i2cBus; // number of I2C bus
-    uint8_t oledRST; // IIC/SPI reset GPIO
-    uint8_t spiDC; // SPI DC
-    uint8_t spiCS; // SPI CS - 0: CS0, 1: CS1
+    bool flipDisplay;     // display mounted upside down
+    uint8_t i2cBus;       // number of I2C bus
+    uint8_t oledRST;      // IIC/SPI reset GPIO
+    uint8_t spiDC;        // SPI DC
+    uint8_t spiCS;        // SPI CS - 0: CS0, 1: CS1
     uint8_t lastModes[2]; // shuffle[0] + repeat[1]
     char lastBits[16];
     char lastTime[6];
@@ -195,11 +195,16 @@ void closeDisplay(void);
 void softClear(void);
 
 void stereoVU(struct vissy_meter_t *vissy_meter, struct DrawVisualize *layout);
-void stereoSpectrum(struct vissy_meter_t *vissy_meter, struct DrawVisualize *layout);
-void ovoidSpectrum(struct vissy_meter_t *vissy_meter, struct DrawVisualize *layout);
-void mirrorSpectrum(struct vissy_meter_t *vissy_meter, struct DrawVisualize *layout);
-void reflectSpectrum(struct vissy_meter_t *vissy_meter, struct DrawVisualize *layout);
-void stereoPeakH(struct vissy_meter_t *vissy_meter, struct DrawVisualize *layout);
+void stereoSpectrum(struct vissy_meter_t *vissy_meter,
+                    struct DrawVisualize *layout);
+void ovoidSpectrum(struct vissy_meter_t *vissy_meter,
+                   struct DrawVisualize *layout);
+void mirrorSpectrum(struct vissy_meter_t *vissy_meter,
+                    struct DrawVisualize *layout);
+void reflectSpectrum(struct vissy_meter_t *vissy_meter,
+                     struct DrawVisualize *layout);
+void stereoPeakH(struct vissy_meter_t *vissy_meter,
+                 struct DrawVisualize *layout);
 
 // audio attributes
 void putVolume(bool v, char *buff);

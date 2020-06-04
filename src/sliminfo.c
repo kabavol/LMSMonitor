@@ -55,7 +55,7 @@ tag tagStore[MAXTAG_TYPES];
 bool refreshRequ;
 pthread_t sliminfoThread;
 
-char *getPlayerIP(void){ return (char *)playerIP; }
+char *getPlayerIP(void) { return (char *)playerIP; }
 
 int discoverPlayer(char *playerName) {
 
@@ -83,27 +83,30 @@ int discoverPlayer(char *playerName) {
 
         int playerCount = -1;
         sscanf(aBuffer, "%*[^A]A%d[^ ]", &playerCount);
-        if (playerCount>0) // we have players, find our guy
+        if (playerCount > 0) // we have players, find our guy
         {
-            sprintf(qBuffer,"3A%s ",playerName);
+            sprintf(qBuffer, "3A%s ", playerName);
             if (strncmp(aBuffer, qBuffer, strlen(qBuffer)) == 0) {
-                sprintf(aBuffer, "Player specified \"%s\" not found, supply corrected name!", playerName);
+                sprintf(
+                    aBuffer,
+                    "Player specified \"%s\" not found, supply corrected name!",
+                    playerName);
                 abortMonitor(aBuffer);
             }
-            sprintf(stb, "%s %d\n", 
-                labelIt("Player Count", LABEL_WIDTH, "."), playerCount);
-            putMSG(stb, LL_INFO); 
+            sprintf(stb, "%s %d\n", labelIt("Player Count", LABEL_WIDTH, "."),
+                    playerCount);
+            putMSG(stb, LL_INFO);
             char pind[15] = "playerindex%3A";
             multi_tok_t mt = multi_tok_init();
             char *player = multi_tok(aBuffer, &mt, pind);
             while (player != NULL) {
-                if ((strstr(player, qBuffer) != 0) || 
-                    (strstr(replaceStr(player, " ", "%20"), replaceStr(qBuffer, " ", "%20")) != 0)) {
+                if ((strstr(player, qBuffer) != 0) ||
+                    (strstr(replaceStr(player, " ", "%20"),
+                            replaceStr(qBuffer, " ", "%20")) != 0)) {
 
                     if (getTag("playerid", player, aBuffer, MAXTAG_DATA))
                         strcpy(playerID, aBuffer);
-                    if (getTag("ip", player, aBuffer, MAXTAG_DATA))
-                    {
+                    if (getTag("ip", player, aBuffer, MAXTAG_DATA)) {
                         int tl;
                         char *pport;
                         if ((pport = strstr(aBuffer, ":")) != NULL) {
@@ -117,21 +120,17 @@ int discoverPlayer(char *playerName) {
                 }
                 player = multi_tok(NULL, &mt, pind);
             }
-
         }
 
     } else {
         return -1;
     }
 
-    sprintf(stb, "%s %s\n%s %s\n%s %s\n", 
-        labelIt("Player Name", LABEL_WIDTH, "."), 
-        playerName,
-        labelIt("Player ID", LABEL_WIDTH, "."), 
-        playerID,
-        labelIt("Player IP", LABEL_WIDTH, "."), 
-        playerIP);
-    putMSG(stb, LL_INFO); 
+    sprintf(stb, "%s %s\n%s %s\n%s %s\n",
+            labelIt("Player Name", LABEL_WIDTH, "."), playerName,
+            labelIt("Player ID", LABEL_WIDTH, "."), playerID,
+            labelIt("Player IP", LABEL_WIDTH, "."), playerIP);
+    putMSG(stb, LL_INFO);
 
     return 0;
 }
@@ -193,10 +192,9 @@ in_addr_t getServerAddress(void) {
                 socklen_t slen = sizeof(s);
                 recvfrom(disc_sock, readbuf, 10, 0, (struct sockaddr *)&s,
                          &slen);
-                sprintf(stb, 
-                    "LMS (Server) responded:\n%s %s:%d\n",
-                    labelIt("Server IP", LABEL_WIDTH, "."),
-                    inet_ntoa(s.sin_addr), ntohs(s.sin_port));
+                sprintf(stb, "LMS (Server) responded:\n%s %s:%d\n",
+                        labelIt("Server IP", LABEL_WIDTH, "."),
+                        inet_ntoa(s.sin_addr), ntohs(s.sin_port));
                 putMSG(stb, LL_INFO);
             }
 
@@ -270,9 +268,10 @@ tag *initTagStore(void) {
     tagStore[MODE].name = "mode";
     tagStore[PERFORMER].name = "performer";
     tagStore[COMPILATION].name = "compilation";
-    tagStore[REPEAT].name = "playlist%20repeat";   //	0 no repeat, 1 repeat song, 2 repeat playlist.
-    tagStore[SHUFFLE].name = "playlist%20shuffle"; //	0 no shuffle, 1 shuffle songs, 2 shuffle albums.
-
+    tagStore[REPEAT].name =
+        "playlist%20repeat"; //	0 no repeat, 1 repeat song, 2 repeat playlist.
+    tagStore[SHUFFLE].name =
+        "playlist%20shuffle"; //	0 no shuffle, 1 shuffle songs, 2 shuffle albums.
 
     for (int i = 0; i < MAXTAG_TYPES; i++) {
         if ((tagStore[i].tagData =
@@ -309,8 +308,8 @@ void *serverPolling(void *x_voidptr) {
             }
             buffer[rbytes] = 0;
 
-// works well but incurs good chunk of re-write
-//(?P<name>[^:]*):?( ?(?P<value>.*))?
+            // works well but incurs good chunk of re-write
+            //(?P<name>[^:]*):?( ?(?P<value>.*))?
 
             for (int i = 0; i < MAXTAG_TYPES; i++) {
 
@@ -325,7 +324,6 @@ void *serverPolling(void *x_voidptr) {
                 } else {
                     tagStore[i].valid = false;
                 }
-
             }
 
             long pTime = getMinute(&tagStore[TIME]);
@@ -357,7 +355,7 @@ void *serverPolling(void *x_voidptr) {
                             tagStore[ARTIST].tagData, MAXTAG_DATA);
                     tagStore[ALBUMARTIST].valid = true;
                     tagStore[ALBUMARTIST].changed = true;
-                }else{
+                } else {
                     strncpy(tagStore[ALBUMARTIST].tagData,
                             tagStore[CONDUCTOR].tagData, MAXTAG_DATA);
                     tagStore[ALBUMARTIST].valid = true;
@@ -365,15 +363,15 @@ void *serverPolling(void *x_voidptr) {
                 }
             } else if (strcmp(variousArtist, tagStore[ALBUMARTIST].tagData) ==
                        0) {
-                strncpy(tagStore[ALBUMARTIST].tagData,
-                            tagStore[ARTIST].tagData, MAXTAG_DATA);
+                strncpy(tagStore[ALBUMARTIST].tagData, tagStore[ARTIST].tagData,
+                        MAXTAG_DATA);
                 tagStore[ALBUMARTIST].valid = true;
                 tagStore[ALBUMARTIST].changed = true;
             }
 
             if (isEmptyStr(tagStore[ALBUMARTIST].tagData)) {
-                strncpy(tagStore[ALBUMARTIST].tagData,
-                        tagStore[ARTIST].tagData, MAXTAG_DATA);
+                strncpy(tagStore[ALBUMARTIST].tagData, tagStore[ARTIST].tagData,
+                        MAXTAG_DATA);
                 tagStore[ALBUMARTIST].valid = true;
                 tagStore[ALBUMARTIST].changed = true;
             }
@@ -459,6 +457,4 @@ tag *initSliminfo(char *playerName) {
     return tagStore;
 }
 
-void sliminfoFinalize(void) {
-    closeSliminfo();
-}
+void sliminfoFinalize(void) { closeSliminfo(); }

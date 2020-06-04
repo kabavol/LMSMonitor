@@ -34,40 +34,35 @@
 int verbose = 0;
 int textOut = false;
 
-void dodelay(uint16_t d) { usleep(d*1000); }
+void dodelay(uint16_t d) { usleep(d * 1000); }
 
-char *strrep(size_t n, const char *s) 
-{
+char *strrep(size_t n, const char *s) {
 
-  size_t slen = strlen(s);
-  char *dest = malloc(n*slen+1);
- 
-  char *p = dest;
-  for ( int i=0; i < n; ++i, p += slen ) {
-    memcpy(p, s, slen);
-  }
-  *p = '\0';
-  return dest;
+    size_t slen = strlen(s);
+    char *dest = malloc(n * slen + 1);
+
+    char *p = dest;
+    for (int i = 0; i < n; ++i, p += slen) {
+        memcpy(p, s, slen);
+    }
+    *p = '\0';
+    return dest;
 }
 
-char *labelIt(const char *label, const size_t len, const char *pad)
-{
+char *labelIt(const char *label, const size_t len, const char *pad) {
 
-    size_t l = strlen(label);    
-    if (l > len)
-    {
+    size_t l = strlen(label);
+    if (l > len) {
         return (char *)label;
-    }
-    else
-    {
-        char *dest = malloc(len+1);
-        sprintf(dest, "%s %s:", label, strrep((len-l)-2, pad));
+    } else {
+        char *dest = malloc(len + 1);
+        sprintf(dest, "%s %s:", label, strrep((len - l) - 2, pad));
         return dest;
     }
 }
 
 int incVerbose(void) {
-    if (verbose < LL_MAX-1) {
+    if (verbose < LL_MAX - 1) {
         verbose++;
     }
     return verbose;
@@ -144,7 +139,6 @@ char *replaceStr(const char *s, const char *find, const char *replace) {
     return result;
 }
 
-
 char *multi_tok(char *input, multi_tok_t *string, char *delimiter) {
     if (input != NULL)
         *string = input;
@@ -170,44 +164,39 @@ multi_tok_t multi_tok_init() { return NULL; }
 
 #include <ctype.h>
 // missing under linux
-void strupr(char *s)
-{
+void strupr(char *s) {
     char *p = s;
     while (*p) {
         *p = toupper(*p);
         ++p;
     }
-} 
+}
 
-int piVersion(void)
-{
+int piVersion(void) {
     int ret = 2;
     ////cat /sys/firmware/devicetree/base/model
     return ret;
 }
 
-void sinisterRotate(char *rm) 
-{ 
+void sinisterRotate(char *rm) {
     int n = strlen(rm);
-	uint8_t temp = rm[0];
-    int i; 
-	for (i = 0; i < n - 1; i++) 
-		rm[i] = rm[i+1]; 
-	rm[i] = temp; 
+    uint8_t temp = rm[0];
+    int i;
+    for (i = 0; i < n - 1; i++)
+        rm[i] = rm[i + 1];
+    rm[i] = temp;
 }
 
-void dexterRotate(char *rm) 
-{ 
+void dexterRotate(char *rm) {
     int n = strlen(rm);
-	uint8_t temp = rm[n-1];
-    int i; 
-	for (i = n-1; i > 0; i--) 
-		rm[i] = rm[i-1]; 
-	rm[0] = temp; 
+    uint8_t temp = rm[n - 1];
+    int i;
+    for (i = n - 1; i > 0; i--)
+        rm[i] = rm[i - 1];
+    rm[0] = temp;
 }
 
-void instrument(const int line, const char *name, const char *msg)
-{
+void instrument(const int line, const char *name, const char *msg) {
     if (debugActive()) {
         char tbuff[32];
         char buff[BSIZE];
@@ -216,7 +205,7 @@ void instrument(const int line, const char *name, const char *msg)
         time_t now = tv.tv_sec;
         struct tm loctm = *localtime(&now);
         strftime(tbuff, sizeof(tbuff), "%Y-%m-%02d %H:%M:%S", &loctm);
-        sprintf(buff,"%19s :: %16s-%04d : %s\n", tbuff, name, line, msg);
+        sprintf(buff, "%19s :: %16s-%04d : %s\n", tbuff, name, line, msg);
         putMSG(buff, LL_DEBUG);
     }
 }

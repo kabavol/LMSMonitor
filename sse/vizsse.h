@@ -22,30 +22,30 @@
 #ifndef VISSY_VIZSSET_H
 #define VISSY_VIZSSET_H
 
-#include <stdarg.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdbool.h>
 #include <ctype.h>
+#include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-#include "../source/vissy.h"
 #include "../source/visdata.h"
+#include "../source/vissy.h"
 
 #define MAX_HEADERS 100
-#define RESPONSE_LIMIT  128 * 1024
+#define RESPONSE_LIMIT 128 * 1024
 
 struct Options {
-  const char *uri;            // URI to get
-  const char  *host;
-  int         port;
-  const char  *endpoint;
-  int         limit;          // event limit
-  int         verbosity;      // verbosity
-  int         allow_insecure; // allow insecure connections - not for this impl.
-  //const char *ssl_cert;       // SSL cert file - not for this impl.
-  //const char *ca_info;        // CA cert file - not for this impl.
+    const char *uri; // URI to get
+    const char *host;
+    int port;
+    const char *endpoint;
+    int limit;          // event limit
+    int verbosity;      // verbosity
+    int allow_insecure; // allow insecure connections - not for this impl.
+    //const char *ssl_cert;       // SSL cert file - not for this impl.
+    //const char *ca_info;        // CA cert file - not for this impl.
 };
 
 bool setupSSE(struct Options opt);
@@ -53,10 +53,9 @@ void vissySSEFinalize(void);
 
 extern void parse_payload(char *data, uint64_t len);
 //extern void on_sse_event(char** headers, const char* data);
-extern void on_sse_event(const char* data);
+extern void on_sse_event(const char *data);
 
-// data -> parse -> visualization 
+// data -> parse -> visualization
 void parse_visualize(char *data, struct vissy_meter_t *vissy_meter);
 
 #endif
-

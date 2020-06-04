@@ -24,7 +24,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 
 #include "sliminfo.h"
 
@@ -240,7 +239,6 @@ int isPlaying(char *input) {
     }
 
     return (strstr("play", tagData) != NULL);
-
 }
 
 long getMinute(tag *timeTag) {

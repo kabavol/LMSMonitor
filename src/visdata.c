@@ -24,8 +24,7 @@
 
 #include "visdata.h"
 
-const int getMode(const char *mode)
-{
+const int getMode(const char *mode) {
     if (0 == strncmp(mode, VMODE_VU, 2))
         return VEMODE_VU;
     else if (0 == strncmp(mode, VMODE_PK, 2))

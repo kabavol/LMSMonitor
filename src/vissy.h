@@ -27,29 +27,29 @@
 #include <time.h>
 
 struct vissy_settings {
-  int loglevel;
-  int port;
-  bool reinit_allowed;
-  bool daemon;
-  bool resilience;
-  char service[64];
-  char endpoint[64];
-  char logfile[128];
+    int loglevel;
+    int port;
+    bool reinit_allowed;
+    bool daemon;
+    bool resilience;
+    char service[64];
+    char endpoint[64];
+    char logfile[128];
 };
 
 struct vissy_stats {
-  time_t started; // calc uptime of daemon
-  unsigned long maxclients;
-  unsigned long allclient;
-  unsigned long allreinit;
-  unsigned long allmessage;
-  unsigned long allsmessage;
+    time_t started; // calc uptime of daemon
+    unsigned long maxclients;
+    unsigned long allclient;
+    unsigned long allreinit;
+    unsigned long allmessage;
+    unsigned long allsmessage;
 };
 
 #define METER_DELAY 2 * 1000 // 1000
 #define PAYLOADMAX 6 * 1024
 
 #define DECLARE_OBJECT(T, name) extern struct T name
-#define DEFINE_OBJECT(T, name)  struct T name = T ## _Initializer
+#define DEFINE_OBJECT(T, name) struct T name = T##_Initializer
 
 #endif

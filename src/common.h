@@ -22,9 +22,9 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #define BSIZE 4096
 
@@ -37,12 +37,7 @@
 #define LL_DEBUG 2
 #define LL_MAX 3 // always 1+
 
-static const char * verbosity[] = {
-    "Normal",
-    "Info",
-    "Debug",
-    "Maximum"
-};
+static const char *verbosity[] = {"Normal", "Info", "Debug", "Maximum"};
 
 typedef char *multi_tok_t;
 

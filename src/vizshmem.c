@@ -38,8 +38,8 @@
 //#include "log.h"
 #include "visdata.h"
 #include "vision.h"
-#include "visualize.h"
 #include "vissy.h"
+#include "visualize.h"
 
 pthread_t vizSHMEMThread;
 
@@ -61,10 +61,10 @@ void zero_payload(size_t timer_id, void *user_data) {
         .channel_name = {"L", "R"},
         .is_mono = false,
         .sample_accum = {0, 0},
-        .dBfs = {-1000,-1000},
-        .dB = {-1000,-1000},
-        .linear = {0,0},
-        .rms_bar = {0,0},
+        .dBfs = {-1000, -1000},
+        .dB = {-1000, -1000},
+        .linear = {0, 0},
+        .rms_bar = {0, 0},
         .numFFT = {12, 12},
         .sample_bin_chan = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
                             {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
@@ -92,17 +92,18 @@ void *vizSHMEMPolling(void *x_voidptr) {
         .linear = {0, 0},
         .rms_bar = {0, 0},
         .rms_levels = PEAK_METER_LEVELS_MAX,
-        .rms_scale = {0,    2,    5,    7,    10,   21,   33,   45,   57,   82,
-                    108,  133,  159,  200,  242,  284,  326,  387,  448,  509,
-                    570,  652,  735,  817,  900,  1005, 1111, 1217, 1323, 1454,
-                    1585, 1716, 1847, 2005, 2163, 2321, 2480, 2666, 2853, 3040,
-                    3227, 3414, 3601, 3788, 3975, 4162, 4349, 4536},
+        .rms_scale = {0,    2,    5,    7,    10,   21,   33,   45,
+                      57,   82,   108,  133,  159,  200,  242,  284,
+                      326,  387,  448,  509,  570,  652,  735,  817,
+                      900,  1005, 1111, 1217, 1323, 1454, 1585, 1716,
+                      1847, 2005, 2163, 2321, 2480, 2666, 2853, 3040,
+                      3227, 3414, 3601, 3788, 3975, 4162, 4349, 4536},
         .power_map = {0,       362,     2048,    5643,    11585,   20238,
-                    31925,   46935,   65536,   87975,   114486,  145290,
-                    180595,  220603,  265506,  315488,  370727,  431397,
-                    497664,  569690,  647634,  731649,  821886,  918490,
-                    1021605, 1131370, 1247924, 1371400, 1501931, 1639645,
-                    1784670, 1937131},
+                      31925,   46935,   65536,   87975,   114486,  145290,
+                      180595,  220603,  265506,  315488,  370727,  431397,
+                      497664,  569690,  647634,  731649,  821886,  918490,
+                      1021605, 1131370, 1247924, 1371400, 1501931, 1639645,
+                      1784670, 1937131},
         .channel_width = {192, 192},
         .bar_size = {6, 6},
         .channel_flipped = {0, 0},
@@ -153,10 +154,9 @@ void *vizSHMEMPolling(void *x_voidptr) {
             // cleanup (zero meter) timer - when the toons stop we zero
             timer_stop(ztimer);
             ztimer = timer_start(5000, zero_payload, TIMER_SINGLE_SHOT, NULL);
-            
+
             // modal dataset
             samode = !samode;
-
         }
 
         usleep(METER_DELAY);
@@ -175,6 +175,4 @@ bool setupSHMEM(void) {
     }
 
     return ret;
-
 }
-
