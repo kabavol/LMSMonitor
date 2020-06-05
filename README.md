@@ -68,7 +68,7 @@ See the videos in the base folder, scrolling text is smooth and the visualizer m
 <img width="300" src="base/demo.gif" align="center" />
 
 These font examples were captured using an OLED on a flatbed scanner, the final images being tweaked for contrast.
-Fonts examples are 0, at 14:04, through 12, at 13:10. 
+Font examples are 0, at 14:04, through 12, at 13:10. 
 
 <img width="300" src="base/fonts.gif" align="center" />
 

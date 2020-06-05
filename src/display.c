@@ -267,6 +267,12 @@ void vumeterSwoosh(bool inv, struct DrawVisualize *layout) {
         initRefresh = false;
         resetLastData();
     }
+
+    // fix orphans
+    int w = maxYPixel() - (layout->pos.y + 1);
+    drawRectangle(layout->pos.x, layout->pos.y, 
+                  w, layout->iHeight + 2, BLACK);
+
     if (inv)
         display.drawBitmap(layout->pos.x, layout->pos.y, vusw64x32,
                            layout->iWidth, layout->iHeight, BLACK);
