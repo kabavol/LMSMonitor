@@ -123,7 +123,7 @@ wget "https://github.com/shunte88/LMSMonitor/blob/master/bin/lmsmonitorpcp.tgz?r
 
 This downloads the monitor archive to pCP and extracts the contents
 
-To ensure smooth running perfform the following:
+To ensure smooth running perform the following:
 
 ```bash
 chmod +x gomonitor
