@@ -74,7 +74,7 @@ Font examples are 0, at 14:04, through 12, at 13:10.
 
 ### Visualizer Modes
 
-Six visualizer modes are supported
+Several visualizer modes are supported
 - Stereo VU Meters - dBfs metered
 - Stereo 12-band Spectrum Analysis
 - Stereo 12-band "tornado" Spectrum Analysis
@@ -82,6 +82,9 @@ Six visualizer modes are supported
 - Stereo Peak Meter - dBfs metered
 - Large Downmix (visual data only) VU meter
 - Large Downmix (visual data only) Spectrum
+- All-In-One - track details and spectrum/VU "swoosh"
+- All-In-One - fixed mode (use -aa)
+- Easter Egg - fixed mode (use -aaa)
 
 ### Installation
 
