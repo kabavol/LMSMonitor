@@ -171,11 +171,11 @@ To get it working you need only specify the configuration as follows
 /mnt/mmcblk0p2/tce/gomonitor rn -db -o 7 -D 27 -R 24 -C 0 -I 
 ```
 
-This specified the SPI driver (7), DC pin 27, Reset pin 24 with e device on CE0.
+This specified the SPI driver (7), DC pin 27, Reset pin 24 with the device on CE0.
 
 The device is mounted upside down in the case, -I flips the display
 
-This also specifies random visualization
+This also specifies random visualization, further customization to your liking can be specified
 
 ### Coming soon
 
