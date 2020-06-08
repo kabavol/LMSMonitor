@@ -199,7 +199,8 @@ void displayBrightness(int bright) { display.setBrightness(bright); }
 
 int initDisplay(struct MonitorAttrs dopts) {
 
-    if (OLED_SH1106_SPI_128x64 == oledType) {
+    if ((OLED_ADAFRUIT_SPI_128x64 == oledType) || \
+     (OLED_SH1106_SPI_128x64 == oledType)) {
         if (!display.init(dopts.spiDC, dopts.oledRST, dopts.spiCS, oledType)) {
             return EXIT_FAILURE;
         }

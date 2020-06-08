@@ -14,6 +14,7 @@ options:
  -d downmix audio and display a single large meter, SA and VU only
  -f font used by clock, see list below for details
  -i increment verbose level
+ -I flip the display - display mounted upside down
  -k show CPU load and temperature (clock mode)
  -m if visualization on specify one or more meter modes, sa, vu, pk, st, or rn for random
  -o specifies OLED "driver" type (see options below)
@@ -21,6 +22,10 @@ options:
  -S scrollermode: 0 (cylon), 1 (infinity left), 2 infinity (right)
  -v enable visualization sequence when playing (Pi only)
  -x specifies OLED address if default does not work - use i2cdetect to find address (Pi only)
+ -B I2C bus number (defaults 1, giving device /dev/i2c-1)
+ -R I2C/SPI reset GPIO number, if needed (defaults 25)
+ -D SPI DC GPIO number (defaults 24)
+ -C SPI CS number (defaults 0)
  -z no splash screen
 
 Supported OLED types:
@@ -68,7 +73,7 @@ See the videos in the base folder, scrolling text is smooth and the visualizer m
 <img width="300" src="base/demo.gif" align="center" />
 
 These font examples were captured using an OLED on a flatbed scanner, the final images being tweaked for contrast.
-Font examples are 0, at 14:04, through 12, at 13:10. 
+Font examples are 0, at 14:04, through 12, at 13:10. The fonts are in the sequence described in the usage output.
 
 <img width="300" src="base/fonts.gif" align="center" />
 
@@ -156,6 +161,21 @@ Additional supported commands may also be specified, here we request a specific 
 ```
 
 the visualization parameter must always be specified first
+
+### Audiophonics RASPI MINI
+
+The Audiophonics RASPI MINI uses an SPI OLED
+To get it working you need only specify the configuration as follows
+
+```bash
+/mnt/mmcblk0p2/tce/gomonitor rn -db -o 7 -D 27 -R 24 -C 0 -I 
+```
+
+This specified the SPI driver (7), DC pin 27, Reset pin 24 with e device on CE0.
+
+The device is mounted upside down in the case, -I flips the display
+
+This also specifies random visualization
 
 ### Coming soon
 
