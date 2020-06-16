@@ -199,12 +199,20 @@ void displayBrightness(int bright) { display.setBrightness(bright); }
 
 int initDisplay(struct MonitorAttrs dopts) {
 
+    char stbl[BSIZE];
+
     if ((OLED_ADAFRUIT_SPI_128x64 == oledType) || \
      (OLED_SH1106_SPI_128x64 == oledType)) {
+        sprintf(stbl, "%s %s\n", labelIt("OLED Mode", LABEL_WIDTH, "."),
+                "SPI");
+        putMSG(stbl, LL_QUIET);
         if (!display.init(dopts.spiDC, dopts.oledRST, dopts.spiCS, oledType)) {
             return EXIT_FAILURE;
         }
     } else {
+        sprintf(stbl, "%s %s\n", labelIt("OLED Mode", LABEL_WIDTH, "."),
+                "IIC");
+        putMSG(stbl, LL_QUIET);
         if (0 != oledAddress) {
             if (!display.init(dopts.oledRST, oledType, oledAddress)) {
                 return EXIT_FAILURE;
@@ -215,6 +223,7 @@ int initDisplay(struct MonitorAttrs dopts) {
             }
         }
     }
+
     display.begin();
     // flip (rotate 180) if requested
     if (dopts.flipDisplay) {
@@ -320,15 +329,15 @@ void putTapeType(audio_t audio) {
 }
 
 void putIFDetail(int icon, int xpos, int ypos, char *host) {
-    int s = 24;
+    int s = 36;
     int h = 12;
     int start = 0;
     uint8_t dest[s];
     start = icon * s;
-    memcpy(dest, netconn15x12 + start, sizeof dest);
+    memcpy(dest, netconn17x12 + start, sizeof dest);
     display.fillRect(xpos, ypos - 2, 45, h + 2, BLACK);
-    display.drawBitmap(xpos, ypos - 2, dest, 15, h, WHITE);
-    putText(xpos + 18, ypos, host);
+    display.drawBitmap(xpos, ypos - 2, dest, 17, h, WHITE);
+    putText(xpos + 19, ypos, host);
 }
 
 void compactCassette(void) {

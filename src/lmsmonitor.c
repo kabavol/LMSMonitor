@@ -552,9 +552,10 @@ int main(int argc, char *argv[]) {
         .lastVolume = -1,
         .flipDisplay = false,
         .i2cBus = 1,               // number of I2C bus
+        // CLOCK & DATA ???
         .oledRST = OLED_SPI_RESET, // SPI/IIC reset GPIO
         .spiDC = OLED_SPI_DC,      // SPI DC
-        .spiCS = BCM2835_SPI_CS0,  // SPI CS - 0: CS0, 1: CS1
+        .spiCS = OLED_SPI_CS0,  // SPI CS - 0: CS0, 1: CS1
         .lastModes = {0, 0},
     };
 
