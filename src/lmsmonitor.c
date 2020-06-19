@@ -903,6 +903,7 @@ int main(int argc, char *argv[]) {
                 if (lmsopt.clock) {
                     if ((lmsopt.tapeUX) && (aio.hubActive))
                         aio.hubActive = false;
+                    aio.compound[0] = {0};
                     clockPage();
                 } else {
                     saverPage();
@@ -1059,7 +1060,9 @@ void cassettePage(A1Attributes *aio) {
         if ((strcmp(buff, aio->compound) != 0) ||
             (0 == strlen(aio->compound))) // safe
         {
-            putTextMaxWidth(19, 9, 15, aio->title);
+            strncpy(aio->compound, buff, 255);
+            putTinyTextMaxWidthP(20, 12, 92, aio->title); // workable - tweak for proportional
+            putTinyTextMaxWidthP(20, 18, 92, aio->artist);
             setSleepTime(SLEEP_TIME_SAVER);
         }
     }

@@ -47,6 +47,8 @@
 #include "ArduiPi_OLED_lib.h"
 #include "Adafruit_GFX.h"
 #include "ArduiPi_OLED.h"
+#include "gfxfont.h"
+#include "TomThumb.h"
 #include "lmsmonitor.h"
 #ifdef CAPTURE_BMP
 #include "bmpfile.h"
@@ -60,6 +62,8 @@ int8_t oledAddress = 0x00;
 int8_t icons[NUMNOTES][4];
 uint16_t _char_width = 6;
 uint16_t _char_height = 8;
+uint16_t _tt_char_width = 4; // 3x5 font
+uint16_t _tt_char_height = 6;
 int scrollMode = SCROLL_MODE_CYLON;
 sme scroll[MAX_LINES];
 
@@ -67,6 +71,10 @@ int maxCharacter(void) { return (int)(maxXPixel() / _char_width); }
 int maxLine(void) { return (int)(maxYPixel() / _char_height); }
 uint16_t charWidth(void) { return _char_width; }
 uint16_t charHeight(void) { return _char_height; }
+int maxTTCharacter(void) { return (int)(maxXPixel() / _tt_char_width); }
+int maxTTLine(void) { return (int)(maxYPixel() / _tt_char_height); }
+uint16_t charTTWidth(void) { return _tt_char_width; }
+uint16_t charTTHeight(void) { return _tt_char_height; }
 
 #else
 int maxCharacter(void) { return 21; }
@@ -113,8 +121,8 @@ void setInitRefresh(void) {
 }
 
 void fontMetrics(void) {
-    int16_t x, y, x1, y1;
-    display.getTextBounds("W", 0, 0, &x1, &y1, &_char_width, &_char_height);
+    int16_t x, y, x1, y1, w1, h1;
+    display.getTextBounds("W", 0, 0, &x1, &y1, &w1, &h1);
 }
 
 void printFontMetrics(void) {
@@ -1388,6 +1396,62 @@ void putTextToCenter(int y, char *buff) {
     clearLine(y);
     putText(px, y, buff);
 }
+
+// using tom thumb font to squeeze a little more real-estate
+void putTinyTextMaxWidth(int x, int y, int w, char *buff){
+    display.setFont(&TomThumb);
+    int tlen = strlen(buff);
+    display.setTextSize(1);
+    int16_t x1, y1, w1, h1;
+    //display.getTextBounds(buff, 0, 0, &x1, &y1, &w1, &h1);
+    display.fillRect(x-2, y-_tt_char_height, w * _tt_char_width, 2+_tt_char_height, BLACK);
+    int px = x;
+    if (tlen < w) { // assumes monospaced - we're not!
+        px = (int)((maxXPixel() - (tlen * _tt_char_width)) / 2);
+    } else {
+        buff[w] = {0}; // simple chop - safe!
+    }
+    display.setCursor(px, y);
+    display.print(buff);
+    display.setFont();
+}
+
+void putTinyTextMaxWidthP(int x, int y, int pixw, char *buff){
+    display.setFont(&TomThumb);
+    int tlen = strlen(buff);
+    display.setTextSize(1);
+    int16_t x1, y1, w1, h1;
+    display.getTextBounds(buff, 0, 0, &x1, &y1, &w1, &h1);
+    printf("\nl:%d w:%d h:%d\nwbm:%d wbp:%d\n", tlen, w1, h1, tlen*_tt_char_width, w1);
+    display.fillRect(x - 1, y - _tt_char_height, pixw + 2, _tt_char_height + 2, BLACK);
+    int px = x;
+    while (w1 > pixw) {
+        tlen--;
+        buff[tlen] = {0};
+        display.getTextBounds(buff, 0, 0, &x1, &y1, &w1, &h1);
+    }
+    if (w1 < pixw) { // pixel sizing - ok for monospace & proportional
+        px = (int)((maxXPixel() - w1) / 2);
+    } else {
+        int w = (int)(pixw/_tt_char_width);
+        buff[w] = {0}; // simple chop - safe!
+    }
+    display.setCursor(px+1, y);
+    display.print(buff);
+    display.setFont();
+}
+
+void putTinyText(int x, int y, char *buff){
+    display.setFont(&TomThumb);
+    display.setTextSize(1);
+    display.fillRect(x, y, (int16_t)strlen(buff) * _tt_char_width, _tt_char_height,
+                     BLACK);
+    display.setCursor(x, y);
+    display.print(buff);
+    display.setFont();
+}
+void putTinyTextCenterColor(int y, char *buff, uint16_t color){}
+void putTinyTextToCenter(int y, char *buff){}
 
 void drawRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
     display.drawRect(x, y, w, h, color);

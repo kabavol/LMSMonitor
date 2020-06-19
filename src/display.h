@@ -218,6 +218,13 @@ void putText(int x, int y, char *buff);
 void putTextCenterColor(int y, char *buff, uint16_t color);
 void putTextToCenter(int y, char *buff);
 
+// using tom thumb font to squeeze a little more real-estate
+void putTinyTextMaxWidth(int x, int y, int w, char *buff);
+void putTinyTextMaxWidthP(int x, int y, int w, char *buff);
+void putTinyText(int x, int y, char *buff);
+void putTinyTextCenterColor(int y, char *buff, uint16_t color);
+void putTinyTextToCenter(int y, char *buff);
+
 void clearLine(int y);
 void clearDisplay();
 
