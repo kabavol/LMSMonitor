@@ -25,12 +25,17 @@
 
 #include <stdint.h>
 
+#define EE_NONE 0
+#define EE_TAPE 1
+#define EE_VINYL 2
+
 bool isPlaying(void);
 bool lockOptions(void);
 bool acquireOptLock(void);
 
 typedef struct A1Attributes {
-    bool hubActive;
+    uint8_t eeMode;
+    bool eeFXActive;
     int8_t lFrame;
     int8_t rFrame;
     int8_t mxframe;

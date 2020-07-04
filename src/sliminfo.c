@@ -66,7 +66,7 @@ int discoverPlayer(char *playerName) {
     if (playerName != NULL) {
 
         if (strlen(playerName) > (BSIZE / 3)) {
-            abortMonitor("ERROR too long player name!");
+            abortMonitor("ERROR player name too long !!!");
         }
 
         // submitting the player name no longer returns the correct ID and IP

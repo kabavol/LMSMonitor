@@ -288,12 +288,6 @@ void brightnessEvent(void) {
     double rsec = difftime(testsec, isp_locale.sunrise);
     double ssec = difftime(testsec, isp_locale.sunset);
 
-    //if (isp_locale.brightness < 0)
-    //{
-    //    sprintf(stb, "rsec (%f) ssec (%f)\n", rsec, ssec);
-    //    putMSG(stb, LL_INFO);
-    //}
-
     int current = isp_locale.brightness;
     if ((ssec > 0) && (rsec > 0)) {
         isp_locale.brightness = isp_locale.nightbright;
@@ -311,7 +305,7 @@ void brightnessEvent(void) {
             sprintf(stb, "%s Day Mode\n",
                     labelIt("Set Display", LABEL_WIDTH, "."));
         putMSG(stb, LL_INFO);
-        displayBrightness(isp_locale.brightness);
+        displayBrightness(isp_locale.brightness, true);
     }
 }
 

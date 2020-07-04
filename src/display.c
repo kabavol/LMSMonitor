@@ -64,6 +64,7 @@ uint16_t _char_width = 6;
 uint16_t _char_height = 8;
 uint16_t _tt_char_width = 4; // 3x5 font
 uint16_t _tt_char_height = 6;
+bool isFlipped = false;
 int scrollMode = SCROLL_MODE_CYLON;
 sme scroll[MAX_LINES];
 
@@ -121,8 +122,9 @@ void setInitRefresh(void) {
 }
 
 void fontMetrics(void) {
-    int16_t x, y, x1, y1, w1, h1;
-    display.getTextBounds("W", 0, 0, &x1, &y1, &w1, &h1);
+    int16_t x, y, x1, y1;
+    // std. font only!!!
+    display.getTextBounds("W", 0, 0, &x1, &y1, &_char_width, &_char_height);
 }
 
 void printFontMetrics(void) {
@@ -203,7 +205,23 @@ void resetDisplay(int fontSize) {
 
 void softClear(void) { display.fillScreen(BLACK); }
 
-void displayBrightness(int bright) { display.setBrightness(bright); }
+void flipDisplay() {
+    if (isFlipped) {
+        display.sendCommand(0xA0);
+        display.sendCommand(0xC0); // COMSCANINC
+    }
+    else
+    {
+        display.sendCommand(0xA0);
+        display.sendCommand(0xC8); // COMSCANDEC
+    }
+}
+
+void displayBrightness(int bright, bool flip) { 
+    display.setBrightness(bright); 
+    if ((flip)&&(isFlipped))
+        flipDisplay();
+}
 
 int initDisplay(struct MonitorAttrs dopts) {
 
@@ -233,11 +251,15 @@ int initDisplay(struct MonitorAttrs dopts) {
     }
 
     display.begin();
+
     // flip (rotate 180) if requested
     if (dopts.flipDisplay) {
-        display.sendCommand(0xA0);
-        display.sendCommand(0xC0);
+        isFlipped = true;
+        //display.sendCommand(0xA0);
+        //display.sendCommand(0xC0); // COMSCANINC
+        flipDisplay();
     }
+
     display.setFont();
     fontMetrics();
     display.setBrightness(0);
@@ -336,6 +358,32 @@ void putTapeType(audio_t audio) {
     display.drawBitmap(x, y, dest, w, h, WHITE);
 }
 
+void putSL1200Btn(audio_t audio) {
+    int w = 7;
+    int h = 6;
+    int x = 71;
+    int yy[] = {35, 44, 50};
+    int y = yy[audio.audioIcon];
+    // draw slider position based on audio fidelity
+    display.fillRect(x+1, 32, 5, 23, BLACK);
+    display.fillRect(x+2, 33, 3, 23, WHITE);
+    display.drawLine(x+3, 34, x+3, 54, BLACK);
+
+    display.fillRect(x, y-1, w, h, BLACK);
+    display.fillRect(x+1, y, w-2, h-2, WHITE);
+    display.fillRect(x+2, y+1, w-4, h-4, BLACK);
+}
+
+void toneArm(double pct, bool init, uint16_t color) {
+    int w = 270;
+    int h = 4;
+    int start = 0;
+    uint8_t dest[w];
+    if (init) start = w*(1+(int)(pct/10));
+    memcpy(dest, tonearm + start, sizeof dest);
+    display.drawBitmap(40, 3, dest, 38, 54, color);
+}
+
 void putIFDetail(int icon, int xpos, int ypos, char *host) {
     int s = 36;
     int h = 12;
@@ -350,6 +398,37 @@ void putIFDetail(int icon, int xpos, int ypos, char *host) {
 
 void compactCassette(void) {
     display.drawBitmap(0, 0, cassette, 128, 64, WHITE);
+}
+
+void technicsSL1200(bool blank) {
+    if (blank) display.fillRect(0, 0, 128, 64, BLACK);
+    display.fillRect(40, 41, 32, 20, BLACK);
+    display.fillRect(47, 27, 30, 24, BLACK);
+    display.fillRect(60, 4, 17, 24, BLACK);
+    display.drawBitmap(0, 0, sl1200t, 83, 64, WHITE);
+}
+
+void vinylEffects(int xpos, int lpos, int frame, int maxf) {
+
+    int z = 49;
+    display.drawBitmap(xpos-1, xpos-1, vinfx, z, z, BLACK);
+    display.drawBitmap(xpos, xpos, vinfx, z, z, WHITE);
+
+    z = 57;
+    int h = 19;
+    int start = 0;
+    uint8_t dest[z];
+    int blank = frame-1;
+    if (blank<0) blank = maxf;
+    // last frame
+    start = blank * z;
+    memcpy(dest, vinlbl + start, sizeof dest);
+    display.drawBitmap(lpos, lpos, dest, h, h, BLACK);
+    // this frame
+    start = frame * z;
+    memcpy(dest, vinlbl + start, sizeof dest);
+    display.drawBitmap(lpos, lpos, dest, h, h, WHITE);
+
 }
 
 void drawHorizontalCheckerBar(int x, int y, int w, int h, int percent) {
@@ -1403,7 +1482,6 @@ void putTinyTextMaxWidth(int x, int y, int w, char *buff){
     int tlen = strlen(buff);
     display.setTextSize(1);
     int16_t x1, y1, w1, h1;
-    //display.getTextBounds(buff, 0, 0, &x1, &y1, &w1, &h1);
     display.fillRect(x-2, y-_tt_char_height, w * _tt_char_width, 2+_tt_char_height, BLACK);
     int px = x;
     if (tlen < w) { // assumes monospaced - we're not!
@@ -1420,9 +1498,10 @@ void putTinyTextMaxWidthP(int x, int y, int pixw, char *buff){
     display.setFont(&TomThumb);
     int tlen = strlen(buff);
     display.setTextSize(1);
-    int16_t x1, y1, w1, h1;
+    int16_t x1, y1;
+    uint16_t w1, h1;
     display.getTextBounds(buff, 0, 0, &x1, &y1, &w1, &h1);
-    printf("\nl:%d w:%d h:%d\nwbm:%d wbp:%d\n", tlen, w1, h1, tlen*_tt_char_width, w1);
+    ////printf("\nl:%d w:%d h:%d\nwbm:%d wbp:%d\n", tlen, w1, h1, tlen*_tt_char_width, w1);
     display.fillRect(x - 1, y - _tt_char_height, pixw + 2, _tt_char_height + 2, BLACK);
     int px = x;
     while (w1 > pixw) {

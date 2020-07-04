@@ -91,7 +91,8 @@ typedef struct MonitorAttrs {
     int vizHeight;
     int vizWidth;
     bool allInOne;
-    bool tapeUX;
+    bool tapeUX;   // cassette easter egg
+    bool sl1200UX; // Technics SL-1200 easter egg
     int sleepTime;
     bool astral;
     bool showTemp;
@@ -113,6 +114,7 @@ typedef struct MonitorAttrs {
     uint8_t oledRST;      // IIC/SPI reset GPIO
     uint8_t spiDC;        // SPI DC
     uint8_t spiCS;        // SPI CS - 0: CS0, 1: CS1
+    uint16_t spiSpeed;    // SPI speed - one of supported values - review
     uint8_t lastModes[2]; // shuffle[0] + repeat[1]
     char lastBits[16];
     char lastTime[6];
@@ -160,7 +162,13 @@ typedef struct DrawVisualize {
 void compactCassette(void);
 void cassetteHub(int xpos, int frame, int mxframe, int direction);
 
+void toneArm(double pct, bool init, uint16_t color);
+void technicsSL1200(bool blank);
+void vinylEffects(int xpos, int lpos, int frame, int maxf);
+
 void printFontMetrics(void);
+
+void flipDisplay(struct MonitorAttrs dopts);
 
 void setInitRefresh(void);
 
@@ -176,7 +184,7 @@ double deg2Rad(double angDeg);
 double rad2Deg(double angRad);
 
 void splashScreen(void);
-void displayBrightness(int bright);
+void displayBrightness(int bright, bool flip = false);
 
 void scrollerPause(void);
 void *scrollLine(void *input); // threadable
@@ -210,6 +218,7 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter,
 void putVolume(bool v, char *buff);
 void putAudio(audio_t audio, char *buff, bool full = true);
 void putTapeType(audio_t audio);
+void putSL1200Btn(audio_t audio);
 
 void putIFDetail(int icon, int xpos, int ypos, char *host);
 

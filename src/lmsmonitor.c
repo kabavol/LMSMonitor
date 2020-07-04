@@ -157,6 +157,7 @@ void playingPage(void);
 void saverPage(void);
 void clockPage(void);
 void cassettePage(A1Attributes *aio);
+void technicSL1200Page(A1Attributes *aio);
 #endif
 
 static char *get_mac_address() {
@@ -226,7 +227,7 @@ void print_help(char *executable) {
         " -d downmix audio and display a single large meter, SA and VU only\n"
         " -f font used by clock, see list below for details\n"
         " -i increment verbose level\n"
-        " -I flip the display - display mounted upside down\n"
+        " -F flip the display - display mounted upside down\n"
         " -k show CPU load and temperature (clock mode)\n"
         " -m if visualization on specify one or more meter modes, sa, vu, "
         "pk, st, or rn for random\n"
@@ -434,23 +435,35 @@ void toggleVisualize(size_t timer_id, void *user_data) {
     }
 }
 
-void hubSpin(size_t timer_id, void *user_data) {
+void eggFX(size_t timer_id, void *user_data) {
 
     A1Attributes *aio;
     aio = ((struct A1Attributes *)user_data);
-    if (aio->hubActive) {
-        aio->lFrame += aio->flows; // clockwise (-1) or anticlockwise (1)
-        if (aio->lFrame < 0)
-            aio->lFrame = aio->mxframe; // roll
-        if (aio->lFrame > aio->mxframe)
-            aio->lFrame = 0; // roll
-        aio->rFrame += aio->flows;
-        if (aio->rFrame < 0)
-            aio->rFrame = aio->mxframe;
-        if (aio->rFrame > aio->mxframe)
-            aio->rFrame = 0;
-        cassetteHub(38, aio->lFrame, aio->mxframe, -aio->flows);
-        cassetteHub(80, aio->rFrame, aio->mxframe, -aio->flows);
+    if (aio->eeFXActive) {
+
+        // "animate" cassette hub or wobble vinyl effects
+
+        if (EE_TAPE == aio->eeMode) {
+            aio->lFrame += aio->flows; // clockwise (-1) or anticlockwise (1)
+            if (aio->lFrame < 0)
+                aio->lFrame = aio->mxframe; // roll
+            if (aio->lFrame > aio->mxframe)
+                aio->lFrame = 0; // roll
+            aio->rFrame += aio->flows;
+            if (aio->rFrame < 0)
+                aio->rFrame = aio->mxframe;
+            if (aio->rFrame > aio->mxframe)
+                aio->rFrame = 0;
+            cassetteHub(38, aio->lFrame, aio->mxframe, -aio->flows);
+            cassetteHub(80, aio->rFrame, aio->mxframe, -aio->flows);
+        } else {
+            // just "wobble" the vinyl and rotate label
+            aio->lFrame += 1;
+            if (aio->lFrame>1) aio->lFrame = 0;
+            aio->rFrame += 1;
+            if (aio->rFrame>aio->mxframe) aio->rFrame = 0;
+            vinylEffects(7+aio->lFrame, 23, aio->rFrame, aio->mxframe);
+        }
     }
 }
 
@@ -535,6 +548,7 @@ int main(int argc, char *argv[]) {
         .vizWidth = 128,
         .allInOne = false,
         .tapeUX = false,
+        .sl1200UX = false,
         .sleepTime = SLEEP_TIME_LONG,
         .astral = false,
         .showTemp = false,
@@ -588,7 +602,7 @@ int main(int argc, char *argv[]) {
 
     opterr = 0;
     int a1test = 0;
-    while ((aName = getopt(argc, argv, "n:o:m:x:B:C:D:R:S:f:abcdFhikprtuvz")) !=
+    while ((aName = getopt(argc, argv, "n:o:m:x:B:C:D:R:S:f:abcdFhikprtuvwz")) !=
            -1) {
         switch (aName) {
             case 'n': playerName = optarg; break;
@@ -652,7 +666,14 @@ int main(int argc, char *argv[]) {
 
             case 'r': lmsopt.remaining = true; break;
 
-            case 'u': lmsopt.tapeUX = true; break;
+            case 'u': 
+                lmsopt.tapeUX = true;   // mutex e.e.
+                lmsopt.sl1200UX = false; 
+                break;
+            case 'w': 
+                lmsopt.sl1200UX = true;  // mutex e.e.
+                lmsopt.tapeUX = false; 
+                break;
 
             case 'x':
                 lmsopt.oledAddrL = (int)strtol(optarg, NULL, 16);
@@ -783,15 +804,23 @@ int main(int argc, char *argv[]) {
     }
 
     A1Attributes aio = {
-        .hubActive = false,
-        .lFrame = 1,  // left hub
-        .rFrame = 4,  // right hub
+        .eeMode = EE_NONE,
+        .eeFXActive = false,
+        .lFrame = 1,  // left hub/vinyl wobble
+        .rFrame = 4,  // right hub/vinyl label
         .mxframe = 6, // max frames
         .flows = 1,   // clockwise (-1) or anticlockwise (1)
         .artist = {0},
         .title = {0},
         .compound = {0},
     };
+
+    if (lmsopt.tapeUX) {
+        aio.eeMode = EE_TAPE;
+    } else if (lmsopt.sl1200UX) {
+        aio.eeMode = EE_VINYL;
+        aio.mxframe = 17;
+    } 
 
     // if we had a clean setup
     // init visualizer mode and
@@ -833,9 +862,9 @@ int main(int argc, char *argv[]) {
     } else {
         sprintf(stbl, "%s Inactive\n",
                 labelIt("Visualization", LABEL_WIDTH, "."));
-        if (lmsopt.tapeUX) {
-            size_t hubtimer;
-            hubtimer = timer_start(200, hubSpin, TIMER_PERIODIC, (void *)&aio);
+        if ((lmsopt.tapeUX)||(lmsopt.sl1200UX)) {
+            size_t eeFXtimer;
+            eeFXtimer = timer_start(200, eggFX, TIMER_PERIODIC, (void *)&aio);
         }
     }
     putMSG(stbl, LL_INFO);
@@ -876,11 +905,15 @@ int main(int argc, char *argv[]) {
 
                 // Threaded logic in play - DO NOT MODIFY
                 if (!isVisualizeActive()) {
-                    if (!lmsopt.tapeUX) {
+                    if (EE_NONE == aio.eeMode) { //(!lmsopt.tapeUX)&&(!lmsopt.sl1200UX)) {
                         clearScrollable(A1SCROLLER);
                         playingPage();
                     } else {
-                        cassettePage(&aio);
+                        if (lmsopt.tapeUX) {
+                            cassettePage(&aio);
+                        } else {
+                            technicSL1200Page(&aio);
+                        }
                     }
                     strcpy(remTime, "XXXXX");
                 } else {
@@ -901,8 +934,7 @@ int main(int argc, char *argv[]) {
                 strcpy(remTime, "XXXXX");
                 instrument(__LINE__, __FILE__, "display clock test");
                 if (lmsopt.clock) {
-                    if ((lmsopt.tapeUX) && (aio.hubActive))
-                        aio.hubActive = false;
+                    if (aio.eeFXActive) aio.eeFXActive = false;
                     aio.compound[0] = {0};
                     clockPage();
                 } else {
@@ -1011,6 +1043,92 @@ void clockPage(void) {
     refreshDisplay();
 }
 
+void technicSL1200Page(A1Attributes *aio) {
+
+    tagtypes_t a1layout[A1LINE_NUM][3] = {
+        {TITLE, MAXTAG_TYPES, MAXTAG_TYPES},
+        {COMPOSER, ARTIST, MAXTAG_TYPES},
+    };
+
+    char buff[BSIZE] = {0};
+    char artist[255] = {0};
+    char title[255] = {0};
+
+    if (glopt->refreshLMS) {
+        resetDisplay(1);
+        softPlayRefresh(false);
+        technicsSL1200(true);
+    }
+
+    setNagDone(false); // do not set refreshLMS
+    softClockReset(false);
+    softVisualizeRefresh(true);
+
+    // dual purpose - cassette hub or vinyl "wobble"
+    if (!aio->eeFXActive)
+        aio->eeFXActive = true;
+
+    // setup compound scrollers
+    bool filled = false;
+    bool changed = false;
+    for (int line = 0; line < A1LINE_NUM; line++) {
+        filled = false;
+        int myline = line + 5;
+        for (tagtypes_t *t = a1layout[line]; *t != MAXTAG_TYPES; t++) {
+            if (tags[*t].valid) {
+                filled = true;
+                if (tags[*t].changed) {
+                    changed = true;
+                    if (0 == line)
+                        strncpy(aio->title, tags[*t].tagData, 255);
+                    else
+                        strncpy(aio->artist, tags[*t].tagData, 255);
+                }
+            }
+        }
+    }
+
+    if ((changed)&&(1==0)) {
+        sprintf(buff, "%s - %s", aio->artist, aio->title);
+        if ((strcmp(buff, aio->compound) != 0) ||
+            (0 == strlen(aio->compound))) // safe
+        {
+            strncpy(aio->compound, buff, 255);
+            putTinyTextMaxWidthP(20, 12, 92, aio->title); // workable - tweak for proportional
+            putTinyTextMaxWidthP(20, 18, 92, aio->artist);
+            setSleepTime(SLEEP_TIME_SAVER);
+        }
+    }
+
+    audio_t audioDetail = {.samplerate = 44.1,
+                           .samplesize = 16,
+                           .audioIcon = 1}; // 2 HD 3 SD 4 DSD
+
+    sampleDetails(&audioDetail);
+    audioDetail.audioIcon = 1;
+    if (1 == audioDetail.samplesize)
+        audioDetail.audioIcon++;
+    else if (16 != audioDetail.samplesize)
+        audioDetail.audioIcon--;
+
+    // button combos - track fidelity
+    // need blanking rects???
+    technicsSL1200(false);
+    putSL1200Btn(audioDetail);
+
+    uint16_t pTime, dTime;
+    pTime = (tags[TIME].valid) ? strtol(tags[TIME].tagData, NULL, 10) : 0;
+    dTime =
+        (tags[DURATION].valid) ? strtol(tags[DURATION].tagData, NULL, 10) : 0;
+    double pct = (pTime * 100.00) / (dTime == 0 ? 1 : dTime);
+
+    if ((pct > 99.6) && (aio->eeFXActive))
+        aio->eeFXActive = false;
+
+    toneArm(pct, aio->eeFXActive, WHITE);
+
+}
+
 void cassettePage(A1Attributes *aio) {
 
     tagtypes_t a1layout[A1LINE_NUM][3] = {
@@ -1032,8 +1150,9 @@ void cassettePage(A1Attributes *aio) {
     softClockReset(false);
     softVisualizeRefresh(true);
 
-    if (!aio->hubActive)
-        aio->hubActive = true;
+    // dual purpose - cassette hub or vinyl "wobble"
+    if (!aio->eeFXActive)
+        aio->eeFXActive = true;
 
     // setup compound scrollers
     bool filled = false;
@@ -1104,8 +1223,8 @@ void cassettePage(A1Attributes *aio) {
     compactCassette();
     putTapeType(audioDetail);
 
-    if ((pct > 99.6) && (aio->hubActive))
-        aio->hubActive = false;
+    if ((pct > 99.6) && (aio->eeFXActive))
+        aio->eeFXActive = false;
 }
 
 void allInOnePage(A1Attributes *aio) {
