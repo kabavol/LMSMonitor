@@ -53,7 +53,7 @@ for y in range(0, 18):
         f'<use xlink:href="#label" x="0" y="{19*y}" width="19" transform="rotate({a} 9.5 {z})"/>'
         f'<circle fill="url(#checks)" r="9" cx="9.5" cy="{z}"/>'
         f'<circle fill="{c}" r="1.5" cx="9.5" cy="{z}"/>'
-        f'<path fill="none" stroke="{c}" stroke-width="2" d="{describeArc(9.5, z, 4.5, 8, 178)}"/>'
+        f'<path fill="none" stroke-linecap="round" stroke="{c}" stroke-width="2" d="{describeArc(9.5, z, 4.5, 8, 178)}"/>'
     )
 print('</svg>')
 '''
