@@ -462,7 +462,7 @@ void eggFX(size_t timer_id, void *user_data) {
             if (aio->lFrame>1) aio->lFrame = 0;
             aio->rFrame += 1;
             if (aio->rFrame>aio->mxframe) aio->rFrame = 0;
-            vinylEffects(7+aio->lFrame, 23, aio->rFrame, aio->mxframe);
+            vinylEffects(10+aio->lFrame, 23, aio->rFrame, aio->mxframe);
         }
     }
 }
@@ -905,7 +905,7 @@ int main(int argc, char *argv[]) {
 
                 // Threaded logic in play - DO NOT MODIFY
                 if (!isVisualizeActive()) {
-                    if (EE_NONE == aio.eeMode) { //(!lmsopt.tapeUX)&&(!lmsopt.sl1200UX)) {
+                    if (EE_NONE == aio.eeMode) {
                         clearScrollable(A1SCROLLER);
                         playingPage();
                     } else {
@@ -1116,16 +1116,33 @@ void technicSL1200Page(A1Attributes *aio) {
     technicsSL1200(false);
     putSL1200Btn(audioDetail);
 
-    uint16_t pTime, dTime;
-    pTime = (tags[TIME].valid) ? strtol(tags[TIME].tagData, NULL, 10) : 0;
-    dTime =
+    uint16_t pTime = (tags[TIME].valid) ? strtol(tags[TIME].tagData, NULL, 10) : 0;
+    uint16_t dTime =
         (tags[DURATION].valid) ? strtol(tags[DURATION].tagData, NULL, 10) : 0;
     double pct = (pTime * 100.00) / (dTime == 0 ? 1 : dTime);
 
-    if ((pct > 99.6) && (aio->eeFXActive))
-        aio->eeFXActive = false;
+/*
+    DrawTime dt = {.charWidth = 12,
+                   .charHeight = 17,
+                   .bufferLen = LCD12X17_LEN,
+                   .pos = {102, 10},
+                   .font = MON_FONT_LCD1217};
+*/
+    DrawTime rdt = {.pos = {94, 54},
+                    .font = MON_FONT_STANDARD};
 
-    toneArm(pct, aio->eeFXActive, WHITE);
+    // not hourly compliant!
+    uint16_t rTime =
+        (tags[REMAINING].valid) ? strtol(tags[REMAINING].tagData, NULL, 10) : 0;
+    sprintf(buff, "%02d:%02d", rTime / 60, rTime % 60);
+    setLastRemainingTime(buff, rdt);
+
+    if ((pct > 99.6) && (aio->eeFXActive)) {
+        aio->eeFXActive = false;
+         softClockReset(false);
+   }
+
+    toneArm(pct, aio->eeFXActive);
 
 }
 

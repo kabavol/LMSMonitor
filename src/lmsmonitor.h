@@ -43,7 +43,7 @@ typedef struct A1Attributes {
     char artist[255];
     char title[255];
     char compound[255];
-} A1Attributes; // generic font header!
+} A1Attributes;
 
 // should not be called externally... or should it...
 void allInOnePage(A1Attributes *aio);

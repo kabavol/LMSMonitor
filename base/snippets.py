@@ -1,5 +1,33 @@
-print('''<svg width="30" height="54">
+import math
+# same polar arc math as used in RGB info panel, pythonized
 
+
+def polarToCartesian(centerX, centerY, radius, angleInDegrees):
+    theta = (angleInDegrees-90) * math.pi/180.0
+
+    return {
+        'x': centerX + (radius * math.cos(theta)),
+        'y': centerY + (radius * math.sin(theta))
+    }
+
+
+def describeArc(x, y, radius, startAngle, endAngle):
+
+    start = polarToCartesian(x, y, radius, endAngle)
+    end = polarToCartesian(x, y, radius, startAngle)
+
+    largeArcFlag = ("0" if (endAngle - startAngle <= 180) else "1")
+
+    d = [
+        "M", str(start['x']), str(start['y']),
+        "A", str(radius), str(radius), '0', largeArcFlag, '0', str(end['x']), str(end['y'])
+    ]
+    
+    return ' '.join(d)
+
+
+print(f'''<svg width="19" height="{18*19}"
+ xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <defs>
     <mask id="hole">
         <rect width="19" height="19" fill="white"/>
@@ -20,10 +48,12 @@ print('''<svg width="30" height="54">
 for y in range(0, 18):
     a = 20 * y
     z = (19*(1+y))-9.5
+    c = 'black'
     print(
         f'<use xlink:href="#label" x="0" y="{19*y}" width="19" transform="rotate({a} 9.5 {z})"/>'
         f'<circle fill="url(#checks)" r="9" cx="9.5" cy="{z}"/>'
-        f'<circle fill="black" r="1.5" cx="9.5" cy="{z}"/>'
+        f'<circle fill="{c}" r="1.5" cx="9.5" cy="{z}"/>'
+        f'<path fill="none" stroke="{c}" stroke-width="2" d="{describeArc(9.5, z, 4.5, 8, 178)}"/>'
     )
 print('</svg>')
 '''
@@ -35,18 +65,29 @@ print('</svg>')
   25
 24
 '''
-print(f'''<svg width="38" height="{12*54}">
+print(f'''<svg width="40" height="{12*54}"
+ xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+
 <defs>
 <symbol width="7" height="11" id="arm">
-  <path d="m-0.01536,0.99142c0,1.80757 0,3.61514 0,5.42271c1.15841,0 2.31677,0 3.47514,0c0.02398,3.54836 -0.04769,7.10995 0.03526,10.65018c1.86609,4.99991 3.73218,9.99977 5.59827,14.99968c-0.52874,1.35107 -1.05744,2.70214 -1.58618,4.05321c-0.94186,-0.41316 -1.31502,-0.01536 -1.4476,0.72558c-1.58698,3.85056 -3.174,7.26362 -4.76098,11.11413c0.84342,0.10745 1.34548,0.80133 2.11985,0.94861c0.7444,0.22046 1.31333,0.20092 1.98726,0.30828c0.80883,0.24146 0.62456,-0.93316 0.98999,-1.32398c0.48532,-1.17759 0.97063,-2.35518 1.45599,-3.53273c1.33224,0.30074 2.66449,0.60147 3.99673,0.90221c0.0234,-0.49464 0.97094,-1.39259 -0.14471,-1.39019c-1.11339,-0.25132 -2.22677,-0.50263 -3.34016,-0.75395c4.03362,-8.52149 0.94485,-5.87004 1.63675,-7.31273c0.53638,-1.37061 1.07276,-2.74126 1.60918,-4.11187c-0.30389,-0.30846 -0.39749,-1.07058 -0.64423,-1.54808c-1.65509,-4.50038 -3.40441,-8.99007 -5.00071,-13.49707c0,-3.4104 0,-6.82084 0,-10.23124c1.19908,0 2.39812,0 3.5972,0c0,-1.80757 0,-3.61514 0,-5.42271c-3.19238,0 -6.38477,0 -9.57715,0l0,-0.00004l0.00004,0l0.00004,0l0,0l0.00001,0l0,0l0.00001,0z"/>
+  <path d="m-0.03125,1.11719l7.71875,0.00781l-0.125,5.25l-2.8125,-0.0625l-0.125,10.125l5.75,15.1875l-2.0625,4.875l1,0.6875l-2.25,5.875l4,1.5l-0.5625,0.875l-3.75,-1.1875l-2,4.9375l-4.4375,-1.5625l5,-11.6875l0.9375,0.125l1.8125,-3.875l-5.5625,-14.9375l0,-10.6875l-2.5,-0.375l-0.03125,-5.07031z"/>
+  <rect height="1" width="8" y="3" x="0" fill="black"/>
+  <circle fill="black" cy="46.24964" cx="2.31258" r="0.8"/>
+  <circle fill="black" cy="44.37470" cx="3.25005" r="0.8"/>
+  <circle fill="black" cy="42.62475" cx="4.06253" r="0.8"/>
+  <circle fill="black" cy="40.74981" cx="4.75001" r="0.8"/>
+  <circle fill="black" cy="47.24964" cx="4.12508" r="0.8"/>
+  <circle fill="black" cy="45.24970" cx="4.87505" r="0.8"/>
+  <circle fill="black" cy="43.31225" cx="5.68753" r="0.8"/>
+  <circle fill="black" cy="41.37481" cx="6.31251" r="0.8"/>
 </symbol>
 </defs>
 <rect width="110%" height="110%" x="-1" y="-1" fill="black"/>
 ''')
 z = 0
 yy = 0
-x = 21
-for y in range(0, 11):
+x = 23
+for y in range(0, 12):
     if y > 0:
         z = (2*y) + 23
     print(f'<use xlink:href="#arm" x="{x}" y="{3+(54*yy)}" ',

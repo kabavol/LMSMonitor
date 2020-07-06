@@ -374,14 +374,15 @@ void putSL1200Btn(audio_t audio) {
     display.fillRect(x+2, y+1, w-4, h-4, BLACK);
 }
 
-void toneArm(double pct, bool init, uint16_t color) {
+void toneArm(double pct, bool init) {
     int w = 270;
     int h = 4;
     int start = 0;
     uint8_t dest[w];
     if (init) start = w*(1+(int)(pct/10));
     memcpy(dest, tonearm + start, sizeof dest);
-    display.drawBitmap(40, 3, dest, 38, 54, color);
+    display.drawBitmap(39, 4, dest, 40, 54, BLACK); // shadow line
+    display.drawBitmap(38, 3, dest, 40, 54, WHITE);
 }
 
 void putIFDetail(int icon, int xpos, int ypos, char *host) {
@@ -401,18 +402,34 @@ void compactCassette(void) {
 }
 
 void technicsSL1200(bool blank) {
-    if (blank) display.fillRect(0, 0, 128, 64, BLACK);
-    display.fillRect(40, 41, 32, 20, BLACK);
-    display.fillRect(47, 27, 30, 24, BLACK);
-    display.fillRect(60, 4, 17, 24, BLACK);
+
+    if (blank) {
+        display.fillRect(0, 0, 128, 64, BLACK);
+    } else {
+        int x = 38;
+        uint16_t c = BLACK;
+        display.fillRect(x, 40, 32, 20, c);
+        display.drawLine(x, 42, 50, 42, c);
+        display.drawLine(x, 41, 50, 41, c);
+        display.drawLine(x+1, 40, 50, 40, c);
+        display.drawLine(x+2, 39, 50, 39, c);
+        display.drawLine(x+3, 38, 50, 38, c);
+        display.drawLine(x+4, 37, 50, 37, c);
+        display.drawLine(x+5, 36, 50, 36, c);
+        display.fillRect(47, 27, 30, 24, c);
+        display.fillRect(60, 4, 17, 24, c);
+    }
     display.drawBitmap(0, 0, sl1200t, 83, 64, WHITE);
+
 }
 
 void vinylEffects(int xpos, int lpos, int frame, int maxf) {
 
-    int z = 49;
-    display.drawBitmap(xpos-1, xpos-1, vinfx, z, z, BLACK);
-    display.drawBitmap(xpos, xpos, vinfx, z, z, WHITE);
+    int z = 50;
+    int erase = xpos-2;
+    int place = xpos-1;
+    display.drawBitmap(erase, erase, vinfx, z, z, BLACK);
+    display.drawBitmap(place, place, vinfx, z, z, WHITE);
 
     z = 57;
     int h = 19;
@@ -1055,22 +1072,26 @@ void drawTimeText(char *buff, char *last, DrawTime *dt) {
 
 void drawRemTimeText(char *buff, char *last, DrawTime *dt) {
     int x = dt->pos.x;
-    size_t ll = strlen(last);
-    for (size_t i = 0; i < strlen(buff); i++) {
-        // selective updates, less "blink"
-        if ((i > ll) || (buff[i] != last[i])) {
-            if ((i > ll) || ('X' == last[i])) {
-                display.fillRect(x, dt->pos.y - 1, dt->charWidth,
-                                 dt->charHeight + 2, BLACK);
-            } else {
-                bigChar(last[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
-                        dt->charHeight, getOledFont(dt->font),
-                        BLACK); // soft erase
+    if (MON_FONT_STANDARD!=dt->font) {
+        size_t ll = strlen(last);
+        for (size_t i = 0; i < strlen(buff); i++) {
+            // selective updates, less "blink"
+            if ((i > ll) || (buff[i] != last[i])) {
+                if ((i > ll) || ('X' == last[i])) {
+                    display.fillRect(x, dt->pos.y - 1, dt->charWidth,
+                                    dt->charHeight + 2, BLACK);
+                } else {
+                    bigChar(last[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
+                            dt->charHeight, getOledFont(dt->font),
+                            BLACK); // soft erase
+                }
+                bigChar(buff[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
+                        dt->charHeight, getOledFont(dt->font), WHITE);
             }
-            bigChar(buff[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
-                    dt->charHeight, getOledFont(dt->font), WHITE);
+            x += dt->charWidth;
         }
-        x += dt->charWidth;
+    } else {
+        putText(dt->pos.x, dt->pos.y, buff); 
     }
 }
 

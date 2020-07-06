@@ -162,7 +162,7 @@ typedef struct DrawVisualize {
 void compactCassette(void);
 void cassetteHub(int xpos, int frame, int mxframe, int direction);
 
-void toneArm(double pct, bool init, uint16_t color);
+void toneArm(double pct, bool init);
 void technicsSL1200(bool blank);
 void vinylEffects(int xpos, int lpos, int frame, int maxf);
 
