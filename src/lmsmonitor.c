@@ -441,7 +441,7 @@ void eggFX(size_t timer_id, void *user_data) {
     aio = ((struct A1Attributes *)user_data);
     if (aio->eeFXActive) {
 
-        // "animate" cassette hub or wobble vinyl effects
+        // "animate" cassette hub or label and wobble vinyl effects
 
         if (EE_TAPE == aio->eeMode) {
             aio->lFrame += aio->flows; // clockwise (-1) or anticlockwise (1)
@@ -459,10 +459,12 @@ void eggFX(size_t timer_id, void *user_data) {
         } else {
             // just "wobble" the vinyl and rotate label
             aio->lFrame += 1;
-            if (aio->lFrame>1) aio->lFrame = 0;
+            if (aio->lFrame > 1)
+                aio->lFrame = 0;
             aio->rFrame += 1;
-            if (aio->rFrame>aio->mxframe) aio->rFrame = 0;
-            vinylEffects(10+aio->lFrame, 23, aio->rFrame, aio->mxframe);
+            if (aio->rFrame > aio->mxframe)
+                aio->rFrame = 0;
+            vinylEffects(10 + aio->lFrame, 23, aio->rFrame, aio->mxframe);
         }
     }
 }
@@ -565,11 +567,11 @@ int main(int argc, char *argv[]) {
         .refreshViz = false,
         .lastVolume = -1,
         .flipDisplay = false,
-        .i2cBus = 1,               // number of I2C bus
+        .i2cBus = 1, // number of I2C bus
         // CLOCK & DATA ???
         .oledRST = OLED_SPI_RESET, // SPI/IIC reset GPIO
         .spiDC = OLED_SPI_DC,      // SPI DC
-        .spiCS = OLED_SPI_CS0,  // SPI CS - 0: CS0, 1: CS1
+        .spiCS = OLED_SPI_CS0,     // SPI CS - 0: CS0, 1: CS1
         .lastModes = {0, 0},
     };
 
@@ -602,8 +604,8 @@ int main(int argc, char *argv[]) {
 
     opterr = 0;
     int a1test = 0;
-    while ((aName = getopt(argc, argv, "n:o:m:x:B:C:D:R:S:f:abcdFhikprtuvwz")) !=
-           -1) {
+    while ((aName = getopt(argc, argv,
+                           "n:o:m:x:lx:B:C:D:R:S:f:abcdFhikprtuvwz")) != -1) {
         switch (aName) {
             case 'n': playerName = optarg; break;
 
@@ -666,15 +668,19 @@ int main(int argc, char *argv[]) {
 
             case 'r': lmsopt.remaining = true; break;
 
-            case 'u': 
-                lmsopt.tapeUX = true;   // mutex e.e.
-                lmsopt.sl1200UX = false; 
+            case 'u':
+                lmsopt.tapeUX = true; // mutex e.e.
+                lmsopt.sl1200UX = false;
+                lmsopt.visualize = false;
                 break;
-            case 'w': 
-                lmsopt.sl1200UX = true;  // mutex e.e.
-                lmsopt.tapeUX = false; 
+            case 'w':
+                lmsopt.sl1200UX = true; // mutex e.e.
+                lmsopt.tapeUX = false;
+                lmsopt.visualize = false;
+                lmsopt.downmix = true;
                 break;
 
+            case 'lx':
             case 'x':
                 lmsopt.oledAddrL = (int)strtol(optarg, NULL, 16);
                 //lmsopt.oledAddrR = (int)strtol(hexstr1, NULL, 16);
@@ -817,10 +823,12 @@ int main(int argc, char *argv[]) {
 
     if (lmsopt.tapeUX) {
         aio.eeMode = EE_TAPE;
+        lmsopt.visualize = false;
     } else if (lmsopt.sl1200UX) {
         aio.eeMode = EE_VINYL;
         aio.mxframe = 17;
-    } 
+        lmsopt.visualize = false;
+    }
 
     // if we had a clean setup
     // init visualizer mode and
@@ -862,9 +870,11 @@ int main(int argc, char *argv[]) {
     } else {
         sprintf(stbl, "%s Inactive\n",
                 labelIt("Visualization", LABEL_WIDTH, "."));
-        if ((lmsopt.tapeUX)||(lmsopt.sl1200UX)) {
-            size_t eeFXtimer;
-            eeFXtimer = timer_start(200, eggFX, TIMER_PERIODIC, (void *)&aio);
+        if (EE_NONE != aio.eeMode) {
+            instrument(__LINE__, __FILE__,
+                       "activate egg-timer (yokey visualizations)");
+            size_t eegTimer;
+            eegTimer = timer_start(200, eggFX, TIMER_PERIODIC, (void *)&aio);
         }
     }
     putMSG(stbl, LL_INFO);
@@ -934,7 +944,8 @@ int main(int argc, char *argv[]) {
                 strcpy(remTime, "XXXXX");
                 instrument(__LINE__, __FILE__, "display clock test");
                 if (lmsopt.clock) {
-                    if (aio.eeFXActive) aio.eeFXActive = false;
+                    if (aio.eeFXActive)
+                        aio.eeFXActive = false;
                     aio.compound[0] = {0};
                     clockPage();
                 } else {
@@ -1064,11 +1075,25 @@ void technicSL1200Page(A1Attributes *aio) {
     softClockReset(false);
     softVisualizeRefresh(true);
 
-    // dual purpose - cassette hub or vinyl "wobble"
+    // dual purpose - cassette hub or vinyl "wobble" effects
     if (!aio->eeFXActive)
         aio->eeFXActive = true;
 
-    // setup compound scrollers
+    audio_t audioDetail = {.samplerate = 44.1,
+                           .samplesize = 16,
+                           .audioIcon = 1}; // 2 HD 3 SD 4 DSD
+
+    sampleDetails(&audioDetail);
+    audioDetail.audioIcon = 1;
+    if (1 == audioDetail.samplesize)
+        audioDetail.audioIcon++;
+    else if (16 != audioDetail.samplesize)
+        audioDetail.audioIcon--;
+
+    technicsSL1200(false);
+    putSL1200Btn(audioDetail);
+
+   // setup compound scrollers
     bool filled = false;
     bool changed = false;
     for (int line = 0; line < A1LINE_NUM; line++) {
@@ -1088,48 +1113,24 @@ void technicSL1200Page(A1Attributes *aio) {
         }
     }
 
-    if ((changed)&&(1==0)) {
-        sprintf(buff, "%s - %s", aio->artist, aio->title);
+    if (changed) {
+        sprintf(buff, "%s|%s", aio->artist, aio->title);
         if ((strcmp(buff, aio->compound) != 0) ||
             (0 == strlen(aio->compound))) // safe
         {
             strncpy(aio->compound, buff, 255);
-            putTinyTextMaxWidthP(20, 12, 92, aio->title); // workable - tweak for proportional
-            putTinyTextMaxWidthP(20, 18, 92, aio->artist);
-            setSleepTime(SLEEP_TIME_SAVER);
+            putTinyTextMultiMaxWidth(84, 7, 14, 7, aio->compound);
+            ///setSleepTime(SLEEP_TIME_SAVER);
         }
     }
 
-    audio_t audioDetail = {.samplerate = 44.1,
-                           .samplesize = 16,
-                           .audioIcon = 1}; // 2 HD 3 SD 4 DSD
-
-    sampleDetails(&audioDetail);
-    audioDetail.audioIcon = 1;
-    if (1 == audioDetail.samplesize)
-        audioDetail.audioIcon++;
-    else if (16 != audioDetail.samplesize)
-        audioDetail.audioIcon--;
-
-    // button combos - track fidelity
-    // need blanking rects???
-    technicsSL1200(false);
-    putSL1200Btn(audioDetail);
-
-    uint16_t pTime = (tags[TIME].valid) ? strtol(tags[TIME].tagData, NULL, 10) : 0;
+    uint16_t pTime =
+        (tags[TIME].valid) ? strtol(tags[TIME].tagData, NULL, 10) : 0;
     uint16_t dTime =
         (tags[DURATION].valid) ? strtol(tags[DURATION].tagData, NULL, 10) : 0;
     double pct = (pTime * 100.00) / (dTime == 0 ? 1 : dTime);
 
-/*
-    DrawTime dt = {.charWidth = 12,
-                   .charHeight = 17,
-                   .bufferLen = LCD12X17_LEN,
-                   .pos = {102, 10},
-                   .font = MON_FONT_LCD1217};
-*/
-    DrawTime rdt = {.pos = {94, 54},
-                    .font = MON_FONT_STANDARD};
+    DrawTime rdt = {.pos = {94, 55}, .font = MON_FONT_STANDARD};
 
     // not hourly compliant!
     uint16_t rTime =
@@ -1139,11 +1140,10 @@ void technicSL1200Page(A1Attributes *aio) {
 
     if ((pct > 99.6) && (aio->eeFXActive)) {
         aio->eeFXActive = false;
-         softClockReset(false);
-   }
+        softClockReset(false);
+    }
 
     toneArm(pct, aio->eeFXActive);
-
 }
 
 void cassettePage(A1Attributes *aio) {
@@ -1197,9 +1197,10 @@ void cassettePage(A1Attributes *aio) {
             (0 == strlen(aio->compound))) // safe
         {
             strncpy(aio->compound, buff, 255);
-            putTinyTextMaxWidthP(20, 12, 92, aio->title); // workable - tweak for proportional
+            putTinyTextMaxWidthP(
+                20, 12, 92, aio->title); // workable - tweak for proportional
             putTinyTextMaxWidthP(20, 18, 92, aio->artist);
-            setSleepTime(SLEEP_TIME_SAVER);
+            ///setSleepTime(SLEEP_TIME_SAVER);
         }
     }
 
