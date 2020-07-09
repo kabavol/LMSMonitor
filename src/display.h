@@ -91,8 +91,7 @@ typedef struct MonitorAttrs {
     int vizHeight;
     int vizWidth;
     bool allInOne;
-    bool tapeUX;   // cassette easter egg
-    bool sl1200UX; // Technics SL-1200 easter egg
+    int eeMode;
     int sleepTime;
     bool astral;
     bool showTemp;
@@ -160,11 +159,14 @@ typedef struct DrawVisualize {
 } DrawVisualize;
 
 void compactCassette(void);
-void cassetteHub(int xpos, int frame, int mxframe, int direction);
+void cassetteEffects(int xpos, int frame, int mxframe, int direction);
 
 void toneArm(double pct, bool init);
 void technicsSL1200(bool blank);
-void vinylEffects(int xpos, int lpos, int frame, int maxf);
+void vinylEffects(int xpos, int lpos, int frame, int mxframe);
+
+void reelToReel(bool blank);
+void reelEffects(int xpos, int ypos, int frame, int mxframe, int direction);
 
 void printFontMetrics(void);
 
@@ -175,7 +177,7 @@ void setInitRefresh(void);
 void printOledSetup(void);
 void printOledTypes(void);
 bool setOledType(int ot);
-bool setOledAddress(int8_t oa);
+bool setOledAddress(int8_t oa,int LR=0);
 
 void setScrollMode(int sm);
 void printScrollerMode(void);
@@ -219,6 +221,7 @@ void putVolume(bool v, char *buff);
 void putAudio(audio_t audio, char *buff, bool full = true);
 void putTapeType(audio_t audio);
 void putSL1200Btn(audio_t audio);
+void putReelToReel(audio_t audio);
 
 void putIFDetail(int icon, int xpos, int ypos, char *host);
 

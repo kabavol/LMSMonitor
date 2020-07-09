@@ -56,15 +56,7 @@ for y in range(0, 18):
         f'<path fill="none" stroke-linecap="round" stroke="{c}" stroke-width="2" d="{describeArc(9.5, z, 4.5, 8, 178)}"/>'
     )
 print('</svg>')
-'''
-+23
-  32
-14
 
-+43deg max
-  25
-24
-'''
 print(f'''<svg width="40" height="{12*54}"
  xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 
@@ -93,4 +85,40 @@ for y in range(0, 12):
     print(f'<use xlink:href="#arm" x="{x}" y="{3+(54*yy)}" ',
         f'transform="rotate({z} {x+4} {14+(54*yy)})" fill="white"/>')
     yy += 1
+print('</svg>')
+
+cnt = 18
+siz = 30
+print(f'''<svg width="{siz}" height="{siz*cnt}"
+ xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<def>
+    <symbol width="{(siz/2)-1}" height="{(siz/2)-1}" id="ko">
+        <circle fill="black" r="{((siz/2)-5)/2}"/>
+    </symbol>
+
+    <symbol width="{siz}" height="{siz}" id="reel">
+  <circle fill="white" cy="{siz/2}" cx="{siz/2}" r="{(siz/2)-1}"/>''')
+
+for y in range(0, 5):
+    a = 72 * y
+    print(f'<use xlink:href="#ko" x="7.5" y="8.5" transform="rotate({a} {siz/2} {siz/2})"/>')
+
+print(f'<circle fill="black" r="4.5" cx="{siz/2}" cy="{siz/2}"/>')
+
+for y in range(0, 6):
+    a = 60 * y
+    print(f'<circle fill="white" r="1" cx="{(siz/2)-3}" cy="{siz/2}" transform="rotate({a} {siz/2} {siz/2})"/>')
+
+print(f'''
+<line fill="none" stroke-linecap="round" stroke="black" stroke-width="2" x1="0" y1="{siz/2}" x2="6" y2="{siz/2}"/>
+    </symbol>
+</def>
+  <rect width="110%" height="110%" x="-1" y="-1" fill="black"/>
+''')
+
+for y in range(0, cnt):
+    a = 20 * y
+    z = (siz*(1+y))-(siz/2)
+    print(f'<use xlink:href="#reel" x="0" y="{siz*y}" width="{siz}" transform="rotate({a} {siz/2} {z})"/>')
+
 print('</svg>')

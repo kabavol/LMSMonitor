@@ -157,12 +157,14 @@ void printScrollerMode(void) {
 
 void printOledTypes(void) {
     printf("Supported OLED types:\n");
-    for (int i = 0; i < OLED_LAST_OLED; i++)
-        if (strstr(oled_type_str[i], "128x64"))
+    for (int i = 0; i < OLED_LAST_OLED; i++) {
+        if (strstr(oled_type_str[i], "128x64")) {
             if (oledType == i)
                 fprintf(stdout, "    %1d* ..: %s\n", i, oled_type_str[i]);
             else
                 fprintf(stdout, "    %1d ...: %s\n", i, oled_type_str[i]);
+        }
+    }
     printf("\n* is default\n");
 }
 
@@ -173,7 +175,7 @@ bool setOledType(int ot) {
     return true;
 }
 
-bool setOledAddress(int8_t oa) {
+bool setOledAddress(int8_t oa,int LR) {
     if (oa <= 0)
         return false;
     oledAddress = oa;
@@ -418,7 +420,37 @@ void technicsSL1200(bool blank) {
     display.drawBitmap(0, 0, sl1200t, 83, 64, WHITE);
 }
 
-void vinylEffects(int xpos, int lpos, int frame, int maxf) {
+void putReelToReel(audio_t audio) {
+    // manipulate "switches" visualize fidelity
+}
+
+
+void reelToReel(bool blank) {
+
+    if (blank) {
+        display.fillRect(0, 0, 128, 64, BLACK);
+    }
+    display.drawBitmap(4, 17, reel2reel, 62, 54, WHITE);
+}
+
+void reelEffects(int xpos, int ypos, int frame, int mxframe, int direction) {
+    int w = 120;
+    int sz = 30;
+    int prev = frame + direction;
+    if (prev < 0)
+        prev = mxframe;
+    if (prev > mxframe)
+        prev = 0;
+    uint8_t dest[w];
+    int start = prev * w;
+    memcpy(dest, smr2rc + start, sizeof dest);
+    display.drawBitmap(xpos, ypos, dest, sz, sz, BLACK);
+    start = frame * w;
+    memcpy(dest, smr2rc + start, sizeof dest);
+    display.drawBitmap(xpos, ypos, dest, sz, sz, WHITE);
+}
+
+void vinylEffects(int xpos, int lpos, int frame, int mxframe) {
 
     int z = 50;
     int erase = xpos - 2;
@@ -432,7 +464,7 @@ void vinylEffects(int xpos, int lpos, int frame, int maxf) {
     uint8_t dest[z];
     int blank = frame - 1;
     if (blank < 0)
-        blank = maxf;
+        blank = mxframe;
     // last frame
     start = blank * z;
     memcpy(dest, vinlbl + start, sizeof dest);
@@ -457,7 +489,7 @@ void drawHorizontalCheckerBar(int x, int y, int w, int h, int percent) {
     }
 }
 
-void cassetteHub(int xpos, int frame, int mxframe, int direction) {
+void cassetteEffects(int xpos, int frame, int mxframe, int direction) {
     int w = 20;
     int prev = frame + direction;
     if (prev < 0)

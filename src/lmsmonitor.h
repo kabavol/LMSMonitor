@@ -25,9 +25,12 @@
 
 #include <stdint.h>
 
+// egg modes (animated playback emulations)
 #define EE_NONE 0
-#define EE_TAPE 1
+#define EE_CASSETTE 1
 #define EE_VINYL 2
+#define EE_REEL2REEL 3
+#define EE_MAX 4
 
 bool isPlaying(void);
 bool lockOptions(void);
