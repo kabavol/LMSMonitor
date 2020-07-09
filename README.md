@@ -26,6 +26,7 @@ options:
  -R I2C/SPI reset GPIO number, if needed (defaults 25)
  -D SPI DC GPIO number (defaults 24)
  -C SPI CS number (defaults 0)
+ -e Easter Eggs (see repo for details)
  -z no splash screen
 
 Supported OLED types:
@@ -89,7 +90,7 @@ Several visualizer modes are supported
 - Large Downmix (visual data only) Spectrum
 - All-In-One - track details and spectrum/VU "swoosh"
 - All-In-One - fixed mode (use -aa)
-- Easter Egg - fixed mode (use -aaa)
+- Easter Eggs - fixed mode (use -e [1-3])
 
 ### Installation
 
@@ -161,6 +162,16 @@ Additional supported commands may also be specified, here we request a specific 
 ```
 
 the visualization parameter must always be specified first
+
+## Easter Eggs
+
+There are several "easter egg" modes provided for those setups that cannot process the audio data for visualization
+
+There are currently 3 easter egg modes
+
+- 1 Compact Cassette, as visually correct as possible given the OLED limitations
+- 2 Technics SL-1200, as visually correct as possible given the OLED limitations
+- 3 Open Reel To Reel, pure fantasy
 
 ### Audiophonics RASPI MINI
 

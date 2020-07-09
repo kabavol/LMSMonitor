@@ -242,6 +242,7 @@ void print_help(char *executable) {
         " -R I2C/SPI reset GPIO number, if needed (defaults 25)\n"
         " -D SPI DC GPIO number (defaults 24)\n"
         " -C SPI CS number (defaults 0)\n"
+        " -e Easter Eggs (see repo for details)\n"
         " -z no splash screen\n\n",
         APPNAME, VERSION);
 #ifdef __arm__
