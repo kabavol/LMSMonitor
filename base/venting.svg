@@ -1,0 +1,52 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" 
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="90mm" height="150mm" version="1.1"
+     viewBox="0 0 90 150" xmlns="http://www.w3.org/2000/svg">
+<g><rect fill="white" width="90" height="150" x="0" y="0"/>
+<g id="fanKnockout">
+   <circle fill="black" cx="33.0" cy="70" r="1.75"/>
+   <circle fill="black" cx="57.0" cy="70" r="1.75"/>
+   <circle fill="black" cx="33.0" cy="94" r="1.75"/>
+   <circle fill="black" cx="57.0" cy="94" r="1.75"/>
+
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 48.111103635738246 69.37775637346132 A 13 13 0 0 0 41.88889636426175 69.37775637346132"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 46.4854284527461 73.12342958616492 A 9 9 0 0 0 43.5145715472539 73.12342958616492"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 45.1744974835125 77.00304586490452 A 5 5 0 0 0 44.8255025164875 77.00304586490452"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 56.12515653991882 75.27460841569047 A 13 13 0 0 0 51.725391584309534 70.87484346008118"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 52.327039665206875 76.77367339860155 A 9 9 0 0 0 50.22632660139846 74.67296033479313"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 48.65676850809585 78.5900081996875 A 5 5 0 0 0 48.40999180031249 78.34323149190415"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 57.622243626538676 85.11110363573825 A 13 13 0 0 0 57.622243626538676 78.88889636426175"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 53.87657041383508 83.48542845274609 A 9 9 0 0 0 53.87657041383508 80.51457154725391"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 49.99695413509548 82.17449748351251 A 5 5 0 0 0 49.99695413509548 81.82550251648749"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 51.725391584309534 93.12515653991882 A 13 13 0 0 0 56.12515653991882 88.72539158430953"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 50.22632660139846 89.32703966520687 A 9 9 0 0 0 52.327039665206875 87.22632660139845"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 48.40999180031249 85.65676850809585 A 5 5 0 0 0 48.65676850809585 85.4099918003125"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 41.88889636426175 94.62224362653868 A 13 13 0 0 0 48.11110363573826 94.62224362653868"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 43.5145715472539 90.87657041383508 A 9 9 0 0 0 46.4854284527461 90.87657041383508"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 44.8255025164875 86.99695413509548 A 5 5 0 0 0 45.1744974835125 86.99695413509548"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 33.87484346008118 88.72539158430953 A 13 13 0 0 0 38.274608415690466 93.12515653991882"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 37.67296033479313 87.22632660139845 A 9 9 0 0 0 39.773673398601545 89.32703966520687"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 41.34323149190415 85.4099918003125 A 5 5 0 0 0 41.59000819968751 85.65676850809585"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 32.377756373461324 78.88889636426175 A 13 13 0 0 0 32.377756373461324 85.11110363573825"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 36.12342958616492 80.51457154725391 A 9 9 0 0 0 36.12342958616492 83.4854284527461"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 40.00304586490452 81.82550251648749 A 5 5 0 0 0 40.00304586490452 82.17449748351251"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 38.27460841569046 70.87484346008118 A 13 13 0 0 0 33.87484346008118 75.27460841569047"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 39.77367339860154 74.67296033479313 A 9 9 0 0 0 37.672960334793125 76.77367339860155"/>
+    <path fill="none" stroke-linecap="round" stroke="black" stroke-width="3" d="M 41.5900081996875 78.34323149190415 A 5 5 0 0 0 41.34323149190415 78.5900081996875"/>
+
+
+</g>
+
+<g id="venting">
+<rect x="11.0"  y="15" width="30" height="6.0" rx="2.5" ry="2.5"/><rect x="49.0"  y="15" width="30" height="6.0" rx="2.5" ry="2.5"/>
+<rect x="11.0"  y="104" width="30" height="5.0" rx="2.5" ry="2.5"/><rect x="49.0"  y="104" width="30" height="5.0" rx="2.5" ry="2.5"/>
+<rect x="11.0"  y="25" width="30" height="5.0" rx="2.5" ry="2.5"/><rect x="49.0"  y="25" width="30" height="5.0" rx="2.5" ry="2.5"/>
+<rect x="11.0"  y="114" width="30" height="6.0" rx="2.5" ry="2.5"/><rect x="49.0"  y="114" width="30" height="6.0" rx="2.5" ry="2.5"/>
+<rect x="11.0"  y="35" width="30" height="6.0" rx="2.5" ry="2.5"/><rect x="49.0"  y="35" width="30" height="6.0" rx="2.5" ry="2.5"/>
+<rect x="11.0"  y="124" width="30" height="5.0" rx="2.5" ry="2.5"/><rect x="49.0"  y="124" width="30" height="5.0" rx="2.5" ry="2.5"/>
+<rect x="11.0"  y="45" width="30" height="5.0" rx="2.5" ry="2.5"/><rect x="49.0"  y="45" width="30" height="5.0" rx="2.5" ry="2.5"/>
+<rect x="11.0"  y="134" width="30" height="6.0" rx="2.5" ry="2.5"/><rect x="49.0"  y="134" width="30" height="6.0" rx="2.5" ry="2.5"/>
+<rect x="11.0"  y="55" width="30" height="6.0" rx="2.5" ry="2.5"/><rect x="49.0"  y="55" width="30" height="6.0" rx="2.5" ry="2.5"/>
+</g></g>
+</svg>

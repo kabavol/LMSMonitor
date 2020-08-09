@@ -1,0 +1,26 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" 
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="150mm" height="90mm" version="1.1"
+     viewBox="0 0 150 90" xmlns="http://www.w3.org/2000/svg">
+<g><rect fill="white" width="150" height="90" x="0" y="0"/>
+<defs>
+<symbol id="vent">
+<line x1="2" y1="2" x2="2" y2="17" fill="none" stroke-linecap="round" stroke="black" stroke-width="3"/>
+<line y1="27" x1="2" y2="42" x2="2" fill="none" stroke-linecap="round" stroke="black" stroke-width="3"/>
+<line y1="52" x1="2" y2="67" x2="2" fill="none" stroke-linecap="round" stroke="black" stroke-width="3"/>
+</symbol>
+</defs>
+
+<g id="venting">
+<use xlink:href="#vent" y="10.5" x="15"/>
+<use xlink:href="#vent" y="10.5" x="104"/>
+<use xlink:href="#vent" y="10.5" x="25"/>
+<use xlink:href="#vent" y="10.5" x="114"/>
+<use xlink:href="#vent" y="10.5" x="35"/>
+<use xlink:href="#vent" y="10.5" x="124"/>
+<use xlink:href="#vent" y="10.5" x="45"/>
+<use xlink:href="#vent" y="10.5" x="134"/>
+<use xlink:href="#vent" y="10.5" x="55"/>
+</g></g>
+</svg>
