@@ -435,7 +435,10 @@ void putRadio(audio_t audio) {
 }
 
 void radio50(bool blank) {
-    //
+    if (blank) {
+        display.fillRect(0, 0, 128, 64, BLACK);
+    }
+    display.drawBitmap(3, 8, radio50s, 67, 50, WHITE);
 }
 
 void radioEffects(int xpos, int ypos, int frame, int mxframe){

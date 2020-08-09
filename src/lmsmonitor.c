@@ -1003,7 +1003,7 @@ void radio50Page(A1Attributes *aio) {
             (0 == strlen(aio->compound))) // safe
         {
             strncpy(aio->compound, buff, 255);
-            putTinyTextMultiMaxWidth(10, 7, 32, 3, aio->compound);
+            putTinyTextMultiMaxWidth(71, 7, 20, 7, aio->compound);
             setSleepTime(SLEEP_TIME_SAVER);
         }
     }
@@ -1014,7 +1014,7 @@ void radio50Page(A1Attributes *aio) {
         (tags[DURATION].valid) ? strtol(tags[DURATION].tagData, NULL, 10) : 0;
     double pct = (pTime * 100.00) / (dTime == 0 ? 1 : dTime);
 
-    DrawTime rdt = {.pos = {90, 17}, .font = MON_FONT_STANDARD};
+    DrawTime rdt = {.pos = {90, 57}, .font = MON_FONT_STANDARD};
 
     // not hourly compliant!
     uint16_t rTime =

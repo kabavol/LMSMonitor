@@ -1,5 +1,5 @@
 /*
- *	oledimg.h
+ *	oledimg.c
  *
  *	(c) 2020 Stuart Hunter
  *
@@ -71,10 +71,10 @@ void downsampleFont(const uint8_t *font, size_t s, int16_t w, int16_t h) {
     double xscale = (dw + 0.0) / w;
     double yscale = (dh + 0.0) / h;
     double threshold = 0.5 / (xscale * yscale);
-    /////uint8_t retf1[byteWidth*dh];
+    double yend = 0.0;
+
     clockF = (uint8_t *)malloc(byteWidth * dh * sizeof(uint8_t));
     uint16_t retf1c = 0;
-    double yend = 0.0;
 
     for (int f = 0; f < dh; f++) { // y on output
 
@@ -141,15 +141,12 @@ void downsampleFont(const uint8_t *font, size_t s, int16_t w, int16_t h) {
         }
     }
 
-    //for(int i=0; i<retf1c; i++){
-    //    printf("0x%.02x,%c",retf1[i],((i>0 && (0==(i%8)))?10:32));
-    //}
 }
 
 const uint8_t *getOledFont(int font, bool h12) {
-    size_t n = 0;
-    uint16_t l = 13 * 44;
     if (h12) {
+        size_t n = 0;
+        uint16_t l = 13 * 44;
         if(NULL==clockF) {
         switch (font) {
             case MON_FONT_CLASSIC:
