@@ -20,7 +20,7 @@
  */
 
 #ifndef DISPLAY_H
-#define DISPLAY_H 1
+#define DISPLAY_H
 
 #ifndef PROGMEM
 #define PROGMEM
@@ -32,7 +32,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <unistd.h>
-//#include "../font/NotoSansRegular5lms.h"
+#include "lmsopts.h"
 
 #include "visdata.h"
 
@@ -40,7 +40,7 @@
 
 #define MAXSCROLL_DATA 255
 #define MAX_BRIGHTNESS 200
-#define NIGHT_BRIGHTNESS 90
+#define NIGHT_BRIGHTNESS 88 // need to track down bit leak causing screen to flip/misalign
 
 #define XPOS 0
 #define YPOS 1
@@ -85,43 +85,6 @@ typedef struct audio_t {
     int8_t shuffle;
 } audio_t;
 
-typedef struct MonitorAttrs {
-    int8_t oledAddrL;
-    int8_t oledAddrR;
-    int vizHeight;
-    int vizWidth;
-    bool allInOne;
-    int eeMode;
-    int sleepTime;
-    bool astral;
-    bool showTemp;
-    bool downmix;
-    bool nagDone;
-    bool visualize;
-    bool meterMode;
-    bool clock;
-    bool extended;
-    bool remaining;
-    bool splash;
-    bool refreshLMS;
-    bool refreshClock;
-    bool refreshViz;
-    int lastVolume;
-    int clockFont;
-    bool flipDisplay;     // display mounted upside down
-    uint8_t i2cBus;       // number of I2C bus
-    uint8_t oledRST;      // IIC/SPI reset GPIO
-    uint8_t spiDC;        // SPI DC
-    uint8_t spiCS;        // SPI CS - 0: CS0, 1: CS1
-    uint16_t spiSpeed;    // SPI speed - one of supported values - review
-    uint8_t lastModes[2]; // shuffle[0] + repeat[1]
-    char lastBits[16];
-    char lastTime[6];
-    char lastTemp[10]; // should be a double
-    char lastLoad[10]; // should be a double
-    pthread_mutex_t update;
-} MonitorAttrs;
-
 typedef struct Scroller {
     bool active;
     bool initialized;
@@ -145,6 +108,7 @@ typedef struct DrawTime {
     int bufferLen;
     point_t pos;
     int font;
+    bool fmt12;
 } DrawTime; // generic font header!
 
 typedef struct DrawVisualize {
@@ -167,6 +131,12 @@ void vinylEffects(int xpos, int lpos, int frame, int mxframe);
 
 void reelToReel(bool blank);
 void reelEffects(int xpos, int ypos, int frame, int mxframe, int direction);
+
+void vcrPlayer(bool blank);
+void vcrEffects(int xpos, int ypos, int frame, int mxframe);
+
+void radio50(bool blank);
+void radioEffects(int xpos, int ypos, int frame, int mxframe);
 
 void printFontMetrics(void);
 
@@ -222,6 +192,8 @@ void putAudio(audio_t audio, char *buff, bool full = true);
 void putTapeType(audio_t audio);
 void putSL1200Btn(audio_t audio);
 void putReelToReel(audio_t audio);
+void putVcr(audio_t audio);
+void putRadio(audio_t audio);
 
 void putIFDetail(int icon, int xpos, int ypos, char *host);
 

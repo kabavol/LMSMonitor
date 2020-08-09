@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "stdbool.h": "c",
-        "cstdbool": "c"
+        "cstdbool": "c",
+        "bitset": "cpp"
     }
 }

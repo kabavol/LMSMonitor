@@ -24,20 +24,14 @@
 #define LMSMON_H
 
 #include <stdint.h>
-
-// egg modes (animated playback emulations)
-#define EE_NONE 0
-#define EE_CASSETTE 1
-#define EE_VINYL 2
-#define EE_REEL2REEL 3
-#define EE_MAX 4
+#include "lmsopts.h"
 
 bool isPlaying(void);
 bool lockOptions(void);
 bool acquireOptLock(void);
 
 typedef struct A1Attributes {
-    uint8_t eeMode;
+    enum eggYuks eeMode;
     bool eeFXActive;
     int8_t lFrame;
     int8_t rFrame;

@@ -29,19 +29,22 @@
 #define BSIZE 4096
 
 #define APPNAME "LMSMonitor"
-#define VERSION "0.4.46"
+#define VERSION "0.4.50"
+#define APPSIG "#APPNAME #VERSION"
 
 #define LABEL_WIDTH 22
 #define LL_QUIET 0
 #define LL_INFO 1
 #define LL_DEBUG 2
-#define LL_MAX 3 // always 1+
+#define LL_VERBOSE 3
+#define LL_MAX 4 // always 1+
 
 static const char *verbosity[] = {"Normal", "Info", "Debug", "Maximum"};
 
 typedef char *multi_tok_t;
 
 int incVerbose(void);
+void setVerbose(int v);
 int getVerbose(void);
 const char *getVerboseStr(void);
 int putMSG(const char *msg, int loglevel);

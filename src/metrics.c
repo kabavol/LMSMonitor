@@ -25,21 +25,35 @@
 #include <stdlib.h>
 
 double cpuLoad(void) {
-    float loadavg;
+    float loadavg = 0.00;
     FILE *load;
-    load = fopen("/proc/loadavg", "r");
-    fscanf(load, "%f", &loadavg);
-    fclose(load);
+    if((load = fopen("/proc/loadavg", "r")) != NULL) {
+        fscanf(load, "%f", &loadavg);
+        fclose(load);
+    }
     return (double)(100 * loadavg);
 }
 
 double cpuTemp(void) {
     float millideg;
     FILE *thermo;
-    thermo = fopen("/sys/class/thermal/thermal_zone0/temp", "r");
-    fscanf(thermo, "%f", &millideg);
-    fclose(thermo);
+    if((thermo = fopen("/sys/class/thermal/thermal_zone0/temp", "r")) != NULL) {
+        fscanf(thermo, "%f", &millideg);
+        fclose(thermo);
+    }
     return (int)(millideg / 10.0f) / 100.0f;
+}
+
+double upTime(void) {
+
+   FILE *uptimef;
+   long uptime = 0;
+
+    if((uptimef = fopen("/proc/uptime", "r")) != NULL) {
+        fscanf(uptimef, "%ld", &uptime);
+        fclose(uptimef);
+    }
+    return (int)(uptime)/3600.0f;
 }
 
 meminfo_t memInfo(void) {

@@ -35,6 +35,7 @@ typedef struct meminfo_t {
 
 double cpuLoad(void);
 double cpuTemp(void);
+double upTime(void);
 
 meminfo_t memInfo(void);
 

@@ -218,9 +218,18 @@ void flipDisplay() {
 }
 
 void displayBrightness(int bright, bool flip) {
+    int r = display.getRotation();
+    printf("rotation ....(in)....: %d\n", r);
     display.setBrightness(bright);
-    if ((flip) && (isFlipped))
+    r = display.getRotation();
+    printf("rotation ....(02)....: %d\n", r);
+    if ((flip) && (isFlipped)) {
         flipDisplay();
+        r = display.getRotation();
+        printf("rotation ...(*03)....: %d\n", r);
+    }
+    r = display.getRotation();
+    printf("rotation ....(out)...: %d\n", r);
 }
 
 int initDisplay(struct MonitorAttrs dopts) {
@@ -420,13 +429,54 @@ void technicsSL1200(bool blank) {
     display.drawBitmap(0, 0, sl1200t, 83, 64, WHITE);
 }
 
+
+void putRadio(audio_t audio) {
+    // manipulate "switches" visualize fidelity
+}
+
+void radio50(bool blank) {
+    //
+}
+
+void radioEffects(int xpos, int ypos, int frame, int mxframe){
+    //
+}
+
+
+void putVcr(audio_t audio) {
+    // manipulate "switches" visualize fidelity
+}
+
+void vcrPlayer(bool blank) {
+    if (blank) {
+        display.fillRect(0, 0, 128, 64, BLACK);
+    }
+    display.drawBitmap(3, 25, vcr, 118, 35, WHITE);
+}
+
+void vcrEffects(int xpos, int ypos, int frame, int mxframe) {
+    int w = 24;
+    int szw = 25;
+    int szh = 6;
+    int prev = frame + 1;
+    if (prev < 0)
+        prev = mxframe;
+    if (prev > mxframe)
+        prev = 0;
+    uint8_t dest[w];
+    int start = prev * w;
+    memcpy(dest, vcrclock + start, sizeof dest);
+    display.drawBitmap(xpos, ypos, dest, szw, szh, BLACK);
+    start = frame * w;
+    memcpy(dest, vcrclock + start, sizeof dest);
+    display.drawBitmap(xpos, ypos, dest, szw, szh, WHITE);
+}
+
 void putReelToReel(audio_t audio) {
     // manipulate "switches" visualize fidelity
 }
 
-
 void reelToReel(bool blank) {
-
     if (blank) {
         display.fillRect(0, 0, 128, 64, BLACK);
     }
@@ -1061,18 +1111,25 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter,
     lastPK.metric[1] = meter.metric[1];
 }
 
+void placeAMPM(int offset, int x, int y,  uint16_t color){
+    int w = 4*40; // 26x40
+    int start = offset * w;
+    uint8_t dest[w];
+    memcpy(dest, ampmbug + start, sizeof dest);
+    display.drawBitmap(x, y, dest, 26, 40, color);
+}
+
 void drawTimeBlink(uint8_t cc, DrawTime *dt) {
     int x = dt->pos.x + (2 * dt->charWidth);
     if (32 == cc) // a space - colon off
         bigChar(
             ':', x, dt->pos.y, dt->bufferLen, dt->charWidth, dt->charHeight,
             getOledFont(
-                dt->font), // ? soldeco25x44 /*lcd25x44*/ : lcd12x17 //lcd15x21
-            //),
+                dt->font,dt->fmt12), 
             BLACK);
     else
         bigChar(cc, x, dt->pos.y, dt->bufferLen, dt->charWidth, dt->charHeight,
-                getOledFont(dt->font), WHITE);
+                getOledFont(dt->font,dt->fmt12), WHITE);
 }
 
 void drawTimeText(char *buff, char *last, DrawTime *dt) {
@@ -1087,11 +1144,16 @@ void drawTimeText(char *buff, char *last, DrawTime *dt) {
                                  dt->charHeight + 2, BLACK);
             } else {
                 bigChar(last[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
-                        dt->charHeight, getOledFont(dt->font),
+                        dt->charHeight, getOledFont(dt->font, dt->fmt12),
                         BLACK); // soft erase
             }
+            if (('A'==buff[i])||('P'==buff[i])){
+                // 
+                placeAMPM((('A'==buff[i])?0:1),x,dt->pos.y,WHITE);
+            }else{
             bigChar(buff[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
-                    dt->charHeight, getOledFont(dt->font), WHITE);
+                    dt->charHeight, getOledFont(dt->font, dt->fmt12), WHITE);
+            }
         }
         x += dt->charWidth;
     }
@@ -1109,11 +1171,11 @@ void drawRemTimeText(char *buff, char *last, DrawTime *dt) {
                                      dt->charHeight + 2, BLACK);
                 } else {
                     bigChar(last[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
-                            dt->charHeight, getOledFont(dt->font),
+                            dt->charHeight, getOledFont(dt->font, false),
                             BLACK); // soft erase
                 }
                 bigChar(buff[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
-                        dt->charHeight, getOledFont(dt->font), WHITE);
+                        dt->charHeight, getOledFont(dt->font,false), WHITE);
             }
             x += dt->charWidth;
         }

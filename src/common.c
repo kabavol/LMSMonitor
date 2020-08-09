@@ -68,6 +68,14 @@ int incVerbose(void) {
     return verbose;
 }
 
+void setVerbose(int v) {
+    if (v < LL_MAX) {
+        verbose = v;
+    } else {
+        verbose = LL_MAX-1;
+    }
+}
+
 int getVerbose(void) { return verbose; }
 const char *getVerboseStr(void) {
     if (verbose < LL_MAX)

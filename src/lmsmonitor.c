@@ -40,11 +40,15 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 
+#include "setup.h"
+
 #include "common.h"
 #include "sliminfo.h"
 #include "tagUtils.h"
 #include <sys/time.h>
 #include <time.h>
+
+#include "lmsopts.h"
 
 #ifdef __arm__
 
@@ -107,6 +111,7 @@ void before_exit(void) {
         scrollerPause();
         clearDisplay();
         closeDisplay();
+        freeClockFont();
 #ifdef SSE_VIZDATA
         vissySSEFinalize();
 #endif
@@ -159,6 +164,8 @@ void clockPage(void);
 void cassettePage(A1Attributes *aio);
 void technicSL1200Page(A1Attributes *aio);
 void reelToReelPage(A1Attributes *aio);
+void vcrPage(A1Attributes *aio);
+void radio50Page(A1Attributes *aio);
 #endif
 
 static char *get_mac_address() {
@@ -213,43 +220,6 @@ void signature(char *executable) {
         strcpy(buff, executable);
     printf("This is %s (%s) - built %s %s.\n", buff, VERSION, __DATE__,
            __TIME__);
-}
-
-void print_help(char *executable) {
-    printf(
-        "%s Ver. %s\n"
-        "Usage -n \"player name\" [options]\n\n"
-        "options:\n"
-        " -a all-in-one. One screen to rule them all. Track and visualizer on "
-        "one screen (pi only)\n"
-        " -b automatically set brightness of display at sunset and sunrise"
-        " (pi only)\n"
-        " -c display clock when not playing (Pi only)\n"
-        " -d downmix audio and display a single large meter, SA and VU only\n"
-        " -f font used by clock, see list below for details\n"
-        " -i increment verbose level\n"
-        " -F flip the display - display mounted upside down\n"
-        " -k show CPU load and temperature (clock mode)\n"
-        " -m if visualization on specify one or more meter modes, sa, vu, "
-        "pk, st, or rn for random\n"
-        " -o specifies OLED \"driver\" type (see options below)\n"
-        " -r show remaining time rather than track time\n"
-        " -S scrollermode: 0 (cylon), 1 (infinity left), 2 infinity (right)\n"
-        " -v enable visualization sequence when playing (Pi only)\n"
-        " -x specifies OLED address if default does not work - use i2cdetect "
-        "to find address (Pi only)\n"
-        " -B I2C bus number (defaults 1, giving device /dev/i2c-1)\n"
-        " -R I2C/SPI reset GPIO number, if needed (defaults 25)\n"
-        " -D SPI DC GPIO number (defaults 24)\n"
-        " -C SPI CS number (defaults 0)\n"
-        " -e Easter Eggs (see repo for details)\n"
-        " -z no splash screen\n\n",
-        APPNAME, VERSION);
-#ifdef __arm__
-    printOledTypes();
-    printOledFontTypes();
-#endif
-    signature(executable);
 }
 
 bool isTrackPlaying(void) {
@@ -357,7 +327,7 @@ void putCPUMetrics(int y) {
 
 void softClockReset(bool cd = true) {
     if (acquireOptLock()) {
-        strcpy(glopt->lastTime, "XX:XX");
+        strcpy(glopt->lastTime, "XX:XXX");
         strcpy(glopt->lastTemp, "00000");
         strcpy(glopt->lastLoad, "00000");
         glopt->refreshClock = true;
@@ -444,6 +414,8 @@ void eggFX(size_t timer_id, void *user_data) {
     if (aio->eeFXActive) {
 
         switch (aio->eeMode) {
+            case EE_NONE:
+            case EE_RADIO: break;
             case EE_REEL2REEL:
             case EE_CASSETTE:
                 aio->lFrame +=
@@ -468,15 +440,22 @@ void eggFX(size_t timer_id, void *user_data) {
                     cassetteEffects(80, aio->rFrame, aio->mxframe, -aio->flows);
                 }
                 break;
+            case EE_VCR:
             case EE_VINYL:
-                // just "wobble" the vinyl and rotate label
                 aio->lFrame += 1;
                 if (aio->lFrame > 1)
                     aio->lFrame = 0;
-                aio->rFrame += 1;
-                if (aio->rFrame > aio->mxframe)
-                    aio->rFrame = 0;
-                vinylEffects(10 + aio->lFrame, 23, aio->rFrame, aio->mxframe);
+                if (EE_VCR == aio->eeMode) {
+                    // flash clock "midgnight Sunday"
+                    vcrEffects(52, 44, aio->lFrame, aio->mxframe);
+                } else {
+                    // just "wobble" the vinyl and rotate label
+                    aio->rFrame += 1;
+                    if (aio->rFrame > aio->mxframe)
+                        aio->rFrame = 0;
+                    vinylEffects(10 + aio->lFrame, 23, aio->rFrame,
+                                 aio->mxframe);
+                }
                 break;
         }
     }
@@ -538,7 +517,7 @@ int main(int argc, char *argv[]) {
     if (argc == 2) {
         if ((strncmp(argv[1], "-h", 2) == 0) ||
             (strncmp(argv[1], "--h", 3) == 0)) {
-            print_help(argv[0]);
+            argp_usage(NULL); //argv[0]);
             exit(EXIT_SUCCESS);
         }
     }
@@ -553,15 +532,17 @@ int main(int argc, char *argv[]) {
 
     attach_signal_handler();
 
-#ifdef __arm__
     instrument(__LINE__, __FILE__, "Initialize");
 
     struct MonitorAttrs lmsopt = {
+        .playerName = NULL,
+#ifdef __arm__
         .oledAddrL = 0x3c,
         .oledAddrR = 0x3c,
         .vizHeight = 64,
         .vizWidth = 128,
         .allInOne = false,
+        .a1test = 0,
         .eeMode = EE_NONE,
         .sleepTime = SLEEP_TIME_LONG,
         .astral = false,
@@ -570,7 +551,7 @@ int main(int argc, char *argv[]) {
         .nagDone = false,
         .visualize = false,
         .meterMode = false,
-        .clock = false,
+        .clockMode = MON_CLOCK_OFF,
         .extended = false,
         .remaining = false,
         .splash = true,
@@ -585,8 +566,10 @@ int main(int argc, char *argv[]) {
         .spiDC = OLED_SPI_DC,      // SPI DC
         .spiCS = OLED_SPI_CS0,     // SPI CS - 0: CS0, 1: CS1
         .lastModes = {0, 0},
+#endif
     };
 
+#ifdef __arm__
     if (pthread_mutex_init(&lmsopt.update, NULL) != 0) {
         closeDisplay();
         printf("\nLMS Options mutex init has failed\n");
@@ -595,15 +578,13 @@ int main(int argc, char *argv[]) {
 
     strcpy(lmsopt.lastBits, "LMS");
     strcpy(lmsopt.lastTemp, "00000");
-    strcpy(lmsopt.lastTime, "XX:XX");
+    strcpy(lmsopt.lastTime, "XX:XXZ");
     lmsopt.clockFont = MON_FONT_CLASSIC;
     glopt = &lmsopt;
     strcpy(remTime, "XXXXX");
 
 #endif
 
-    char *playerName = NULL;
-    int aName;
     char *thatMAC = NULL;
     char *thisMAC = get_mac_address();
 
@@ -614,143 +595,10 @@ int main(int argc, char *argv[]) {
     srand(time(0));
 #endif
 
-    opterr = 0;
-    int a1test = 0;
-    while ((aName = getopt(argc, argv,
-                           "A:Z:n:o:m:x:L:B:C:D:E:R:S:f:abcdFhikprtvz")) !=
-           -1) {
-        switch (aName) {
-            case 'n': playerName = optarg; break;
+    struct arguments arguments;
 
-            case 't': enableTOut(); break;
-
-            case 'i': incVerbose(); break;
-
-#ifdef __arm__
-            case 'o':
-                int oled;
-                sscanf(optarg, "%d", &oled);
-                if (oled < 0 || oled >= OLED_LAST_OLED ||
-                    !strstr(oled_type_str[oled], "128x64")) {
-                    printf("*** invalid 128x64 oled type %d\n", oled);
-                    print_help(argv[0]);
-                    exit(EXIT_FAILURE);
-                } else {
-                    setOledType(oled);
-                }
-                break;
-            case 'a':
-                lmsopt.allInOne = true;
-                lmsopt.downmix = true;
-                lmsopt.visualize = true;
-                a1test++;
-                break;
-            case 'b': lmsopt.astral = true; break;
-            case 'm':
-                setVisList(optarg);
-                lmsopt.meterMode = true;
-                break;
-#ifdef SSE_VIZDATA
-            case 'p': sscanf(optarg, "%d", &opt.port); break;
-#else
-            case 'p': printf("SSE not supported\n"); break;
-#endif
-            case 'v': lmsopt.visualize = true; break;
-
-            case 'c': lmsopt.clock = true; break;
-
-            case 'd': lmsopt.downmix = true; break;
-
-            case 'f':
-                if (optarg) {
-                    int oled;
-                    sscanf(optarg, "%d", &oled);
-                    if (oled < MON_FONT_CLASSIC || oled >= MON_FONT_LCD1521) {
-                        printf("*** invalid oled font %d\n", oled);
-                        print_help(argv[0]);
-                        exit(EXIT_FAILURE);
-                    } else {
-                        lmsopt.clockFont = oled;
-                    }
-                }
-                break;
-
-            case 'F': lmsopt.flipDisplay = true; break;
-
-            case 'k': lmsopt.showTemp = true; break;
-
-            case 'r': lmsopt.remaining = true; break;
-
-            case 'E':
-                if (optarg) {
-                    int em = (int)strtol(optarg, NULL, 16);
-                    if ((em > EE_NONE) && (em < EE_MAX)) {
-                        bool test = lmsopt.visualize;
-                        lmsopt.visualize = false;
-                        switch (em) {
-                            case EE_CASSETTE: lmsopt.eeMode = em; break;
-                            case EE_VINYL: lmsopt.eeMode = em; break;
-                            case EE_REEL2REEL: lmsopt.eeMode = em; break;
-                            default: lmsopt.visualize = test;
-                        }
-                    }
-                }
-                break;
-
-            case 'A': // Left
-            case 'x': // Left
-                if (optarg) {
-                    lmsopt.oledAddrL = (int)strtol(optarg, NULL, 16);
-                    setOledAddress(lmsopt.oledAddrL, 0);
-                }
-                break;
-            case 'Z': // Right - TODO
-                if (optarg) {
-                    lmsopt.oledAddrR = (int)strtol(optarg, NULL, 16);
-                    setOledAddress(lmsopt.oledAddrR, 1);
-                }
-                break;
-            case 'z': lmsopt.splash = false; break;
-
-            case 'S':
-                int sm;
-                sscanf(optarg, "%d", &sm);
-                setScrollMode(sm);
-                break;
-            case 'B':
-                int i2b;
-                sscanf(optarg, "%d", &i2b);
-                lmsopt.i2cBus = ((i2b == 0) || (i2b == 1)) ? i2b : 1;
-                break;
-            case 'C':
-                int sCS;
-                sscanf(optarg, "%d", &sCS);
-                lmsopt.spiCS =
-                    ((sCS == BCM2835_SPI_CS0) || (sCS == BCM2835_SPI_CS1))
-                        ? sCS
-                        : BCM2835_SPI_CS0;
-                break;
-            case 'D':
-                int sDC;
-                sscanf(optarg, "%d", &sDC);
-                //>0 < 27 != RST
-                lmsopt.spiDC = sDC;
-                break;
-            case 'R':
-                int sRST;
-                sscanf(optarg, "%d", &sRST);
-                //>0 < 27 != DC
-                lmsopt.oledRST = sRST;
-                break;
-
-#endif
-
-            case 'h':
-                print_help(argv[0]);
-                exit(EXIT_SUCCESS);
-                break;
-        }
-    }
+    arguments.lmsopt = &lmsopt;
+    argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
 #ifdef __arm__
 
@@ -796,7 +644,7 @@ int main(int argc, char *argv[]) {
     thatMAC = playerMAC();
 
     // init here - splash delay mucks the refresh flagging
-    if ((tags = initSliminfo(playerName)) == NULL) {
+    if ((tags = initSliminfo(lmsopt.playerName)) == NULL) {
         exit(EXIT_FAILURE);
     }
 
@@ -846,11 +694,14 @@ int main(int argc, char *argv[]) {
         .compound = {0},
     };
 
-    if ((lmsopt.eeMode > EE_NONE) && (lmsopt.eeMode < EE_MAX)) {
+    if (lmsopt.eeMode > EE_NONE) {
         aio.eeMode = lmsopt.eeMode;
         lmsopt.visualize = false;
-        if ((EE_VINYL == aio.eeMode) || (EE_REEL2REEL == aio.eeMode)) {
-            aio.mxframe = 17;
+        switch (aio.eeMode) {
+            case EE_VINYL:
+            case EE_REEL2REEL: aio.mxframe = 17; break;
+            case EE_VCR:
+            case EE_RADIO: aio.mxframe = 1; break;
         }
     }
 
@@ -866,7 +717,7 @@ int main(int argc, char *argv[]) {
 
         // if the A1 factor is normal then cycle - else fixed visualize
 
-        if (a1test <= 1) {
+        if (lmsopt.a1test <= 1) {
             viztimer = timer_start(120 * 1000, toggleVisualize, TIMER_PERIODIC,
                                    (void *)NULL);
         } else {
@@ -881,7 +732,7 @@ int main(int argc, char *argv[]) {
                     ((lmsopt.downmix) ? "Yes" : "No"));
         } else {
             // faster cycle for A1 - unless A1 factor high
-            int r = ((1 == a1test) ? 127 : 254);
+            int r = ((1 == lmsopt.a1test) ? 127 : 254);
             instrument(__LINE__, __FILE__,
                        "activate All-In-One visualization cycling");
             vizcycletimer = timer_start(r * 1000, cycleVisualize,
@@ -894,7 +745,7 @@ int main(int argc, char *argv[]) {
     } else {
         sprintf(stbl, "%s Inactive\n",
                 labelIt("Visualization", LABEL_WIDTH, "."));
-        if ((aio.eeMode > EE_NONE) && (aio.eeMode < EE_MAX)) {
+        if (aio.eeMode > EE_NONE) {
             size_t eegTimer;
             eegTimer = timer_start(200, eggFX, TIMER_PERIODIC, (void *)&aio);
         }
@@ -944,6 +795,8 @@ int main(int argc, char *argv[]) {
                         case EE_CASSETTE: cassettePage(&aio); break;
                         case EE_VINYL: technicSL1200Page(&aio); break;
                         case EE_REEL2REEL: reelToReelPage(&aio); break;
+                        case EE_VCR: vcrPage(&aio); break;
+                        case EE_RADIO: radio50Page(&aio); break;
                     }
                     strcpy(remTime, "XXXXX");
                 } else {
@@ -963,7 +816,7 @@ int main(int argc, char *argv[]) {
                 }
                 strcpy(remTime, "XXXXX");
                 instrument(__LINE__, __FILE__, "display clock test");
-                if (lmsopt.clock) {
+                if (MON_CLOCK_OFF != lmsopt.clockMode) {
                     if (aio.eeFXActive)
                         aio.eeFXActive = false;
                     aio.compound[0] = {0};
@@ -1025,11 +878,13 @@ void clockPage(void) {
 
     char buff[255];
 
+    // need to modify for 24/12 support
     DrawTime dt = {.charWidth = 25,
                    .charHeight = 44,
                    .bufferLen = LCD25X44_LEN,
                    .pos = {2, ((glopt->showTemp) ? -1 : 1)},
-                   .font = glopt->clockFont};
+                   .font = glopt->clockFont,
+                   .fmt12 = (MON_CLOCK_12H == glopt->clockMode)};
 
     if (glopt->refreshClock) {
         instrument(__LINE__, __FILE__, "clock reset");
@@ -1052,8 +907,17 @@ void clockPage(void) {
     time_t now = tv.tv_sec;
     struct tm loctm = *localtime(&now);
 
-    // time
-    sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
+    // time - 12 or 24 hour formats
+    if (MON_CLOCK_12H == glopt->clockMode) {// 12H A/P
+        sprintf(buff, "%02d:%02d%s",
+                ((loctm.tm_hour > 12) ? loctm.tm_hour - 12 : loctm.tm_hour),
+                loctm.tm_min, ((loctm.tm_hour > 12) ? "P" : "A"));
+        dt.charWidth = 20;
+        dt.bufferLen = (3*dt.charHeight);
+    } else {// 24H vanilla
+        sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
+    }
+
     if (strcmp(glopt->lastTime, buff) != 0)
         setLastTime(buff, dt);
 
@@ -1072,6 +936,186 @@ void clockPage(void) {
     // set changed so we'll repaint on play
     setupPlayMode();
     refreshDisplay();
+}
+
+void radio50Page(A1Attributes *aio) {
+
+    tagtypes_t a1layout[A1LINE_NUM][3] = {
+        {TITLE, MAXTAG_TYPES, MAXTAG_TYPES},
+        {COMPOSER, ARTIST, MAXTAG_TYPES},
+    };
+
+    char buff[BSIZE] = {0};
+    char artist[255] = {0};
+    char title[255] = {0};
+
+    if (glopt->refreshLMS) {
+        resetDisplay(1);
+        softPlayRefresh(false);
+        radio50(true);
+    }
+
+    setNagDone(false); // do not set refreshLMS
+    softClockReset(false);
+    softVisualizeRefresh(true);
+
+    // cassette hub, vinyl "wobble" or reel to reel effects
+    if (!aio->eeFXActive)
+        aio->eeFXActive = true;
+
+    audio_t audioDetail = {.samplerate = 44.1,
+                           .samplesize = 16,
+                           .audioIcon = 1}; // 2 HD 3 SD 4 DSD
+
+    sampleDetails(&audioDetail);
+    audioDetail.audioIcon = 1;
+    if (1 == audioDetail.samplesize)
+        audioDetail.audioIcon++;
+    else if (16 != audioDetail.samplesize)
+        audioDetail.audioIcon--;
+
+    radio50(false);
+    putRadio(audioDetail);
+
+    // setup compound scrollers
+    bool filled = false;
+    bool changed = false;
+    for (int line = 0; line < A1LINE_NUM; line++) {
+        filled = false;
+        int myline = line + 5;
+        for (tagtypes_t *t = a1layout[line]; *t != MAXTAG_TYPES; t++) {
+            if (tags[*t].valid) {
+                filled = true;
+                if (tags[*t].changed) {
+                    changed = true;
+                    if (0 == line)
+                        strncpy(aio->title, tags[*t].tagData, 255);
+                    else
+                        strncpy(aio->artist, tags[*t].tagData, 255);
+                }
+            }
+        }
+    }
+
+    if (changed) {
+        sprintf(buff, "%s|%s", aio->artist, aio->title);
+        if ((strcmp(buff, aio->compound) != 0) ||
+            (0 == strlen(aio->compound))) // safe
+        {
+            strncpy(aio->compound, buff, 255);
+            putTinyTextMultiMaxWidth(10, 7, 32, 3, aio->compound);
+            setSleepTime(SLEEP_TIME_SAVER);
+        }
+    }
+
+    uint16_t pTime =
+        (tags[TIME].valid) ? strtol(tags[TIME].tagData, NULL, 10) : 0;
+    uint16_t dTime =
+        (tags[DURATION].valid) ? strtol(tags[DURATION].tagData, NULL, 10) : 0;
+    double pct = (pTime * 100.00) / (dTime == 0 ? 1 : dTime);
+
+    DrawTime rdt = {.pos = {90, 17}, .font = MON_FONT_STANDARD};
+
+    // not hourly compliant!
+    uint16_t rTime =
+        (tags[REMAINING].valid) ? strtol(tags[REMAINING].tagData, NULL, 10) : 0;
+    sprintf(buff, "%02d:%02d", rTime / 60, rTime % 60);
+    setLastRemainingTime(buff, rdt);
+
+    if ((pct > 99.6) && (aio->eeFXActive)) {
+        aio->eeFXActive = false;
+        softClockReset(false);
+    }
+}
+
+void vcrPage(A1Attributes *aio) {
+
+    tagtypes_t a1layout[A1LINE_NUM][3] = {
+        {TITLE, MAXTAG_TYPES, MAXTAG_TYPES},
+        {COMPOSER, ARTIST, MAXTAG_TYPES},
+    };
+
+    char buff[BSIZE] = {0};
+    char artist[255] = {0};
+    char title[255] = {0};
+
+    if (glopt->refreshLMS) {
+        resetDisplay(1);
+        softPlayRefresh(false);
+        vcrPlayer(true);
+    }
+
+    setNagDone(false); // do not set refreshLMS
+    softClockReset(false);
+    softVisualizeRefresh(true);
+
+    // cassette hub, vinyl "wobble" or reel to reel effects
+    if (!aio->eeFXActive)
+        aio->eeFXActive = true;
+
+    audio_t audioDetail = {.samplerate = 44.1,
+                           .samplesize = 16,
+                           .audioIcon = 1}; // 2 HD 3 SD 4 DSD
+
+    sampleDetails(&audioDetail);
+    audioDetail.audioIcon = 1;
+    if (1 == audioDetail.samplesize)
+        audioDetail.audioIcon++;
+    else if (16 != audioDetail.samplesize)
+        audioDetail.audioIcon--;
+
+    vcrPlayer(false);
+    putVcr(audioDetail);
+
+    // setup compound scrollers
+    bool filled = false;
+    bool changed = false;
+    for (int line = 0; line < A1LINE_NUM; line++) {
+        filled = false;
+        int myline = line + 5;
+        for (tagtypes_t *t = a1layout[line]; *t != MAXTAG_TYPES; t++) {
+            if (tags[*t].valid) {
+                filled = true;
+                if (tags[*t].changed) {
+                    changed = true;
+                    if (0 == line)
+                        strncpy(aio->title, tags[*t].tagData, 255);
+                    else
+                        strncpy(aio->artist, tags[*t].tagData, 255);
+                }
+            }
+        }
+    }
+
+    if (changed) {
+        sprintf(buff, "%s|%s", aio->artist, aio->title);
+        if ((strcmp(buff, aio->compound) != 0) ||
+            (0 == strlen(aio->compound))) // safe
+        {
+            strncpy(aio->compound, buff, 255);
+            putTinyTextMultiMaxWidth(10, 7, 32, 3, aio->compound);
+            setSleepTime(SLEEP_TIME_SAVER);
+        }
+    }
+
+    uint16_t pTime =
+        (tags[TIME].valid) ? strtol(tags[TIME].tagData, NULL, 10) : 0;
+    uint16_t dTime =
+        (tags[DURATION].valid) ? strtol(tags[DURATION].tagData, NULL, 10) : 0;
+    double pct = (pTime * 100.00) / (dTime == 0 ? 1 : dTime);
+
+    DrawTime rdt = {.pos = {90, 17}, .font = MON_FONT_STANDARD};
+
+    // not hourly compliant!
+    uint16_t rTime =
+        (tags[REMAINING].valid) ? strtol(tags[REMAINING].tagData, NULL, 10) : 0;
+    sprintf(buff, "%02d:%02d", rTime / 60, rTime % 60);
+    setLastRemainingTime(buff, rdt);
+
+    if ((pct > 99.6) && (aio->eeFXActive)) {
+        aio->eeFXActive = false;
+        softClockReset(false);
+    }
 }
 
 void reelToReelPage(A1Attributes *aio) {
