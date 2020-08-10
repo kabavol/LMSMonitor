@@ -153,23 +153,23 @@ const uint8_t *getOledFont(int font, bool h12) {
             case MON_FONT_CLASSIC:
             case MON_FONT_LCD2544:
                 n = sizeof(lcd25x44) / sizeof(lcd25x44[0]);
-                downsampleFont(lcd25x44, n, 25, l);
+                downsampleFont(lcd25x44, n, 25, l); // all set, special AM/PM mode
                 break;
             case MON_FONT_DECOSOL:
                 n = sizeof(soldeco25x44) / sizeof(soldeco25x44[0]);
-                downsampleFont(soldeco25x44, n, 25, l);
+                downsampleFont(soldeco25x44, n, 25, lp); // inc AM/PM
                 break;
             case MON_FONT_DECOHOL:
                 n = sizeof(holdeco25x44) / sizeof(holdeco25x44[0]);
-                downsampleFont(holdeco25x44, n, 25, l);
+                downsampleFont(holdeco25x44, n, 25, lp); // inc AM/PM
                 break;
             case MON_FONT_FESTUS:
                 n = sizeof(festus25x44) / sizeof(festus25x44[0]);
-                downsampleFont(festus25x44, n, 25, lp);
+                downsampleFont(festus25x44, n, 25, lp); // inc AM/PM
                 break;
             case MON_FONT_HOLFESTUS:
                 n = sizeof(holfestus25x44) / sizeof(holfestus25x44[0]);
-                downsampleFont(holfestus25x44, n, 25, lp);
+                downsampleFont(holfestus25x44, n, 25, lp); // inc AM/PM
                 break;
             case MON_FONT_NB1999:
                 n = sizeof(nb1999s25x44) / sizeof(nb1999s25x44[0]);
@@ -193,7 +193,7 @@ const uint8_t *getOledFont(int font, bool h12) {
                 break;
             case MON_FONT_TTYP2544:
                 n = sizeof(ttypongo25x44) / sizeof(ttypongo25x44[0]);
-                downsampleFont(ttypongo25x44, n, 25, lp);
+                downsampleFont(ttypongo25x44, n, 25, lp); // inc AM/PM
                 break;
             case MON_FONT_SHLP2544:
                 n = sizeof(shleep25x44) / sizeof(shleep25x44[0]);
