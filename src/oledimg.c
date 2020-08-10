@@ -181,11 +181,11 @@ const uint8_t *getOledFont(int font, bool h12) {
                 break;
             case MON_FONT_NOTO2544:
                 n = sizeof(noto25x44) / sizeof(noto25x44[0]);
-                downsampleFont(noto25x44, n, 25, l);
+                downsampleFont(noto25x44, n, 25, lp); // inc AM/PM
                 break;
             case MON_FONT_NOTF2544:
                 n = sizeof(notof25x44) / sizeof(notof25x44[0]);
-                downsampleFont(notof25x44, n, 25, l);
+                downsampleFont(notof25x44, n, 25, lp); // inc AM/PM
                 break;
             case MON_FONT_COLT2544:
                 n = sizeof(colby25x44) / sizeof(colby25x44[0]);
@@ -197,7 +197,7 @@ const uint8_t *getOledFont(int font, bool h12) {
                 break;
             case MON_FONT_SHLP2544:
                 n = sizeof(shleep25x44) / sizeof(shleep25x44[0]);
-                downsampleFont(shleep25x44, n, 25, l);
+                downsampleFont(shleep25x44, n, 25, lp); // inc AM/PM
                 break;
                 // these will never be exercised
             case MON_FONT_LCD1521: return lcd15x21; break;
