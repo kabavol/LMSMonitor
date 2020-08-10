@@ -1150,13 +1150,15 @@ void drawTimeText(char *buff, char *last, DrawTime *dt) {
                         dt->charHeight, getOledFont(dt->font, dt->fmt12),
                         BLACK); // soft erase
             }
-            //if (('A' == buff[i]) || ('P' == buff[i])) {
-            //    placeAMPM((('A' == buff[i]) ? 0 : 1), x, dt->pos.y, WHITE);
-            //} else {
+            if ((('A' == buff[i]) || ('P' == buff[i])) &&
+                ((MON_FONT_CLASSIC == dt->font) ||
+                 (MON_FONT_LCD2544 == dt->font))) {
+                placeAMPM((('A' == buff[i]) ? 0 : 1), x, dt->pos.y, WHITE);
+            } else {
                 bigChar(buff[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
                         dt->charHeight, getOledFont(dt->font, dt->fmt12),
                         WHITE);
-            //}
+            }
         }
         x += dt->charWidth;
     }
