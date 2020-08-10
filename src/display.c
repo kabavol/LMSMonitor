@@ -175,7 +175,7 @@ bool setOledType(int ot) {
     return true;
 }
 
-bool setOledAddress(int8_t oa,int LR) {
+bool setOledAddress(int8_t oa, int LR) {
     if (oa <= 0)
         return false;
     oledAddress = oa;
@@ -190,9 +190,14 @@ void setScrollMode(int sm) {
 
 void bigChar(uint8_t cc, int x, int y, int len, int w, int h,
              const uint8_t font[], uint16_t color) {
-    //             const uint8_t font[], uint16_t color) {
-    // need fix for space, and minus sign
-    int start = (cc - 48) * len;
+    int start = 0;
+    switch (cc) {
+        case ' ': start = 11 * len; break;
+        case '-': start = 12 * len; break;
+        case 'A': start = 13 * len; break;
+        case 'P': start = 14 * len; break;
+        default: start = (cc - 48) * len;
+    }
     uint8_t dest[len];
     memcpy(dest, font + start, sizeof dest);
     display.drawBitmap(x, y, dest, w, h, color); // -1 - breathing room
@@ -429,7 +434,6 @@ void technicsSL1200(bool blank) {
     display.drawBitmap(0, 0, sl1200t, 83, 64, WHITE);
 }
 
-
 void putRadio(audio_t audio) {
     // manipulate "switches" visualize fidelity
 }
@@ -441,10 +445,9 @@ void radio50(bool blank) {
     display.drawBitmap(3, 8, radio50s, 67, 50, WHITE);
 }
 
-void radioEffects(int xpos, int ypos, int frame, int mxframe){
+void radioEffects(int xpos, int ypos, int frame, int mxframe) {
     //
 }
-
 
 void putVcr(audio_t audio) {
     // manipulate "switches" visualize fidelity
@@ -1114,8 +1117,8 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter,
     lastPK.metric[1] = meter.metric[1];
 }
 
-void placeAMPM(int offset, int x, int y,  uint16_t color){
-    int w = 4*40; // 26x40
+void placeAMPM(int offset, int x, int y, uint16_t color) {
+    int w = 4 * 40; // 26x40
     int start = offset * w;
     uint8_t dest[w];
     memcpy(dest, ampmbug + start, sizeof dest);
@@ -1125,14 +1128,11 @@ void placeAMPM(int offset, int x, int y,  uint16_t color){
 void drawTimeBlink(uint8_t cc, DrawTime *dt) {
     int x = dt->pos.x + (2 * dt->charWidth);
     if (32 == cc) // a space - colon off
-        bigChar(
-            ':', x, dt->pos.y, dt->bufferLen, dt->charWidth, dt->charHeight,
-            getOledFont(
-                dt->font,dt->fmt12), 
-            BLACK);
+        bigChar(':', x, dt->pos.y, dt->bufferLen, dt->charWidth, dt->charHeight,
+                getOledFont(dt->font, dt->fmt12), BLACK);
     else
         bigChar(cc, x, dt->pos.y, dt->bufferLen, dt->charWidth, dt->charHeight,
-                getOledFont(dt->font,dt->fmt12), WHITE);
+                getOledFont(dt->font, dt->fmt12), WHITE);
 }
 
 void drawTimeText(char *buff, char *last, DrawTime *dt) {
@@ -1150,13 +1150,13 @@ void drawTimeText(char *buff, char *last, DrawTime *dt) {
                         dt->charHeight, getOledFont(dt->font, dt->fmt12),
                         BLACK); // soft erase
             }
-            if (('A'==buff[i])||('P'==buff[i])){
-                // 
-                placeAMPM((('A'==buff[i])?0:1),x,dt->pos.y,WHITE);
-            }else{
-            bigChar(buff[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
-                    dt->charHeight, getOledFont(dt->font, dt->fmt12), WHITE);
-            }
+            //if (('A' == buff[i]) || ('P' == buff[i])) {
+            //    placeAMPM((('A' == buff[i]) ? 0 : 1), x, dt->pos.y, WHITE);
+            //} else {
+                bigChar(buff[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
+                        dt->charHeight, getOledFont(dt->font, dt->fmt12),
+                        WHITE);
+            //}
         }
         x += dt->charWidth;
     }
@@ -1178,7 +1178,7 @@ void drawRemTimeText(char *buff, char *last, DrawTime *dt) {
                             BLACK); // soft erase
                 }
                 bigChar(buff[i], x, dt->pos.y, dt->bufferLen, dt->charWidth,
-                        dt->charHeight, getOledFont(dt->font,false), WHITE);
+                        dt->charHeight, getOledFont(dt->font, false), WHITE);
             }
             x += dt->charWidth;
         }
