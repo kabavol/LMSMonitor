@@ -147,6 +147,7 @@ const uint8_t *getOledFont(int font, bool h12) {
     if (h12) {
         size_t n = 0;
         uint16_t l = 13 * 44;
+        uint16_t lp = 15 * 44;
         if(NULL==clockF) {
         switch (font) {
             case MON_FONT_CLASSIC:
@@ -164,19 +165,19 @@ const uint8_t *getOledFont(int font, bool h12) {
                 break;
             case MON_FONT_FESTUS:
                 n = sizeof(festus25x44) / sizeof(festus25x44[0]);
-                downsampleFont(festus25x44, n, 25, l);
+                downsampleFont(festus25x44, n, 25, lp);
                 break;
             case MON_FONT_HOLFESTUS:
                 n = sizeof(holfestus25x44) / sizeof(holfestus25x44[0]);
-                downsampleFont(holfestus25x44, n, 25, l);
+                downsampleFont(holfestus25x44, n, 25, lp);
                 break;
             case MON_FONT_NB1999:
                 n = sizeof(nb1999s25x44) / sizeof(nb1999s25x44[0]);
-                downsampleFont(nb1999s25x44, n, 25, l);
+                downsampleFont(nb1999s25x44, n, 25, lp); // inc AM/PM
                 break;
             case MON_FONT_ROBOTO:
                 n = sizeof(roboto25x44) / sizeof(roboto25x44[0]);
-                downsampleFont(roboto25x44, n, 25, 15*44); // inc AM/PM
+                downsampleFont(roboto25x44, n, 25, lp); // inc AM/PM
                 break;
             case MON_FONT_NOTO2544:
                 n = sizeof(noto25x44) / sizeof(noto25x44[0]);
@@ -188,11 +189,11 @@ const uint8_t *getOledFont(int font, bool h12) {
                 break;
             case MON_FONT_COLT2544:
                 n = sizeof(colby25x44) / sizeof(colby25x44[0]);
-                downsampleFont(colby25x44, n, 25, 15*44); // inc AM/PM
+                downsampleFont(colby25x44, n, 25, lp); // inc AM/PM
                 break;
             case MON_FONT_TTYP2544:
                 n = sizeof(ttypongo25x44) / sizeof(ttypongo25x44[0]);
-                downsampleFont(ttypongo25x44, n, 25, 15*44);
+                downsampleFont(ttypongo25x44, n, 25, lp);
                 break;
             case MON_FONT_SHLP2544:
                 n = sizeof(shleep25x44) / sizeof(shleep25x44[0]);
