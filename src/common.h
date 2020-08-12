@@ -39,6 +39,8 @@
 #define LL_VERBOSE 3
 #define LL_MAX 4 // always 1+
 
+#define LOCKFILE "/tmp/lmsmonitor.pid"
+
 static const char *verbosity[] = {"Normal", "Info", "Debug", "Maximum"};
 
 typedef char *multi_tok_t;
@@ -73,5 +75,7 @@ char *strrep(size_t n, const char *s);
 char *labelIt(const char *label, const size_t len, const char *pad);
 
 void instrument(const int line, const char *name, const char *msg);
+
+int alreadyRunning(void);
 
 #endif

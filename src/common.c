@@ -19,6 +19,8 @@
  *
  */
 
+#include <errno.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -26,6 +28,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <time.h>
 
@@ -72,7 +75,7 @@ void setVerbose(int v) {
     if (v < LL_MAX) {
         verbose = v;
     } else {
-        verbose = LL_MAX-1;
+        verbose = LL_MAX - 1;
     }
 }
 
@@ -94,6 +97,7 @@ int putMSG(const char *msg, int loglevel) {
     return true;
 }
 
+// burn these soon
 void enableTOut(void) { textOut = true; }
 
 int tOut(const char *msg) {
@@ -216,4 +220,42 @@ void instrument(const int line, const char *name, const char *msg) {
         sprintf(buff, "%19s :: %16s-%04d : %s\n", tbuff, name, line, msg);
         putMSG(buff, LL_DEBUG);
     }
+}
+
+#define LOCKMODE (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
+
+int lockfile(int fd) {
+    struct flock fl;
+
+    fl.l_type = F_WRLCK;
+    fl.l_start = 0;
+    fl.l_whence = SEEK_SET;
+    fl.l_len = 0;
+    return (fcntl(fd, F_SETLK, &fl));
+}
+
+int alreadyRunning() {
+    int fd;
+    char buff[128];
+
+    fd = open(LOCKFILE, O_RDWR | O_CREAT, LOCKMODE);
+    if (fd < 0) {
+        sprintf(buff, "can't open %s: %s\n", LOCKFILE, strerror(errno));
+        abortMonitor(buff);
+        exit(1);
+    }
+
+    if (lockfile(fd) < 0) {
+        if (errno == EACCES || errno == EAGAIN) {
+            close(fd);
+            return (1);
+        }
+        sprintf(buff, "can't lock %s: %s\n", LOCKFILE, strerror(errno));
+        abortMonitor(buff);
+        exit(1);
+    }
+    ftruncate(fd, 0);
+    sprintf(buff, "%ld", (long)getpid());
+    write(fd, buff, strlen(buff) + 1);
+    return (0);
 }
