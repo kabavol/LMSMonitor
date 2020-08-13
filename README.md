@@ -5,29 +5,50 @@ OLED information display control program for [piCorePlayer](https://www.picorepl
 
 ### Options
 ```bash
-Usage -n "player name" [options]
+Usage: lmsmonitor [OPTION...] --name "NAME" [OPTIONS...]
+OLED information display control program for piCorePlayer or other Raspberry Pi
+and LMS based audio device.
 
-options:
- -a all-in-one. One screen to rule them all. Track and visualizer on one screen (pi only)
- -b automatically set brightness of display at sunset and sunrise (pi only)
- -c display clock when not playing (Pi only)
- -d downmix audio and display a single large meter, SA and VU only
- -f font used by clock, see list below for details
- -i increment verbose level
- -I flip the display - display mounted upside down
- -k show CPU load and temperature (clock mode)
- -m if visualization on specify one or more meter modes, sa, vu, pk, st, or rn for random
- -o specifies OLED "driver" type (see options below)
- -r show remaining time rather than track time
- -S scrollermode: 0 (cylon), 1 (infinity left), 2 infinity (right)
- -v enable visualization sequence when playing (Pi only)
- -x specifies OLED address if default does not work - use i2cdetect to find address (Pi only)
- -B I2C bus number (defaults 1, giving device /dev/i2c-1)
- -R I2C/SPI reset GPIO number, if needed (defaults 25)
- -D SPI DC GPIO number (defaults 24)
- -C SPI CS number (defaults 0)
- -e Easter Eggs (see repo for details)
- -z no splash screen
+  -a, --allinone             One screen to rule them all. Track details and
+                             visualizer on single screen (pi only)
+  -b, --brightness           Automatically set brightness of display at sunset
+                             and sunrise (connected to internet, pi only)
+  -B, --bus[=BUSNUM]         I2C bus number (defaults 1, giving device
+                             /dev/i2c-1)
+  -c, --clock[=MODE]         Display clock when not playing, specify 12 or 24
+                             (default) hour format (Pi only)
+  -C, --spi_cs=SPI_CS        SPI CS number (defaults 0)
+  -d, --downmix              Downmix (visualization) audio and display a single
+                             large meter, SA and VU only
+  -D, --spi_dc=SPI_DC        SPI DC GPIO number (defaults 24)
+  -E, --egg=EGGNUM           Easter Eggs (see repo for details)
+  -f, --font=FONT            Font used by clock, see list below for details
+  -F, -I, --flip, --invert   Invert the display - if display mounted upside
+                             down
+  -k, --metrics              Show CPU load and temperature (clock mode)
+  -K, --spi_speed=SPI_SPEED  SPI transmission speed (default 15k)
+  -l, -i, --log-level=LEVEL, --info=LEVEL
+                             Log Level
+  -m, --meter=MODES          Meter modes, if visualization on specify one or
+                             more meter modes, sa, vu, pk, st, or rn for
+                             random
+  -n, --name=PLAYERNAME      Name of the squeeze device to monitor
+  -o, --oled[=OLEDTYPE]      Specify OLED "driver" type (see options below)
+  -q, -s, --quiet, --silent  Don't produce any output
+  -r, --remain-time          Display remaining time rather than track time
+  -R, --reset=SPI_RST        I2C/SPI reset GPIO number, if needed (defaults
+                             25)
+  -S, --scroll[=SCROLLMODE]  Label scroll mode: 0 (cylon), 1 (infinity left), 2
+                             infinity (right)
+  -v, --visualize            Enable visualization sequence when track playing
+                             (pi only)
+  -V, --verbose              Maximum log level
+  -x, --addr                 OLED address if default does not work - use
+                             i2cdetect to find address (pi only)
+  -z, --nosplash             No (Team Badger) Splash Screen
+  -?, --help                 Give this help list
+      --usage                Give a short usage message
+      --version              Print program version
 
 Supported OLED types:
     1 ...: Adafruit SPI 128x64
@@ -167,11 +188,15 @@ the visualization parameter must always be specified first
 
 There are several "easter egg" modes provided for those setups that cannot process the audio data for visualization
 
-There are currently 3 easter egg modes
+There are currently 5 easter egg modes
 
 - 1 Compact Cassette, as visually correct as possible given the OLED limitations
 - 2 Technics SL-1200, as visually correct as possible given the OLED limitations
 - 3 Open Reel To Reel, pure fantasy
+- 4 VCR with flashing 12:00 AM clock!
+- 5 An old bakelite radio
+
+These are just fun display mode where visualization is not possible
 
 ### Audiophonics RASPI MINI
 
@@ -206,6 +231,7 @@ This also specifies random visualization, further customization to your liking c
 - 128 x 128 OLED support: TBD
 - Color 128 x 128 color TFT support: TBD
 - Weather: TBD
+- Audiophonics EVO-SABRE Balanced DAC 2x ES9038Q2M support: TBD
 
 ## Like The App - Git The Shirt
 

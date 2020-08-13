@@ -513,19 +513,8 @@ void sampleDetails(audio_t *audio) {
 
 int main(int argc, char *argv[]) {
 
-    // direct path for help
-    if (argc == 2) {
-        if ((strncmp(argv[1], "-h", 2) == 0) ||
-            (strncmp(argv[1], "--h", 3) == 0)) {
-            argp_usage(NULL);
-            exit(EXIT_SUCCESS);
-        }
-    }
-
-    // mutex - there can be only one! - multiples get ugly quickly
-    if (1 == alreadyRunning()) {
-        exit(EXIT_FAILURE);
-    }
+    struct arguments arguments;
+    arguments.lmsopt = NULL;
 
     // require elevated privs for SHMEM
     // should only do this if we have v param
@@ -535,9 +524,14 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    attach_signal_handler();
-
-    instrument(__LINE__, __FILE__, "Initialize");
+    // mutex - there can be only one! - multiples get ugly quickly
+    if (1 == alreadyRunning()) {
+        exit(EXIT_FAILURE);
+    }
+    else {
+        attach_signal_handler();
+        instrument(__LINE__, __FILE__, "Initialize");
+    }
 
     struct MonitorAttrs lmsopt = {
         .playerName = NULL,
@@ -599,8 +593,6 @@ int main(int argc, char *argv[]) {
 #endif
     srand(time(0));
 #endif
-
-    struct arguments arguments;
 
     arguments.lmsopt = &lmsopt;
     argp_parse(&argp, argc, argv, 0, 0, &arguments);

@@ -53,10 +53,10 @@ const char *argp_program_bug_address =
 static char doc[] = "OLED information display control program for piCorePlayer "
                     "or other Raspberry Pi and LMS based audio device.";
 
-static char args_doc[] = "--name \"NAME\" [OPTIONS...]";
+static char args_doc[] = "--name \"NAME\"";
 
 /*
-these in usgae
+these in usage
 #ifdef __arm__
     printOledTypes();
     printOledFontTypes();
@@ -116,9 +116,15 @@ struct arguments {
 };
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state) {
+
+    //if (NULL==state->input)
+    //    return(0);
+    //printf("%c %s\n",key,arg);
+
     struct arguments *arguments = (struct arguments *)state->input;
     int test;
     char err[256];
+
 
     switch (key) {
         case 'q':
