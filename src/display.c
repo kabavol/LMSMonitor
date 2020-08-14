@@ -51,7 +51,7 @@
 #include "TomThumb.h"
 #include "lmsmonitor.h"
 #ifdef CAPTURE_BMP
-#include "bmpfile.h"
+#include "../capture/bmpfile.h"
 #endif
 // clang-format on
 
@@ -1513,7 +1513,7 @@ void shotAndDisplay(void) {
 
         rgb_pixel_t pixelW = {255, 255, 255, 255};
         rgb_pixel_t pixelB = {0, 0, 0, 255};
-        int depth = 8; // 1 bit iis just fine
+        int depth = 8; // 1 bit is just fine
 
         if ((bmp = bmp_create(w, h, depth)) != NULL) {
             for (int16_t y = 0; y < h; y++) {

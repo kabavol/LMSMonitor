@@ -3,9 +3,20 @@ OLED information display control program for [piCorePlayer](https://www.picorepl
 
 <img width="800" src="doc/IMG_1442.jpg" align="center" />
 
+### Features
+- Removed static library usage, smaller size, upgrade hardened
+- Removed use of ALSA MIMO, audio attributes provided by LMS are used
+- Track details are displayed only when playing
+- Display features independant scrolling of track details.
+- Remaining time can now be displayed rather than total time
+- Audio attributes, volume, sample depth, and sample rate are shown
+- A retro clock is displayed when the audio paused/stopped.
+- Automatically sets the brightness of the display at dawn and dusk.
+- Multiple audio visualization modes are supported
+
 ### Options
 ```bash
-Usage: lmsmonitor [OPTION...] --name "NAME" [OPTIONS...]
+Usage: lmsmonitor --name "NAME" [OPTIONS...]
 OLED information display control program for piCorePlayer or other Raspberry Pi
 and LMS based audio device.
 
@@ -76,17 +87,6 @@ OLED Clock Fonts:
 
 ```
 
-### Features
-- Removed static library usage, smaller size, upgrade hardened
-- Removed use of ALSA MIMO, audio attributes provided by LMS are used
-- Track details are displayed only when playing
-- Display features independant scrolling of track details.
-- Remaining time can now be displayed rather than total time
-- Audio attributes, volume, sample depth, and sample rate are shown
-- A retro clock is displayed when the audio paused/stopped.
-- Automatically sets the brightness of the display at dawn and dusk.
-- Multiple audio visualization modes are supported
-
 ### Screen-snaps
 The following images were captured by dumping the display on refresh; it's a tad blocky but the actual screen animations are buttery smooth.
 
@@ -145,16 +145,12 @@ cd to the /mnt/mmcblk0p2/tce folder
 and, then type:
 
 ```bash
-wget "https://github.com/shunte88/LMSMonitor/blob/master/bin/lmsmonitorpcp.tgz?raw=true" -O lmsmonitorpcp.tgz && tar -xzvf lmsmonitorpcp.tgz
+wget "https://github.com/shunte88/LMSMonitor/blob/master/bin/lmsmonitorpcp.tgz?raw=true" -O lmsmonitorpcp.tgz && \
+tar -xzvf lmsmonitorpcp.tgz && \
+chmod +xX gomonitor
 ```
 
-This downloads the monitor archive to pCP and extracts the contents
-
-To ensure smooth running perform the following:
-
-```bash
-chmod +x gomonitor
-```
+This downloads the monitor archive to pCP and extracts the contents and set execution permissions
 
 With that you can manually start the monitor specifying the visualization you'd like to display, vu, sa, pk, st, sm or rn
 
@@ -179,7 +175,7 @@ Add a *User command*, here for example requesting the random visualizations
 Additional supported commands may also be specified, here we request a specific visualizer sequence, the device driver, override the default OLED address, request downmixed visualizers, and automated display brightness at dawn and dusk
 
 ```bash
-/mnt/mmcblk0p2/tce/gomonitor vu,sa,pk,st -o 6 -x 0x3c -db
+/mnt/mmcblk0p2/tce/gomonitor vu,sa,pk,st -o6 -x 0x3c -db
 ```
 
 the visualization parameter must always be specified first
@@ -204,7 +200,7 @@ The Audiophonics RASPI MINI uses an SPI OLED
 To get it working you need only specify the configuration as follows
 
 ```bash
-/mnt/mmcblk0p2/tce/gomonitor rn -db -o 7 -D 27 -R 24 -C 0 -I 
+/mnt/mmcblk0p2/tce/gomonitor rn -db -o7 -D27 -R24 -C0 -I 
 ```
 
 This specified the SPI driver (7), DC pin 27, Reset pin 24 with the device on CE0.
@@ -227,11 +223,11 @@ This also specifies random visualization, further customization to your liking c
 - DONE! Make OLED driver user selectable
 - DONE! Make OLED I2C address user selectable
 - DONE: All-In-One display, clock, track details and downmix visualizer in one 
+- Weather: TBD
+- Audiophonics EVO-SABRE Balanced DAC 2x ES9038Q2M support: TBD
 - Dual OLED visualizer mode: TBD
 - 128 x 128 OLED support: TBD
 - Color 128 x 128 color TFT support: TBD
-- Weather: TBD
-- Audiophonics EVO-SABRE Balanced DAC 2x ES9038Q2M support: TBD
 
 ## Like The App - Git The Shirt
 

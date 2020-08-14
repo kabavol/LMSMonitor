@@ -37,12 +37,152 @@ void freeClockFont(void) {
         free(clockF);
 }
 
-void downsampleFont(const uint8_t *font, size_t s, int16_t w, int16_t h) {
+// interpolated
+void downsampleFontMurated1bit(const uint8_t *font, size_t s, int16_t w,
+                               int16_t h) {
 
-    int16_t byteWidth = (w + 7) / 8; // Bitmap scanline pad whole bytes per line
+    int threshold = 128;
+    int16_t bpl = (w + 7) / 8; // Bitmap scanline pad whole "bytes per line"
     int byte = 0;
 
-    int picture[w][h];
+    uint8_t *fbits;
+    fbits = (uint8_t *)malloc(w * h * sizeof(uint8_t));
+    uint8_t pW = 255;
+    uint8_t pB = 0;
+
+    int z = 0;
+    // expand "font" to "bitmap" pixels (on/off)
+    for (int16_t j = 0; j < h; j++) {
+        for (int16_t i = 0; i < w; i++) {
+            if (i & 7)
+                byte <<= 1;
+            else
+                byte = font[j * bpl + i / 8];
+            fbits[z] = (byte & 0x80) ? pW : pB; // on or off
+            z++;
+        }
+    }
+
+    // downscale in x only - we'll want to fix this to <= 18px
+    float fct = 0.80;
+
+    int dw = (int)(w * fct);
+    if (dw > 18)
+        dw = 18; // pin
+    int dh = h;  // pin - (int)(h * fct);
+
+    // allocate memory for "cached" font as bytes
+    bpl = (dw + 7) / 8; // Bitmap scanline pad whole "bytes per line"
+    uint8_t agg = 0;
+    bool ok = false;
+    clockF = (uint8_t *)malloc(bpl * dh * sizeof(uint8_t));
+    uint16_t retf1c = 0;
+    uint16_t idx = 0;
+
+    float d1, d2, d3, d4;
+    uint8_t p1, p2, p3, p4; // nearby (murated) pixels
+
+    for (int i = 0; i < dh; i++) {
+
+        byte = 7;
+        agg = 0;
+        ok = false;
+
+        for (int j = 0; j < dw; j++) {
+
+            float tmp = (float)(i) / (float)(dh - 1) * (h - 1);
+            int l = (int)floor(tmp);
+            if (l < 0) {
+                l = 0;
+            } else {
+                if (l >= h - 1) {
+                    l = h - 2;
+                }
+            }
+
+            float u = tmp - l;
+            tmp = (float)(j) / (float)(dw - 1) * (w - 1);
+            int c = (int)floor(tmp);
+            if (c < 0) {
+                c = 0;
+            } else {
+                if (c >= w - 1) {
+                    c = w - 2;
+                }
+            }
+            float t = tmp - c;
+
+            // coefficients
+            d1 = (1 - t) * (1 - u);
+            d2 = t * (1 - u);
+            d3 = t * u;
+            d4 = (1 - t) * u;
+
+            // walled pixels
+            p1 = *((uint8_t *)fbits + (l * w) + c);
+            p2 = *((uint8_t *)fbits + (l * w) + c + 1);
+            p3 = *((uint8_t *)fbits + ((l + 1) * w) + c + 1);
+            p4 = *((uint8_t *)fbits + ((l + 1) * w) + c);
+
+            // "color" components
+            uint8_t cc;
+            cc = (uint8_t)(p1 * d1) + (uint8_t)(p2 * d2) + (uint8_t)(p3 * d3) +
+                 (uint8_t)(p4 * d4);
+
+            ok = true;
+            if (cc > threshold) {
+                agg += pow(2, byte);
+            }
+
+            byte--;
+
+            if (idx != 0 && (0 == ((idx + 1) % (dw)))) {
+                byte = -1;
+            }
+
+            // roll over
+            if (byte < 0) {
+                byte = 7;
+                clockF[retf1c] = agg;
+                retf1c++;
+                agg = 0;
+                ok = false;
+            }
+
+            idx++;
+        }
+        // in flight - snag 'em
+        if (ok) {
+            clockF[retf1c] = agg;
+            retf1c++;
+            ok = false; // safe
+        }
+    }
+
+    free(fbits);
+}
+
+/*
+org_img[20][30]; --monochrome values
+sampled_img[10][15];
+
+for(int i=0; i < 10; i++)
+{
+    for(int j=0; j < 15; j++)
+    {
+        int average = org_img[2*i][2*j] + org_img[2*i+1][2*j]+ org_img[2*i][2*j+1] + org_img[2*i+1][2*j+1];
+        average = average>>2; --integer division by 4.
+        sampled_img[i][j] = average;
+    }
+*/
+
+// naive downsample
+void downsampleFont(const uint8_t *font, size_t s, int16_t w, int16_t h) {
+
+    int16_t bpl = (w + 7) / 8; // Bitmap scanline pad whole "bytes per line"
+    int byte = 0;
+
+    int fbits[w][h];
 
     // expand font to "bitmap" pixels (on/off)
     for (int16_t j = 0; j < h; j++) {
@@ -50,8 +190,8 @@ void downsampleFont(const uint8_t *font, size_t s, int16_t w, int16_t h) {
             if (i & 7)
                 byte <<= 1;
             else
-                byte = font[j * byteWidth + i / 8];
-            picture[i][j] = (byte & 0x80) ? 1 : 0;
+                byte = font[j * bpl + i / 8];
+            fbits[i][j] = (byte & 0x80) ? 1 : 0;
         }
     }
 
@@ -67,13 +207,13 @@ void downsampleFont(const uint8_t *font, size_t s, int16_t w, int16_t h) {
     int idx = 0;
     int agg = 0;
 
-    byteWidth = (dw + 7) / 8;
+    bpl = (dw + 7) / 8;
     double xscale = (dw + 0.0) / w;
     double yscale = (dh + 0.0) / h;
     double threshold = 0.5 / (xscale * yscale);
     double yend = 0.0;
 
-    clockF = (uint8_t *)malloc(byteWidth * dh * sizeof(uint8_t));
+    clockF = (uint8_t *)malloc(bpl * dh * sizeof(uint8_t));
     uint16_t retf1c = 0;
 
     for (int f = 0; f < dh; f++) { // y on output
@@ -105,7 +245,7 @@ void downsampleFont(const uint8_t *font, size_t s, int16_t w, int16_t h) {
                         xportion -= xstart - x;
                     if (x == (int)xend)
                         xportion -= x + 1 - xend;
-                    sum += picture[x][y] * yportion *
+                    sum += fbits[x][y] * yportion *
                            xportion; // can use "raw" bit here ???
                 }
             }
@@ -141,72 +281,87 @@ void downsampleFont(const uint8_t *font, size_t s, int16_t w, int16_t h) {
         }
     }
 
+    free(fbits);
 }
+
+#define USE_DOWNSCALE_ALGO downsampleFontMurated1bit
 
 const uint8_t *getOledFont(int font, bool h12) {
     if (h12) {
         size_t n = 0;
         uint16_t l = 13 * 44;
         uint16_t lp = 15 * 44;
-        if(NULL==clockF) {
-        switch (font) {
-            case MON_FONT_CLASSIC:
-            case MON_FONT_LCD2544:
-                n = sizeof(lcd25x44) / sizeof(lcd25x44[0]);
-                downsampleFont(lcd25x44, n, 25, l); // all set, special AM/PM mode
-                break;
-            case MON_FONT_DECOSOL:
-                n = sizeof(soldeco25x44) / sizeof(soldeco25x44[0]);
-                downsampleFont(soldeco25x44, n, 25, lp); // inc AM/PM
-                break;
-            case MON_FONT_DECOHOL:
-                n = sizeof(holdeco25x44) / sizeof(holdeco25x44[0]);
-                downsampleFont(holdeco25x44, n, 25, lp); // inc AM/PM
-                break;
-            case MON_FONT_FESTUS:
-                n = sizeof(festus25x44) / sizeof(festus25x44[0]);
-                downsampleFont(festus25x44, n, 25, lp); // inc AM/PM
-                break;
-            case MON_FONT_HOLFESTUS:
-                n = sizeof(holfestus25x44) / sizeof(holfestus25x44[0]);
-                downsampleFont(holfestus25x44, n, 25, lp); // inc AM/PM
-                break;
-            case MON_FONT_NB1999:
-                n = sizeof(nb1999s25x44) / sizeof(nb1999s25x44[0]);
-                downsampleFont(nb1999s25x44, n, 25, lp); // inc AM/PM
-                break;
-            case MON_FONT_ROBOTO:
-                n = sizeof(roboto25x44) / sizeof(roboto25x44[0]);
-                downsampleFont(roboto25x44, n, 25, lp); // inc AM/PM
-                break;
-            case MON_FONT_NOTO2544:
-                n = sizeof(noto25x44) / sizeof(noto25x44[0]);
-                downsampleFont(noto25x44, n, 25, lp); // inc AM/PM
-                break;
-            case MON_FONT_NOTF2544:
-                n = sizeof(notof25x44) / sizeof(notof25x44[0]);
-                downsampleFont(notof25x44, n, 25, lp); // inc AM/PM
-                break;
-            case MON_FONT_COLT2544:
-                n = sizeof(colby25x44) / sizeof(colby25x44[0]);
-                downsampleFont(colby25x44, n, 25, lp); // inc AM/PM
-                break;
-            case MON_FONT_TTYP2544:
-                n = sizeof(ttypongo25x44) / sizeof(ttypongo25x44[0]);
-                downsampleFont(ttypongo25x44, n, 25, lp); // inc AM/PM
-                break;
-            case MON_FONT_SHLP2544:
-                n = sizeof(shleep25x44) / sizeof(shleep25x44[0]);
-                downsampleFont(shleep25x44, n, 25, lp); // inc AM/PM
-                break;
-                // these will never be exercised
-            case MON_FONT_LCD1521: return lcd15x21; break;
-            case MON_FONT_LCD1217: return lcd12x17; break;
-            case MON_FONT_LCD2348: return lcd23x48; break;
-            default:
-                n = sizeof(lcd25x44) / sizeof(lcd25x44[0]);
-                downsampleFont(lcd25x44, n, 25, l);
-        }
+        if (NULL == clockF) {
+            switch (font) {
+                case MON_FONT_CLASSIC:
+                case MON_FONT_LCD2544:
+                    n = sizeof(lcd25x44) / sizeof(lcd25x44[0]);
+                    USE_DOWNSCALE_ALGO(lcd25x44, n, 25,
+                                              l); // all set, special AM/PM mode
+                    break;
+                case MON_FONT_DECOSOL:
+                    n = sizeof(soldeco25x44) / sizeof(soldeco25x44[0]);
+                    USE_DOWNSCALE_ALGO(soldeco25x44, n, 25,
+                                              lp); // inc AM/PM
+                    break;
+                case MON_FONT_DECOHOL:
+                    n = sizeof(holdeco25x44) / sizeof(holdeco25x44[0]);
+                    USE_DOWNSCALE_ALGO(holdeco25x44, n, 25,
+                                              lp); // inc AM/PM
+                    break;
+                case MON_FONT_FESTUS:
+                    n = sizeof(festus25x44) / sizeof(festus25x44[0]);
+                    USE_DOWNSCALE_ALGO(festus25x44, n, 25,
+                                              lp); // inc AM/PM
+                    break;
+                case MON_FONT_HOLFESTUS:
+                    n = sizeof(holfestus25x44) / sizeof(holfestus25x44[0]);
+                    USE_DOWNSCALE_ALGO(holfestus25x44, n, 25,
+                                              lp); // inc AM/PM
+                    break;
+                case MON_FONT_NB1999:
+                    n = sizeof(nb1999s25x44) / sizeof(nb1999s25x44[0]);
+                    USE_DOWNSCALE_ALGO(nb1999s25x44, n, 25,
+                                              lp); // inc AM/PM
+                    break;
+                case MON_FONT_ROBOTO:
+                    n = sizeof(roboto25x44) / sizeof(roboto25x44[0]);
+                    USE_DOWNSCALE_ALGO(roboto25x44, n, 25,
+                                              lp); // inc AM/PM
+                    break;
+                case MON_FONT_NOTO2544:
+                    n = sizeof(noto25x44) / sizeof(noto25x44[0]);
+                    USE_DOWNSCALE_ALGO(noto25x44, n, 25,
+                                              lp); // inc AM/PM
+                    break;
+                case MON_FONT_NOTF2544:
+                    n = sizeof(notof25x44) / sizeof(notof25x44[0]);
+                    USE_DOWNSCALE_ALGO(notof25x44, n, 25,
+                                              lp); // inc AM/PM
+                    break;
+                case MON_FONT_COLT2544:
+                    n = sizeof(colby25x44) / sizeof(colby25x44[0]);
+                    USE_DOWNSCALE_ALGO(colby25x44, n, 25,
+                                              lp); // inc AM/PM
+                    break;
+                case MON_FONT_TTYP2544:
+                    n = sizeof(ttypongo25x44) / sizeof(ttypongo25x44[0]);
+                    USE_DOWNSCALE_ALGO(ttypongo25x44, n, 25,
+                                              lp); // inc AM/PM
+                    break;
+                case MON_FONT_SHLP2544:
+                    n = sizeof(shleep25x44) / sizeof(shleep25x44[0]);
+                    USE_DOWNSCALE_ALGO(shleep25x44, n, 25,
+                                              lp); // inc AM/PM
+                    break;
+                    // these will never be exercised
+                case MON_FONT_LCD1521: return lcd15x21; break;
+                case MON_FONT_LCD1217: return lcd12x17; break;
+                case MON_FONT_LCD2348: return lcd23x48; break;
+                default:
+                    n = sizeof(lcd25x44) / sizeof(lcd25x44[0]);
+                    USE_DOWNSCALE_ALGO(lcd25x44, n, 25, l);
+            }
         }
         return clockF;
     } else {

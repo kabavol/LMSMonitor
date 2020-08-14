@@ -51,6 +51,13 @@
 #define MON_FONT_MAX 16
 #define MON_FONT_STANDARD 98
 
+typedef struct {
+    uint8_t B;
+    uint8_t G;
+    uint8_t R;
+    uint8_t A;
+} rgba_t;
+
 static const char *oled_font_str[] = {"Classic LCD Clock Font",
                                       "Deco-Solid Font",
                                       "Deco-Hollow Font",
