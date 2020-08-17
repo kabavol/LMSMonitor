@@ -185,13 +185,15 @@ the visualization parameter must always be specified first
 There are several "easter egg" modes provided for those setups that cannot process the audio data for visualization
 
 There are currently 5 easter egg modes
-
+<p>
+<img width="200" align="right" src="base/eastereggs.jpg">
 - 1 Compact Cassette, as visually correct as possible given the OLED limitations
 - 2 Technics SL-1200, as visually correct as possible given the OLED limitations
 - 3 Open Reel To Reel, pure fantasy
 - 4 VCR with flashing 12:00 AM clock!
 - 5 An old bakelite radio
 
+</p>
 These are just fun display mode where visualization is not possible
 
 ### Audiophonics RASPI MINI
@@ -223,7 +225,8 @@ This also specifies random visualization, further customization to your liking c
 - DONE! Make OLED driver user selectable
 - DONE! Make OLED I2C address user selectable
 - DONE: All-In-One display, clock, track details and downmix visualizer in one 
-- Weather: TBD
+- Reconnect to player, after reboot or offlined
+- Weather: climacell incorporation: TBD
 - Audiophonics EVO-SABRE Balanced DAC 2x ES9038Q2M support: TBD
 - Dual OLED visualizer mode: TBD
 - 128 x 128 OLED support: TBD
