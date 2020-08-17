@@ -181,12 +181,13 @@ Additional supported commands may also be specified, here we request a specific 
 the visualization parameter must always be specified first
 
 ## Easter Eggs
+<p>
+<img width="120" align="right" src="base/eastereggs.jpg">
 
-There are several "easter egg" modes provided for those setups that cannot process the audio data for visualization
+There are several "easter egg" modes provided for those setups that cannot process the audio data for visualization.
+That said theres nothing stopping you using them as your main visualization.
 
 There are currently 5 easter egg modes
-<p>
-<img width="200" align="right" src="base/eastereggs.jpg">
 - 1 Compact Cassette, as visually correct as possible given the OLED limitations
 - 2 Technics SL-1200, as visually correct as possible given the OLED limitations
 - 3 Open Reel To Reel, pure fantasy
