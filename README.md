@@ -182,7 +182,7 @@ the visualization parameter must always be specified first
 
 ## Easter Eggs
 <p>
-<img width="120" align="right" src="base/eastereggs.jpg">
+<img width="130" align="right" src="base/eastereggs.jpg">
 
 There are several "easter egg" modes provided for those setups that cannot process the audio data for visualization.
 That said theres nothing stopping you using them as your main visualization.
