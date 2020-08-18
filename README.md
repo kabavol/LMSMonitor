@@ -188,11 +188,11 @@ There are several "easter egg" modes provided for those setups that cannot proce
 That said theres nothing stopping you using them as your main visualization.
 
 There are currently 5 easter egg modes
-- 1 Compact Cassette, as visually correct as possible given the OLED limitations
-- 2 Technics SL-1200, as visually correct as possible given the OLED limitations
-- 3 Open Reel To Reel, pure fantasy
-- 4 VCR with flashing 12:00 AM clock!
-- 5 An old bakelite radio
+- 1 Compact Cassette, as visually correct as possible given the OLED limitations.  Hubs turn and the tape window shows the track "progress"
+- 2 Technics SL-1200, as visually correct as possible given the OLED limitations.  Tone arm traverses platter to indicate progress.
+- 3 Open Reel To Reel, pure fantasy. Reels rotate, minor animation.
+- 4 VCR with flashing 12:00 AM clock! No additional animation - the clock is annoying enough.
+- 5 An old bakelite radio. Minor animation, radio changes station as track progresses.
 
 </p>
 These are just fun display mode where visualization is not possible
