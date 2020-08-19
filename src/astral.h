@@ -32,14 +32,15 @@
 #include <sys/time.h>
 #include <time.h>
 
+#include "climacell.h"
+
 typedef struct isp_locale_t {
     time_t sunrise;
     time_t sunset;
     int daybright;
     int nightbright;
+    coord_t coords;
     int brightness;
-    double Latitude;
-    double Longitude;
     char Timezone[128]; // string not GMT offset!
 } isp_locale_t;
 
@@ -65,5 +66,8 @@ void free_request(struct Request *req);
 
 bool initAstral(void);
 void brightnessEvent(void);
+
+void weatherEvent(struct climacell_t *climacell);
+bool updClimacell(climacell_t *climacell);
 
 #endif

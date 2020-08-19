@@ -28,8 +28,13 @@
 #define CLIMACELL_H
 
 #include <stdint.h>
-/////#include "astral.h"
+#include <string.h>
 
+typedef struct wiconmap_t {
+    char code[30];
+    char text[128];
+    uint16_t icon;
+} wiconmap_t;
 
 typedef struct coord_t {
     double Latitude;
@@ -45,60 +50,25 @@ typedef struct ccdatum_t {
 // climacell free tier :: 1000 calls per day
 // lookup at 10-15 minute intervals more than sufficient
 
-/*
-{"lat":42.361422,"lon":-71.10409,"temp":{"value":66.43,"units":"F"},
-"feels_like":{"value":66.43,"units":"F"},"wind_speed":{"value":4.47,"units":"mph"},
-"baro_pressure":{"value":30.0911,"units":"inHg"},"visibility":{"value":6.21371,"units":"mi"},
-"humidity":{"value":83.31,"units":"%"},"wind_direction":{"value":57.94,"units":"degrees"},
-"precipitation":{"value":0,"units":"in/hr"},"sunrise":{"value":"2020-08-16T09:53:20.530Z"},
-"sunset":{"value":"2020-08-16T23:43:29.297Z"},"weather_code":{"value":"mostly_clear"},
-"observation_time":{"value":"2020-08-16T02:28:59.515Z"}}
-*/
-
 typedef struct climacell_t {
     char Apikey[64];
     char host[128];
     char uri[128];
     char units[3];
     coord_t coords;
-	char fields[1024];
-    uint8_t icon;
+    char fields[1024];
+    bool refreshed;
+    uint16_t icon;
     ccdatum_t temp;
     ccdatum_t feels_like;
     ccdatum_t wind_speed;
     ccdatum_t baro_pressure;
     ccdatum_t humidity;
+    ccdatum_t visibility;
     ccdatum_t wind_direction;
     ccdatum_t precipitation;
     ccdatum_t weather_code;
+    ccdatum_t observation_time;
 } climacell_t;
-
-/*
-weather_xlate = {
-"rain_heavy":"Heavy Rain",
-"rain":"Rain",
-"rain_light":"Light Rain",
-"freezing_rain_heavy":"Freezing Rain/Sleet",
-"freezing_rain":"Freezing Rain",
-"freezing_rain_light":"Light Freezing Rain",
-"freezing_drizzle":"Freezing Drizzle",
-"drizzle":"Drizzle",
-"ice_pellets_heavy":"Hail".
-"ice_pellets":"Hail",
-"ice_pellets_light":"Light Hail",
-"snow_heavy":"Heavy Snow",
-"snow":"Snow",
-"snow_light":"Snow Showers",
-"flurries":"Snow Flurries",
-"tstorm":"Thunderstorm",
-"fog_light":"Light Fog",
-"fog":"Fog",
-"cloudy":"Cloudy",
-"mostly_cloudy":"Mostly Cloudy",
-"partly_cloudy":"Partly Cloudy", # partly_cloudy, partly_cloudy_night
-"mostly_clear":"Mostly Clear",	# mostly_clear_day, mostly_clear_night
-"clear":"Clear, Sunny",	# clear_day, clear_night
-}
-*/
 
 #endif

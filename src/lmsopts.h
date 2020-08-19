@@ -56,6 +56,7 @@ typedef struct MonitorAttrs {
     int lastVolume;
     int clockFont;
     bool flipDisplay;     // display mounted upside down
+    char weather[128];    // weather init string, apikey and units (optional)
     uint8_t i2cBus;       // number of I2C bus
     uint8_t oledRST;      // IIC/SPI reset GPIO
     uint8_t spiDC;        // SPI DC

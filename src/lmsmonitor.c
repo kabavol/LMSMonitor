@@ -66,12 +66,13 @@
 #include "timer.h"
 #include "metrics.h"
 #include "astral.h"
+#include "climacell.h"
 #include "cnnxn.h"
 #include "lmsmonitor.h"
 #include "oledimg.h"
 // clang-format on
 struct MonitorAttrs *glopt;
-
+struct climacell_t weather;
 #endif
 
 #define SLEEP_TIME_SAVER 20
@@ -463,6 +464,10 @@ void eggFX(size_t timer_id, void *user_data) {
 
 void checkAstral(size_t timer_id, void *user_data) { brightnessEvent(); }
 
+void checkWeather(size_t timer_id, void *user_data) {
+    //
+}
+
 void cycleVisualize(size_t timer_id, void *user_data) {
 
     instrument(__LINE__, __FILE__, "cycleVisualize");
@@ -559,6 +564,7 @@ int main(int argc, char *argv[]) {
         .refreshViz = false,
         .lastVolume = -1,
         .flipDisplay = false,
+        .weather = {0},
         .i2cBus = 1, // number of I2C bus
         // CLOCK & DATA ???
         .oledRST = OLED_SPI_RESET, // SPI/IIC reset GPIO
@@ -652,6 +658,20 @@ int main(int argc, char *argv[]) {
         timer_initialize();
         astraltimer = timer_start(60 * 5 * 1000, checkAstral, TIMER_PERIODIC,
                                   (void *)NULL);
+    }
+    if (0!=strlen(lmsopt.weather)) {
+        // if string contains comma split for api key and units
+        strcpy(weather.Apikey,lmsopt.weather);
+        weather.refreshed = false;
+        if (updClimacell(&weather)) {
+            printf("\n* * * * *  on our way to weather  * * * * *\n\n");
+            /*
+            size_t climacelltimer;
+            timer_initialize();
+            climacelltimer = timer_start(60 * 15 * 1000, updateWeather, TIMER_PERIODIC,
+                                    (void *)climacell);
+            */
+        }
     }
 #endif
 
