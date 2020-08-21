@@ -238,9 +238,9 @@ This also specifies random visualization, further customization to your liking c
 - DONE! Downmix visual data and display on one large Spectrum.
 - DONE! Make OLED driver user selectable
 - DONE! Make OLED I2C address user selectable
-- DONE: All-In-One display, clock, track details and downmix visualizer in one 
+- DONE! All-In-One display, clock, track details and downmix visualizer in one 
 - Reconnect to player, after reboot or offlined
-- Weather: climacell incorporation: TBD
+- DONE! Weather: climacell incorporation
 - Audiophonics EVO-SABRE Balanced DAC 2x ES9038Q2M support: TBD
 - Dual OLED visualizer mode: TBD
 - 128 x 128 OLED support: TBD
