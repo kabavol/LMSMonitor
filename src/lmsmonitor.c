@@ -160,8 +160,14 @@ void attach_signal_handler(void) {
 // "page" definitions, no break-out for visualizer
 void playingPage(void);
 #ifdef __arm__
+// if no driver params specified saverPage is displayed
+// subsequent track playback displays details deactivating saver
 void saverPage(void);
+// 12/24 clock page with date, if specified pi metrics displayed too
 void clockPage(void);
+// weather details, 12/24 clock, date, and if specified pi metrics displayed too
+void clockWeatherPage(climacell_t *cc);
+// eggs anyone...
 void cassettePage(A1Attributes *aio);
 void technicSL1200Page(A1Attributes *aio);
 void reelToReelPage(A1Attributes *aio);
@@ -172,7 +178,7 @@ void radio50Page(A1Attributes *aio);
 static char *get_mac_address() {
     struct ifconf ifc;
     struct ifreq *ifr, *ifend;
-    struct ifreq ifreq;
+    struct ifreq ifreqi;
     struct ifreq ifs[3];
 
     uint8_t mac[6] = {0, 0, 0, 0, 0, 0};
@@ -191,9 +197,10 @@ static char *get_mac_address() {
         // Loop through interfaces.
         for (ifr = ifc.ifc_req; ifr < ifend; ifr++) {
             if (ifr->ifr_addr.sa_family == AF_INET) {
-                strncpy(ifreq.ifr_name, ifr->ifr_name, sizeof(ifreq.ifr_name));
-                if (ioctl(sd, SIOCGIFHWADDR, &ifreq) == 0) {
-                    memcpy(mac, ifreq.ifr_hwaddr.sa_data, 6);
+                strncpy(ifreqi.ifr_name, ifr->ifr_name,
+                        sizeof(ifreqi.ifr_name));
+                if (ioctl(sd, SIOCGIFHWADDR, &ifreqi) == 0) {
+                    memcpy(mac, ifreqi.ifr_hwaddr.sa_data, 6);
                     // Leave on first valid address.
                     if (mac[0] + mac[1] + mac[2] != 0)
                         ifr = ifend;
@@ -416,7 +423,6 @@ void eggFX(size_t timer_id, void *user_data) {
 
         switch (aio->eeMode) {
             case EE_NONE:
-            case EE_RADIO: break;
             case EE_REEL2REEL:
             case EE_CASSETTE:
                 aio->lFrame +=
@@ -441,9 +447,15 @@ void eggFX(size_t timer_id, void *user_data) {
                     cassetteEffects(80, aio->rFrame, aio->mxframe, -aio->flows);
                 }
                 break;
+            case EE_RADIO:
+                    aio->rFrame++;
+                    if (aio->rFrame > aio->mxframe)
+                        aio->rFrame = 0;
+                    radioEffects(28, 40, aio->rFrame, aio->mxframe);
+            break;
             case EE_VCR:
             case EE_VINYL:
-                aio->lFrame += 1;
+                aio->lFrame++;
                 if (aio->lFrame > 1)
                     aio->lFrame = 0;
                 if (EE_VCR == aio->eeMode) {
@@ -451,7 +463,7 @@ void eggFX(size_t timer_id, void *user_data) {
                     vcrEffects(52, 44, aio->lFrame, aio->mxframe);
                 } else {
                     // just "wobble" the vinyl and rotate label
-                    aio->rFrame += 1;
+                    aio->rFrame++;
                     if (aio->rFrame > aio->mxframe)
                         aio->rFrame = 0;
                     vinylEffects(10 + aio->lFrame, 23, aio->rFrame,
@@ -465,7 +477,15 @@ void eggFX(size_t timer_id, void *user_data) {
 void checkAstral(size_t timer_id, void *user_data) { brightnessEvent(); }
 
 void checkWeather(size_t timer_id, void *user_data) {
-    //
+    instrument(__LINE__, __FILE__, "checkWeather");
+    climacell_t *cc;
+    cc = ((struct climacell_t *)user_data);
+    if (getVerbose() >= LL_DEBUG) {
+        printf("Check Latitude ......: %8.4f\n", cc->coords.Latitude);
+        printf("Check Longitude .....: %8.4f\n", cc->coords.Longitude);
+    }
+    updClimacell(cc);
+    printf("Current Conditions ..: %s\n", cc->current.text);
 }
 
 void cycleVisualize(size_t timer_id, void *user_data) {
@@ -532,8 +552,7 @@ int main(int argc, char *argv[]) {
     // mutex - there can be only one! - multiples get ugly quickly
     if (1 == alreadyRunning()) {
         exit(EXIT_FAILURE);
-    }
-    else {
+    } else {
         attach_signal_handler();
         instrument(__LINE__, __FILE__, "Initialize");
     }
@@ -659,18 +678,27 @@ int main(int argc, char *argv[]) {
         astraltimer = timer_start(60 * 5 * 1000, checkAstral, TIMER_PERIODIC,
                                   (void *)NULL);
     }
-    if (0!=strlen(lmsopt.weather)) {
+    weather.refreshed = false;
+    if (0 != strlen(lmsopt.weather)) {
         // if string contains comma split for api key and units
-        strcpy(weather.Apikey,lmsopt.weather);
+        strcpy(weather.Apikey, lmsopt.weather);
         weather.refreshed = false;
+        weather.active = false;
+
         if (updClimacell(&weather)) {
-            printf("\n* * * * *  on our way to weather  * * * * *\n\n");
-            /*
+            if (getVerbose() >= LL_DEBUG) {
+                printf("\n"
+                       "Check Latitude ......: %8.4f\n"
+                       "Check Longitude .....: %8.4f\n"
+                       "Current Conditions ..: %s\n\n",
+                       weather.coords.Latitude, weather.coords.Longitude,
+                       weather.current.text);
+            weather.active = true;
+            }
             size_t climacelltimer;
             timer_initialize();
-            climacelltimer = timer_start(60 * 15 * 1000, updateWeather, TIMER_PERIODIC,
-                                    (void *)climacell);
-            */
+            climacelltimer = timer_start(60 * 3 * 1000, checkWeather,
+                                         TIMER_PERIODIC, (void *)&weather);
         }
     }
 #endif
@@ -717,8 +745,8 @@ int main(int argc, char *argv[]) {
         switch (aio.eeMode) {
             case EE_VINYL:
             case EE_REEL2REEL: aio.mxframe = 17; break;
-            case EE_VCR:
-            case EE_RADIO: aio.mxframe = 1; break;
+            case EE_VCR: aio.mxframe = 1; break;
+            case EE_RADIO: aio.mxframe = 23; break;
         }
     }
 
@@ -837,7 +865,11 @@ int main(int argc, char *argv[]) {
                     if (aio.eeFXActive)
                         aio.eeFXActive = false;
                     aio.compound[0] = {0};
-                    clockPage();
+                    if (weather.active) {
+                        clockWeatherPage(&weather);
+                    }else{
+                        clockPage();
+                    }
                 } else {
                     saverPage();
                 }
@@ -925,13 +957,13 @@ void clockPage(void) {
     struct tm loctm = *localtime(&now);
 
     // time - 12 or 24 hour formats
-    if (MON_CLOCK_12H == glopt->clockMode) {// 12H A/P
+    if (MON_CLOCK_12H == glopt->clockMode) { // 12H A/P
         sprintf(buff, "%02d:%02d%s",
                 ((loctm.tm_hour > 12) ? loctm.tm_hour - 12 : loctm.tm_hour),
                 loctm.tm_min, ((loctm.tm_hour > 12) ? "P" : "A"));
         dt.charWidth = 20;
-        dt.bufferLen = (3*dt.charHeight);
-    } else {// 24H vanilla
+        dt.bufferLen = (3 * dt.charHeight);
+    } else { // 24H vanilla
         sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
     }
 
@@ -1043,6 +1075,61 @@ void radio50Page(A1Attributes *aio) {
         aio->eeFXActive = false;
         softClockReset(false);
     }
+}
+
+
+void clockWeatherPage(climacell_t *cc) {
+
+    char buff[255];
+
+    DrawTime dt = {.charWidth = 12,
+                   .charHeight = 17,
+                   .bufferLen = LCD12X17_LEN,
+                   .pos = {3, 1},
+                   .font = MON_FONT_LCD1217};
+    //dt.fmt12 = (MON_CLOCK_12H == glopt->clockMode),
+
+    if (glopt->refreshClock) {
+        instrument(__LINE__, __FILE__, "clock reset");
+        softClockReset();
+        softClockRefresh(false);
+    }
+    instrument(__LINE__, __FILE__, "clockWeatherPage");
+
+    setNagDone();
+    softPlayReset();
+    softVisualizeRefresh(true);
+    setSleepTime(SLEEP_TIME_LONG);
+
+    instrument(__LINE__, __FILE__, "putkWeather");
+    putTextToCenter(1, cc->current.text);
+    putWeatherTemp(1, 31, cc);
+    putWeatherIcon(84,12,cc);
+
+    //instrument(__LINE__, __FILE__, "cpu Metrics?");
+    //if (glopt->showTemp) putCPUMetrics(39);
+
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    time_t now = tv.tv_sec;
+    struct tm loctm = *localtime(&now);
+    sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
+
+    if (strcmp(glopt->lastTime, buff) != 0)
+        setLastTime(buff, dt);
+
+    // colon (blink)
+    drawTimeBlink(((loctm.tm_sec % 2) ? ' ' : ':'), &dt);
+
+    // date
+    strftime(buff, sizeof(buff), "%A %Y-%m-%02d", &loctm);
+    putTextToCenter(54, buff);
+
+    // set changed so we'll repaint on play
+    setupPlayMode();
+    setSleepTime(SLEEP_TIME_LONG);
+
+    refreshDisplay();
 }
 
 void vcrPage(A1Attributes *aio) {

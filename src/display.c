@@ -92,6 +92,8 @@ double rad2Deg(double angRad) { return (180.0 * angRad / PI); }
 
 #ifdef __arm__
 
+int elementLength(int szh, int szw) { return szh * (int)((szw + 7) / 8); }
+
 meter_chan_t lastVU = {-1000, -1000};
 meter_chan_t overVU = {0, 0};
 meter_chan_t dampVU = {-1000, -1000};
@@ -356,17 +358,50 @@ void splashScreen(void) {
     dodelay(180);
 }
 
+void putWeatherTemp(int x, int y, climacell_t *cc) {
+    char buf[64];
+    int szw = 20;
+    int szh = 36;
+    //display.fillRect(x, y, szw*4, szh, BLACK);
+    //display.drawBitmap(x+20, y, thermo20x36px, szw, szh, WHITE);
+    //sprintf(buf,"Temp      %3.2f%s",cc->temp.fdatum,cc->temp.units);
+    //putText(x, y, buf);
+    //sprintf(buf,"Feels      %3.2f%s",cc->feels_like.fdatum,cc->feels_like.units);
+    //putText(x, y+12, buf);
+    sprintf(buf, "%3.2f%s", cc->temp.fdatum, cc->temp.units);
+    //putTinyTextMaxWidth(x, y, 72, buf);
+    putText(x, y, buf);
+    sprintf(buf, "%3.2f %s %s", cc->wind_speed.fdatum,
+            cc->wind_speed.units, cc->wind_direction.sdatum);
+    //putTinyTextMaxWidth(x, y + 10, 72, buf);
+    putText(x, y + 11, buf);
+}
+
+void putWeatherIcon(int x, int y, climacell_t *cc) {
+    int szw = 34;
+    int szh = 34;
+    int w = elementLength(szh, szw);
+    uint8_t dest[w];
+    int start = cc->current.icon * w;
+    memcpy(dest, weather34x34 + start, sizeof dest);
+    display.fillRect(x, y, szw, szh, BLACK);
+    display.drawBitmap(x, y, dest, szw, szh, WHITE);
+}
+
 void putTapeType(audio_t audio) {
-    int w = 6;
-    int h = 4;
+
+    int szw = 6;
+    int szh = 4;
+    int w = elementLength(szh, szw);
+
     int start = 0;
     uint8_t dest[w];
-    start = audio.audioIcon * (w - 2);
+    start = audio.audioIcon * w;
     int x = 99;
     int y = 29;
     memcpy(dest, cmedia + start, sizeof dest);
-    display.fillRect(x, y, w, w, BLACK);
-    display.drawBitmap(x, y, dest, w, h, WHITE);
+    display.fillRect(x, y, szw, szh, BLACK);
+    display.drawBitmap(x, y, dest, szw, szh, WHITE);
 }
 
 void putSL1200Btn(audio_t audio) {
@@ -398,14 +433,15 @@ void toneArm(double pct, bool init) {
 }
 
 void putIFDetail(int icon, int xpos, int ypos, char *host) {
-    int s = 36;
-    int h = 12;
+    int szw = 17;
+    int szh = 12;
+    int w = elementLength(szh, szw);
     int start = 0;
-    uint8_t dest[s];
-    start = icon * s;
+    uint8_t dest[w];
+    start = icon * w;
     memcpy(dest, netconn17x12 + start, sizeof dest);
-    display.fillRect(xpos, ypos - 2, 45, h + 2, BLACK);
-    display.drawBitmap(xpos, ypos - 2, dest, 17, h, WHITE);
+    display.fillRect(xpos, ypos - 2, 45, szh + 2, BLACK);
+    display.drawBitmap(xpos, ypos - 2, dest, szw, szh, WHITE);
     putText(xpos + 19, ypos, host);
 }
 
@@ -446,7 +482,21 @@ void radio50(bool blank) {
 }
 
 void radioEffects(int xpos, int ypos, int frame, int mxframe) {
-    //
+    int szw = 19;
+    int szh = 6;
+    int w = elementLength(szh, szw);
+    int prev = frame + 1;
+    if (prev < 0)
+        prev = mxframe;
+    if (prev > mxframe)
+        prev = 0;
+    uint8_t dest[w];
+    int start = prev * w;
+    memcpy(dest, radani19x6 + start, sizeof dest);
+    display.drawBitmap(xpos, ypos, dest, szw, szh, BLACK);
+    start = frame * w;
+    memcpy(dest, radani19x6 + start, sizeof dest);
+    display.drawBitmap(xpos, ypos, dest, szw, szh, WHITE);
 }
 
 void putVcr(audio_t audio) {
@@ -461,9 +511,10 @@ void vcrPlayer(bool blank) {
 }
 
 void vcrEffects(int xpos, int ypos, int frame, int mxframe) {
-    int w = 24;
+
     int szw = 25;
     int szh = 6;
+    int w = elementLength(szh, szw);
     int prev = frame + 1;
     if (prev < 0)
         prev = mxframe;
@@ -490,8 +541,11 @@ void reelToReel(bool blank) {
 }
 
 void reelEffects(int xpos, int ypos, int frame, int mxframe, int direction) {
-    int w = 120;
-    int sz = 30;
+
+    int szw = 30;
+    int szh = 30;
+    int w = elementLength(szh, szw);
+
     int prev = frame + direction;
     if (prev < 0)
         prev = mxframe;
@@ -500,10 +554,10 @@ void reelEffects(int xpos, int ypos, int frame, int mxframe, int direction) {
     uint8_t dest[w];
     int start = prev * w;
     memcpy(dest, smr2rc + start, sizeof dest);
-    display.drawBitmap(xpos, ypos, dest, sz, sz, BLACK);
+    display.drawBitmap(xpos, ypos, dest, szw, szh, BLACK);
     start = frame * w;
     memcpy(dest, smr2rc + start, sizeof dest);
-    display.drawBitmap(xpos, ypos, dest, sz, sz, WHITE);
+    display.drawBitmap(xpos, ypos, dest, szw, szh, WHITE);
 }
 
 void vinylEffects(int xpos, int lpos, int frame, int mxframe) {
@@ -546,7 +600,10 @@ void drawHorizontalCheckerBar(int x, int y, int w, int h, int percent) {
 }
 
 void cassetteEffects(int xpos, int frame, int mxframe, int direction) {
-    int w = 20;
+
+    int szw = 10;
+    int szh = 10;
+    int w = elementLength(szh, szw);
     int prev = frame + direction;
     if (prev < 0)
         prev = mxframe;
@@ -556,11 +613,11 @@ void cassetteEffects(int xpos, int frame, int mxframe, int direction) {
     int ypos = 23;
     int start = prev * w;
     memcpy(dest, hub10x10 + start, sizeof dest);
-    drawRectangle(xpos, ypos, w / 2, w / 2, BLACK);
-    display.drawBitmap(xpos, ypos, dest, w / 2, w / 2, BLACK);
+    drawRectangle(xpos, ypos, szw, szh, BLACK);
+    display.drawBitmap(xpos, ypos, dest, szw, szh, BLACK);
     start = frame * w;
     memcpy(dest, hub10x10 + start, sizeof dest);
-    display.drawBitmap(xpos, ypos, dest, w / 2, w / 2, WHITE);
+    display.drawBitmap(xpos, ypos, dest, szw, szh, WHITE);
 }
 
 void downmixVU(struct vissy_meter_t *vissy_meter,

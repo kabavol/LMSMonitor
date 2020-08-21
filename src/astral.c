@@ -55,6 +55,7 @@
 #define _USE_MATH_DEFINES
 #endif
 
+bool daymode = true;
 isp_locale_t isp_locale;
 
 static int jsonEq(const char *json, jsmntok_t *tok, const char *s) {
@@ -95,6 +96,15 @@ void decodeKV(char *jsonData, ccdatum_t *datum, int i, int j, jsmntok_t jt[]) {
     }
 }
 
+static const char *degToCompass(double deg) {
+    int d16 = (int)((deg / 22.5) + .5);
+    d16 %= 16;
+    static const char windd[17][4] = {"N",  "NNE", "NE", "ENE", "E",  "ESE",
+                                      "SE", "SSE", "S",  "SSW", "SW", "WSW",
+                                      "W",  "WNW", "NW", "NNW"};
+    return (const char *)windd[d16];
+}
+
 static char *whatsitJson(int typ) {
     switch (typ) {
         case JSMN_UNDEFINED: return (char *)"Undef"; break;
@@ -107,9 +117,16 @@ static char *whatsitJson(int typ) {
     return (char *)"Unk?";
 }
 
-uint16_t weatherIconXlate(char* key) {
+wiconmap_t weatherIconXlate(char *key) {
 
+    // add day night logic for specifics
+    char wspecific[128] = {0};
+    sprintf(wspecific, "%s%s", key,
+            (daymode) ? "_day"  : "_night");
+                                                            
     const static struct wiconmap_t wmap[] = {
+        /*
+// more granular/detailed icons
         (wiconmap_t){"rain_heavy", "Heavy Rain", 11},
         (wiconmap_t){"rain", "Rain", 9},
         (wiconmap_t){"rain_light", "Light Rain", 8},
@@ -138,18 +155,54 @@ uint16_t weatherIconXlate(char* key) {
         (wiconmap_t){"clear", "Clear, Sunny", 0},
         (wiconmap_t){"clear_day", "Clear", 0},
         (wiconmap_t){"clear_night", "Clear", 1},
+*/
+        (wiconmap_t){"clear_day", "Clear", 0},
+        (wiconmap_t){"clear_night", "Clear", 1},
+        (wiconmap_t){"clear", "Clear", 0},
+        (wiconmap_t){"cloudy", "Cloudy", 2},
+        (wiconmap_t){"drizzle", "Drizzle", 3},
+        (wiconmap_t){"flurries", "Snow Flurries", 4},
+        (wiconmap_t){"fog", "Fog", 5},
+        (wiconmap_t){"fog_light", "Mist", 6},
+        (wiconmap_t){"freezing_drizzle", "Freezing Drizzle", 7},
+        (wiconmap_t){"freezing_rain", "Freezing Rain", 8},
+        (wiconmap_t){"freezing_rain_heavy", "Frezing Raing", 9},
+        (wiconmap_t){"freezing_rain_light", "Freezing Rain", 10},
+        (wiconmap_t){"ice_pellets", "Hail", 11},
+        (wiconmap_t){"ice_pellets_heavy", "Hail", 12},
+        (wiconmap_t){"ice_pellets_light", "Hail", 13},
+        (wiconmap_t){"mostly_clear_day", "Mostly Clear", 14},
+        (wiconmap_t){"mostly_clear_night", "Mostly Clear", 15},
+        (wiconmap_t){"mostly_clear", "Mostly Clear", 14},
+        (wiconmap_t){"partly_cloudy_day", "Partly Cloudy", 17},
+        (wiconmap_t){"partly_cloudy_night", "Partly Cloudy", 18},
+        (wiconmap_t){"partly_cloudy", "Partly Cloudy", 17},
+        (wiconmap_t){"mostly_cloudy_day", "Mostly Cloudy", 16},
+        (wiconmap_t){"mostly_cloudy_night", "Mostly Cloudy", 18},
+        (wiconmap_t){"mostly_cloudy", "Mostly Cloudy", 16},
+        (wiconmap_t){"rain", "Rain", 19},
+        (wiconmap_t){"rain_heavy", "Heavy Rain", 20},
+        (wiconmap_t){"rain_light", "Showers", 21},
+        (wiconmap_t){"snow", "Snow", 22},
+        (wiconmap_t){"snow_heavy", "Heavy Snow", 23},
+        (wiconmap_t){"snow_light", "Snow Showers", 24},
+        (wiconmap_t){"tstorm", "Thunderstorm", 25},
+        (wiconmap_t){"???", "???", 26},
     };
 
-    uint16_t ret = 99; // unk
+    int i;
+    size_t l = sizeof(wmap) / sizeof(wmap[0]);
     // dictionary, hash - next pass...
-    for (int i = 0; i < 26; i++) {
-        if (0 == strcmp((const char*)key, (const char*)wmap[i].code)) {
-            ret = wmap[i].icon;
+    for (i = 0; i < l; i++) {
+        //icon mapping inclusive day night modes
+        if ((0 ==
+             strcmp((const char *)wspecific, (const char *)wmap[i].code)) ||
+            (0 == strcmp((const char *)key, (const char *)wmap[i].code))) {
             break;
         }
     }
-
-    return ret;
+    // pass mapped icon or fall through to unknown
+    return wmap[i];
 }
 
 double calcSunEqOfCenter(double t);
@@ -393,12 +446,15 @@ void brightnessEvent(void) {
     }
 
     if (current != isp_locale.brightness) {
-        if (isp_locale.brightness == isp_locale.nightbright)
+        if (isp_locale.brightness == isp_locale.nightbright) {
+            daymode = false;
             sprintf(stb, "%s Night Mode\n",
                     labelIt("Set Display", LABEL_WIDTH, "."));
-        else
+        }else{
+            daymode = true;
             sprintf(stb, "%s Day Mode\n",
                     labelIt("Set Display", LABEL_WIDTH, "."));
+        }
         putMSG(stb, LL_INFO);
         displayBrightness(isp_locale.brightness, true);
     }
@@ -752,22 +808,25 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
 
         if (strncmp("lat", keyStr, 3) == 0) {
             climacell->coords.Latitude = strtod(valStr, NULL);
-            printf("debug: climacell %s -> %.3f\n", keyStr,
-                   climacell->coords.Latitude);
+            if (getVerbose() >= LL_DEBUG)
+                printf("debug: climacell %s -> %8.4f\n", keyStr,
+                       climacell->coords.Latitude);
             done--;
             i++;
         } else if (strncmp("lon", keyStr, 3) == 0) {
             climacell->coords.Longitude = strtod(valStr, NULL);
-            printf("debug: climacell %s -> %.3f\n", keyStr,
-                   climacell->coords.Longitude);
+            if (getVerbose() >= LL_DEBUG)
+                printf("debug: climacell %s -> %8.4f\n", keyStr,
+                       climacell->coords.Longitude);
             done--;
             i++;
         } else if (strncmp("temp", keyStr, 4) == 0) {
             i++;
             if (jt[i].type == JSMN_OBJECT) {
                 decodeKV(jsonData, &climacell->temp, i + 1, i + 5, jt);
-                printf("debug: climacell %s -> %5.2f %s\n", keyStr,
-                       climacell->temp.fdatum, climacell->temp.units);
+                if (getVerbose() >= LL_DEBUG)
+                    printf("debug: climacell %s -> %5.2f %s\n", keyStr,
+                           climacell->temp.fdatum, climacell->temp.units);
                 done--;
                 i += 4; // close the group
             }
@@ -775,9 +834,10 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
             i++;
             if (jt[i].type == JSMN_OBJECT) {
                 decodeKV(jsonData, &climacell->feels_like, i + 1, i + 6, jt);
-                printf("debug: climacell %s -> %5.2f %s\n", keyStr,
-                       climacell->feels_like.fdatum,
-                       climacell->feels_like.units);
+                if (getVerbose() >= LL_DEBUG)
+                    printf("debug: climacell %s -> %5.2f %s\n", keyStr,
+                           climacell->feels_like.fdatum,
+                           climacell->feels_like.units);
                 done--;
                 i += 4; // close the group
             }
@@ -785,8 +845,10 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
             i++;
             if (jt[i].type == JSMN_OBJECT) {
                 decodeKV(jsonData, &climacell->humidity, i + 1, i + 5, jt);
-                printf("debug: climacell %s -> %5.2f %s\n", keyStr,
-                       climacell->humidity.fdatum, climacell->humidity.units);
+                if (getVerbose() >= LL_DEBUG)
+                    printf("debug: climacell %s -> %5.2f %s\n", keyStr,
+                           climacell->humidity.fdatum,
+                           climacell->humidity.units);
                 done--;
                 i += 4; // close the group
             }
@@ -794,9 +856,10 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
             i++;
             if (jt[i].type == JSMN_OBJECT) {
                 decodeKV(jsonData, &climacell->wind_speed, i + 1, i + 5, jt);
-                printf("debug: climacell %s -> %5.2f %s\n", keyStr,
-                       climacell->wind_speed.fdatum,
-                       climacell->wind_speed.units);
+                if (getVerbose() >= LL_DEBUG)
+                    printf("debug: climacell %s -> %5.2f %s\n", keyStr,
+                           climacell->wind_speed.fdatum,
+                           climacell->wind_speed.units);
                 done--;
                 i += 4; // close the group
             }
@@ -804,9 +867,10 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
             i++;
             if (jt[i].type == JSMN_OBJECT) {
                 decodeKV(jsonData, &climacell->baro_pressure, i + 1, i + 5, jt);
-                printf("debug: climacell %s -> %5.2f %s\n", keyStr,
-                       climacell->baro_pressure.fdatum,
-                       climacell->baro_pressure.units);
+                if (getVerbose() >= LL_DEBUG)
+                    printf("debug: climacell %s -> %5.2f %s\n", keyStr,
+                           climacell->baro_pressure.fdatum,
+                           climacell->baro_pressure.units);
                 done--;
                 i += 4; // close the group
             }
@@ -814,9 +878,10 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
             i++;
             if (jt[i].type == JSMN_OBJECT) {
                 decodeKV(jsonData, &climacell->visibility, i + 1, i + 5, jt);
-                printf("debug: climacell %s -> %5.2f %s\n", keyStr,
-                       climacell->visibility.fdatum,
-                       climacell->visibility.units);
+                if (getVerbose() >= LL_DEBUG)
+                    printf("debug: climacell %s -> %5.2f %s\n", keyStr,
+                           climacell->visibility.fdatum,
+                           climacell->visibility.units);
                 done--;
                 i += 4; // close the group
             }
@@ -825,9 +890,13 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
             if (jt[i].type == JSMN_OBJECT) {
                 decodeKV(jsonData, &climacell->wind_direction, i + 1, i + 5,
                          jt);
-                printf("debug: climacell %s -> %5.2f %s\n", keyStr,
-                       climacell->wind_direction.fdatum,
-                       climacell->wind_direction.units);
+                strcpy(climacell->wind_direction.sdatum,
+                       degToCompass(climacell->wind_direction.fdatum));
+                if (getVerbose() >= LL_DEBUG)
+                    printf("debug: climacell %s -> %3s : %5.2f %s\n", keyStr,
+                           climacell->wind_direction.sdatum,
+                           climacell->wind_direction.fdatum,
+                           climacell->wind_direction.units);
                 done--;
                 i += 4; // close the group
             }
@@ -835,9 +904,10 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
             i++;
             if (jt[i].type == JSMN_OBJECT) {
                 decodeKV(jsonData, &climacell->precipitation, i + 1, i + 5, jt);
-                printf("debug: climacell %s -> %5.2f %s\n", keyStr,
-                       climacell->precipitation.fdatum,
-                       climacell->precipitation.units);
+                if (getVerbose() >= LL_DEBUG)
+                    printf("debug: climacell %s -> %5.2f %s\n", keyStr,
+                           climacell->precipitation.fdatum,
+                           climacell->precipitation.units);
                 done--;
                 i += 4; // close the group
             }
@@ -853,10 +923,12 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
             i++;
             if (jt[i].type == JSMN_OBJECT) {
                 decodeKV(jsonData, &climacell->weather_code, i + 1, i + 3, jt);
-                climacell->icon =
+                climacell->current =
                     weatherIconXlate(climacell->weather_code.sdatum);
-                printf("debug: climacell %s -> %s (%d)\n", keyStr,
-                       climacell->weather_code.sdatum, climacell->icon);
+                if (getVerbose() >= LL_DEBUG)
+                    printf("debug: climacell %s -> %s : %s (%d)\n", keyStr,
+                           climacell->weather_code.sdatum,
+                           climacell->current.text, climacell->current.icon);
                 done--;
                 i += 1; // close the group
             }
@@ -865,10 +937,10 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
             if (jt[i].type == JSMN_OBJECT) {
                 decodeKV(jsonData, &climacell->observation_time, i + 1, i + 3,
                          jt);
-                printf("debug: climacell %s -> %s\n", keyStr,
-                       climacell->observation_time.sdatum);
-                done--;
-                i += 1; // close the group
+                if (getVerbose() >= LL_DEBUG)
+                    printf("debug: climacell %s -> %s\n", keyStr,
+                           climacell->observation_time.sdatum);
+                break; // always final kv
             }
         } else {
             continue; // unknown or we need to map
@@ -911,11 +983,18 @@ bool updClimacell(climacell_t *climacell) {
             return false;
         }
     }
+
     sprintf(uri, "%s?apikey=%s&lat=%f&lon=%f&unit_system=%s", climacell->uri,
             climacell->Apikey, climacell->coords.Latitude,
             climacell->coords.Longitude, climacell->units);
 
-    char *field = strtok(climacell->fields, ",");
+    //if (getVerbose() >= LL_DEBUG)
+    //    printf("debug(1):%s\n", climacell->fields);
+
+    // strtok is destructive, make a scratch copy
+    char *ccf = (char *)malloc(sizeof(char) * (strlen(climacell->fields) + 1));
+    strcpy(ccf, climacell->fields);
+    char *field = strtok(ccf, ",");
     bool delim = false;
     while (field) {
         if (delim)
@@ -924,7 +1003,13 @@ bool updClimacell(climacell_t *climacell) {
             strcat(uri, "&fields=");
         strcat(uri, field);
         field = strtok(NULL, ",");
+        delim = true;
     }
+    if (ccf)
+        free(ccf);
+
+    //if (getVerbose() >= LL_DEBUG)
+    //    printf("debug(2):%s\n", uri);
 
     BIO *bio;
     SSL_CTX *ctx;
@@ -934,7 +1019,7 @@ bool updClimacell(climacell_t *climacell) {
     ctx = SSL_CTX_new(SSLv23_client_method());
 
     if (ctx == NULL) {
-        printf("Ctx is null\n");
+        printf("SSL ctx is NULL\n");
         return false;
     }
 
@@ -964,10 +1049,16 @@ bool updClimacell(climacell_t *climacell) {
                      uri, climacell->host);
 
     if (0 == r) {
-        BIO_free_all(bio);
-        SSL_CTX_free(ctx);
+        if (bio)
+            BIO_free_all(bio);
+        if (ctx)
+            SSL_CTX_free(ctx);
         return 0;
     }
+
+    //if (getVerbose() >= LL_DEBUG)
+    //    printf("\ndebug\n%s\n", write_buf);
+
     if (BIO_write(bio, write_buf, strlen(write_buf)) <= 0) {
         printf("Failed write\n");
         if (bio)
@@ -977,7 +1068,8 @@ bool updClimacell(climacell_t *climacell) {
         return false;
     }
 
-    free(write_buf);
+    if (write_buf)
+        free(write_buf);
 
     int size;
     char buf[4096];
@@ -1008,17 +1100,21 @@ bool updClimacell(climacell_t *climacell) {
         int zz = strlen(body);
         int zt = strtol(res, &ptr, 10);
         if (zz == zt) {
-            free(res);
+            if (res)
+                free(res);
+            if (getVerbose() >= LL_DEBUG)
+                printf("debug (%d):\n%s\n", zz, body);
             climacell->refreshed = parseClimacell(body, climacell);
-            ;
             break;
         }
         if (res)
             free(res);
     }
 
-    BIO_free_all(bio);
-    SSL_CTX_free(ctx);
+    if (bio)
+        BIO_free_all(bio);
+    if (ctx)
+        SSL_CTX_free(ctx);
 
     return true;
 }

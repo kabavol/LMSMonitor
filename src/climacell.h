@@ -57,8 +57,9 @@ typedef struct climacell_t {
     char units[3];
     coord_t coords;
     char fields[1024];
+    bool active;
     bool refreshed;
-    uint16_t icon;
+    wiconmap_t current;
     ccdatum_t temp;
     ccdatum_t feels_like;
     ccdatum_t wind_speed;

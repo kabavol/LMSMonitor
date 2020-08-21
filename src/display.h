@@ -32,6 +32,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include "climacell.h"
 #include "lmsopts.h"
 
 #include "visdata.h"
@@ -157,6 +158,10 @@ double rad2Deg(double angRad);
 
 void splashScreen(void);
 void displayBrightness(int bright, bool flip = false);
+
+void putWeatherTemp(int x, int y, climacell_t *cc);
+void putWeatherIcon(int x, int y, climacell_t *cc);
+
 
 void scrollerPause(void);
 void *scrollLine(void *input); // threadable
