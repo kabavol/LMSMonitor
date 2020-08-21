@@ -111,7 +111,7 @@ Several visualizer modes are supported
 - Large Downmix (visual data only) Spectrum
 - All-In-One - track details and spectrum/VU "swoosh"
 - All-In-One - fixed mode (use -aa)
-- Easter Eggs - fixed mode (use -e [1-3])
+- Easter Eggs - fixed mode (use -E[1-5])
 
 ### Installation
 
@@ -194,8 +194,21 @@ There are currently 5 easter egg modes
 - 4 VCR with flashing 12:00 AM clock! No additional animation - the clock is annoying enough.
 - 5 An old bakelite radio. Minor animation, radio changes station as track progresses.
 
+Specify -E[1-5] to display eggs on track playback
 </p>
 These are just fun display mode where visualization is not possible
+
+## Weather
+<p>
+<img width="130" align="right" src="base/weatherexample.jpg">
+
+Weather may be displayed when there is no trackl playing.
+
+To use weather you'll need a climacell account.
+
+TODO: details
+
+</p>
 
 ### Audiophonics RASPI MINI
 
