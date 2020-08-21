@@ -1085,7 +1085,7 @@ void clockWeatherPage(climacell_t *cc) {
     DrawTime dt = {.charWidth = 12,
                    .charHeight = 17,
                    .bufferLen = LCD12X17_LEN,
-                   .pos = {3, 10},
+                   .pos = {3, 11},
                    .font = MON_FONT_LCD1217};
     //dt.fmt12 = (MON_CLOCK_12H == glopt->clockMode),
 
