@@ -365,17 +365,26 @@ void putWeatherTemp(int x, int y, climacell_t *cc) {
     int w = elementLength(szh, szw);
     uint8_t dest[w];
     int start = 0;
-    memcpy(dest, thermo12x12, sizeof dest);
-    display.fillRect(x, y, szw, szh, BLACK);
-    display.drawBitmap(x, y, dest, szw, szh, WHITE);
-    memcpy(dest, thermo12x12 + w, sizeof dest);
-    display.fillRect(x, y+szh, szw, szh, BLACK);
-    display.drawBitmap(x, y+szh, dest, szw, szh, WHITE);
-    sprintf(buf, "%3.01f%s", cc->temp.fdatum, cc->temp.units);
-    putText(x+szw+2, y+2, buf);
-    sprintf(buf, "%3.01f%s %s", cc->wind_speed.fdatum,
-            cc->wind_speed.units, cc->wind_direction.sdatum);
-    putText(x+szw+2, y + szh + 2, buf);
+    // paint "icon" and metric
+    for (uint16_t p = 0; p < 3; p++) {
+        memcpy(dest, thermo12x12 + (w * p), sizeof dest);
+        display.fillRect(x, y + (szh * p), szw, szh, BLACK);
+        display.drawBitmap(x, y + (szh * p), dest, szw, szh, WHITE);
+        switch (p) {
+            case 0:
+                sprintf(buf, "%3.01f%s", cc->temp.fdatum, cc->temp.units);
+                break;
+            case 1:
+                sprintf(buf, "%3.01f%s %s", cc->wind_speed.fdatum,
+                        cc->wind_speed.units, cc->wind_direction.sdatum);
+                break;
+            case 2:
+                sprintf(buf, "%3.01f%s", cc->humidity.fdatum,
+                        cc->humidity.units);
+                break;
+        }
+        putText(x + szw + 2, y + 3 + (szh * p), buf);
+    }
 }
 
 void putWeatherIcon(int x, int y, climacell_t *cc) {
@@ -1639,6 +1648,16 @@ void putTextCenterColor(int y, char *buff, uint16_t color) {
     putText(px, y, buff);
     if (color != WHITE)
         display.setTextColor(WHITE);
+}
+
+void putTextToRight(int y, int r, char *buff) {
+    int tlen = strlen(buff);
+    if (r > maxXPixel()) {
+        r = maxXPixel;
+    }
+    int px = maxCharacter() < tlen ? 0 : (r - (tlen * _char_width));
+    clearLine(y);
+    putText(px, y, buff);
 }
 
 void putTextToCenter(int y, char *buff) {

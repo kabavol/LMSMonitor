@@ -1087,7 +1087,6 @@ void clockWeatherPage(climacell_t *cc) {
                    .bufferLen = LCD12X17_LEN,
                    .pos = {3, 11},
                    .font = MON_FONT_LCD1217};
-    //dt.fmt12 = (MON_CLOCK_12H == glopt->clockMode),
 
     if (glopt->refreshClock) {
         instrument(__LINE__, __FILE__, "clock reset");
@@ -1102,28 +1101,26 @@ void clockWeatherPage(climacell_t *cc) {
     setSleepTime(SLEEP_TIME_LONG);
 
     instrument(__LINE__, __FILE__, "putkWeather");
-    putTextToCenter(1, cc->current.text);
-    putWeatherTemp(1, 31, cc);
-    putWeatherIcon(84,12,cc);
 
-    //instrument(__LINE__, __FILE__, "cpu Metrics?");
-    //if (glopt->showTemp) putCPUMetrics(39);
-
+    // date and time
     struct timeval tv;
     gettimeofday(&tv, NULL);
     time_t now = tv.tv_sec;
     struct tm loctm = *localtime(&now);
-    sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
 
+    strftime(buff, sizeof(buff), "%a %02d/%m/%y", &loctm);
+    putTextToRight(1, 126, buff);
+
+    sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
     if (strcmp(glopt->lastTime, buff) != 0)
         setLastTime(buff, dt);
 
     // colon (blink)
     drawTimeBlink(((loctm.tm_sec % 2) ? ' ' : ':'), &dt);
 
-    // date
-    strftime(buff, sizeof(buff), "%A %Y-%m-%02d", &loctm);
-    putTextToCenter(55, buff);
+    putTextToRight(55, 126, cc->current.text);
+    putWeatherTemp(1, 29, cc);
+    putWeatherIcon(84,12,cc);
 
     // set changed so we'll repaint on play
     setupPlayMode();

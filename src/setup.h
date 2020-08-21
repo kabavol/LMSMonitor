@@ -81,7 +81,7 @@ static struct argp_option options[] = {
     {"font", 'f', "FONT", 0, "Font used by clock, see list below for details"},
     {"flip", 'F', 0, 0, "Invert the display - if display mounted upside down"},
     {"invert", 'I', 0, OPTION_ALIAS},
-    {"weather",'W',"APIKEY,UNITS",0,"Climacell API key and required units"},
+    {"weather",'W',"APIKEY,UNITS",0,"Climacell API key and required units (optional)"},
     {"apikey", 'W', 0, OPTION_ALIAS},
     {"metrics", 'k', 0, 0, "Show CPU load and temperature (clock mode)"},
     {"visualize", 'v', 0, 0,

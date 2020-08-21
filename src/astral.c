@@ -90,8 +90,14 @@ void decodeKV(char *jsonData, ccdatum_t *datum, int i, int j, jsmntok_t jt[]) {
             datum->fdatum = atof(valStr);
             z++;
         } else if (strncmp("units", keyStr, 5) == 0) {
-            if (strncmp("mph", valStr, 3) == 0)
+            if (strncmp("mph", valStr, 3) == 0) {
                 strcpy(valStr, "m/h");
+            //} else if (
+            //    (strncmp("K", valStr, 1))||
+            //    (strncmp("F", valStr, 1))||
+            //    (strncmp("C", valStr, 1))) {
+            //    strlcat(valStr,"*",3);
+            }
             strcpy(datum->units, valStr);
             z++;
         }
