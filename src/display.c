@@ -360,21 +360,22 @@ void splashScreen(void) {
 
 void putWeatherTemp(int x, int y, climacell_t *cc) {
     char buf[64];
-    int szw = 20;
-    int szh = 36;
-    //display.fillRect(x, y, szw*4, szh, BLACK);
-    //display.drawBitmap(x+20, y, thermo20x36px, szw, szh, WHITE);
-    //sprintf(buf,"Temp      %3.2f%s",cc->temp.fdatum,cc->temp.units);
-    //putText(x, y, buf);
-    //sprintf(buf,"Feels      %3.2f%s",cc->feels_like.fdatum,cc->feels_like.units);
-    //putText(x, y+12, buf);
-    sprintf(buf, "%3.2f%s", cc->temp.fdatum, cc->temp.units);
-    //putTinyTextMaxWidth(x, y, 72, buf);
-    putText(x, y, buf);
-    sprintf(buf, "%3.2f %s %s", cc->wind_speed.fdatum,
+    int szw = 12;
+    int szh = 12;
+    int w = elementLength(szh, szw);
+    uint8_t dest[w];
+    int start = 0;
+    memcpy(dest, thermo12x12, sizeof dest);
+    display.fillRect(x, y, szw, szh, BLACK);
+    display.drawBitmap(x, y, dest, szw, szh, WHITE);
+    memcpy(dest, thermo12x12 + w, sizeof dest);
+    display.fillRect(x, y+szh, szw, szh, BLACK);
+    display.drawBitmap(x, y+szh, dest, szw, szh, WHITE);
+    sprintf(buf, "%3.01f%s", cc->temp.fdatum, cc->temp.units);
+    putText(x+szw+2, y+1, buf);
+    sprintf(buf, "%3.01f%s %s", cc->wind_speed.fdatum,
             cc->wind_speed.units, cc->wind_direction.sdatum);
-    //putTinyTextMaxWidth(x, y + 10, 72, buf);
-    putText(x, y + 11, buf);
+    putText(x+szw+2, y + szh + 1, buf);
 }
 
 void putWeatherIcon(int x, int y, climacell_t *cc) {

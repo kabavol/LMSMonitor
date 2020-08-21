@@ -1123,7 +1123,7 @@ void clockWeatherPage(climacell_t *cc) {
 
     // date
     strftime(buff, sizeof(buff), "%A %Y-%m-%02d", &loctm);
-    putTextToCenter(54, buff);
+    putTextToCenter(55, buff);
 
     // set changed so we'll repaint on play
     setupPlayMode();

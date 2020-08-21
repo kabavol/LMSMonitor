@@ -90,6 +90,8 @@ void decodeKV(char *jsonData, ccdatum_t *datum, int i, int j, jsmntok_t jt[]) {
             datum->fdatum = atof(valStr);
             z++;
         } else if (strncmp("units", keyStr, 5) == 0) {
+            if (strncmp("mph", valStr, 3) == 0)
+                strcpy(valStr, "m/h");
             strcpy(datum->units, valStr);
             z++;
         }
@@ -121,9 +123,8 @@ wiconmap_t weatherIconXlate(char *key) {
 
     // add day night logic for specifics
     char wspecific[128] = {0};
-    sprintf(wspecific, "%s%s", key,
-            (daymode) ? "_day"  : "_night");
-                                                            
+    sprintf(wspecific, "%s%s", key, (daymode) ? "_day" : "_night");
+
     const static struct wiconmap_t wmap[] = {
         /*
 // more granular/detailed icons
@@ -450,7 +451,7 @@ void brightnessEvent(void) {
             daymode = false;
             sprintf(stb, "%s Night Mode\n",
                     labelIt("Set Display", LABEL_WIDTH, "."));
-        }else{
+        } else {
             daymode = true;
             sprintf(stb, "%s Day Mode\n",
                     labelIt("Set Display", LABEL_WIDTH, "."));
