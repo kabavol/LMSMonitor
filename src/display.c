@@ -372,10 +372,10 @@ void putWeatherTemp(int x, int y, climacell_t *cc) {
     display.fillRect(x, y+szh, szw, szh, BLACK);
     display.drawBitmap(x, y+szh, dest, szw, szh, WHITE);
     sprintf(buf, "%3.01f%s", cc->temp.fdatum, cc->temp.units);
-    putText(x+szw+2, y+1, buf);
+    putText(x+szw+2, y+2, buf);
     sprintf(buf, "%3.01f%s %s", cc->wind_speed.fdatum,
             cc->wind_speed.units, cc->wind_direction.sdatum);
-    putText(x+szw+2, y + szh + 1, buf);
+    putText(x+szw+2, y + szh + 2, buf);
 }
 
 void putWeatherIcon(int x, int y, climacell_t *cc) {

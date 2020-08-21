@@ -206,7 +206,22 @@ Weather may be displayed when there is no track playing.
 
 To use weather you'll need a climacell account.
 
-TODO: details
+Follow the instructions here <https://developer.climacell.co/sign-up> to sign up for the service
+
+This is a free developer account that facilitates upto 100 requests per hour.
+
+LMSmonitor is metered to only make 10 calls per hour.
+
+Once you have an key you'll simply pass it to LMSMonitor, thus
+
+```bash
+/mnt/mmcblk0p2/tce/gomonitor rn --weather "apikey[,units]"
+```
+Use the weather argument to pass the key and optionally the units you prefer.  By default units will be <b>us</b>
+
+As with the brightness control the monitor will automatically determin your location via your ISP; this may not be accurate so a command line argument will be provided to set your locale.
+
+Hopefully climacell won't see this as a commercial app and allow LMSmonitor usage.
 
 </p>
 
