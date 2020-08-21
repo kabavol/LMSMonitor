@@ -20,46 +20,47 @@ Usage: lmsmonitor --name "NAME" [OPTIONS...]
 OLED information display control program for piCorePlayer or other Raspberry Pi
 and LMS based audio device.
 
-  -a, --allinone             One screen to rule them all. Track details and
-                             visualizer on single screen (pi only)
-  -b, --brightness           Automatically set brightness of display at sunset
-                             and sunrise (connected to internet, pi only)
-  -B, --bus[=BUSNUM]         I2C bus number (defaults 1, giving device
-                             /dev/i2c-1)
-  -c, --clock[=MODE]         Display clock when not playing, specify 12 or 24
-                             (default) hour format (Pi only)
-  -C, --spi_cs=SPI_CS        SPI CS number (defaults 0)
-  -d, --downmix              Downmix (visualization) audio and display a single
-                             large meter, SA and VU only
-  -D, --spi_dc=SPI_DC        SPI DC GPIO number (defaults 24)
-  -E, --egg=EGGNUM           Easter Eggs (see repo for details)
-  -f, --font=FONT            Font used by clock, see list below for details
-  -F, -I, --flip, --invert   Invert the display - if display mounted upside
-                             down
-  -k, --metrics              Show CPU load and temperature (clock mode)
-  -K, --spi_speed=SPI_SPEED  SPI transmission speed (default 15k)
+  -a, --allinone               One screen to rule them all. Track details and
+                               visualizer on single screen (pi only)
+  -b, --brightness             Automatically set brightness of display at sunset
+                               and sunrise (connected to internet, pi only)
+  -B, --bus[=BUSNUM]           I2C bus number (defaults 1, giving device
+                               /dev/i2c-1)
+  -c, --clock[=MODE]           Display clock when not playing, specify 12 or 24
+                               (default) hour format (Pi only)
+  -C, --spi_cs=SPI_CS          SPI CS number (defaults 0)
+  -d, --downmix                Downmix (visualization) audio and display a single
+                               large meter, SA and VU only
+  -D, --spi_dc=SPI_DC          SPI DC GPIO number (defaults 24)
+  -E, --egg=EGGNUM             Easter Eggs (see repo for details)
+  -f, --font=FONT              Font used by clock, see list below for details
+  -F, -I, --flip, --invert     Invert the display - if display mounted upside
+                               down
+  -k, --metrics                Show CPU load and temperature (clock mode)
+  -K, --spi_speed=SPI_SPEED    SPI transmission speed (default 15k)
   -l, -i, --log-level=LEVEL, --info=LEVEL
-                             Log Level
-  -m, --meter=MODES          Meter modes, if visualization on specify one or
-                             more meter modes, sa, vu, pk, st, or rn for
-                             random
-  -n, --name=PLAYERNAME      Name of the squeeze device to monitor
-  -o, --oled[=OLEDTYPE]      Specify OLED "driver" type (see options below)
-  -q, -s, --quiet, --silent  Don't produce any output
-  -r, --remain-time          Display remaining time rather than track time
-  -R, --reset=SPI_RST        I2C/SPI reset GPIO number, if needed (defaults
-                             25)
-  -S, --scroll[=SCROLLMODE]  Label scroll mode: 0 (cylon), 1 (infinity left), 2
-                             infinity (right)
-  -v, --visualize            Enable visualization sequence when track playing
-                             (pi only)
-  -V, --verbose              Maximum log level
-  -x, --addr                 OLED address if default does not work - use
-                             i2cdetect to find address (pi only)
-  -z, --nosplash             No (Team Badger) Splash Screen
-  -?, --help                 Give this help list
-      --usage                Give a short usage message
-      --version              Print program version
+                               Log Level
+  -m, --meter=MODES            Meter modes, if visualization on specify one or
+                               more meter modes, sa, vu, pk, st, or rn for
+                               random
+  -n, --name=PLAYERNAME        Name of the squeeze device to monitor
+  -o, --oled[=OLEDTYPE]        Specify OLED "driver" type (see options below)
+  -q, -s, --quiet, --silent    Don't produce any output
+  -r, --remain-time            Display remaining time rather than track time
+  -R, --reset=SPI_RST          I2C/SPI reset GPIO number, if needed (defaults
+                               25)
+  -S, --scroll[=SCROLLMODE]    Label scroll mode: 0 (cylon), 1 (infinity left), 2
+                               infinity (right)
+  -v, --visualize              Enable visualization sequence when track playing
+                               (pi only)
+  -V, --verbose                Maximum log level
+  -w, --weather[=APIKEY,UNITS] Climacell API key and required units (optional)
+  -x, --addr                   OLED address if default does not work - use
+                               i2cdetect to find address (pi only)
+  -z, --nosplash               No (Team Badger) Splash Screen
+  -?, --help                   Give this help list
+      --usage                  Give a short usage message
+      --version                Print program version
 
 Supported OLED types:
     1 ...: Adafruit SPI 128x64
