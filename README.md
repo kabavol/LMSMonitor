@@ -202,7 +202,7 @@ These are just fun display mode where visualization is not possible
 <p>
 <img width="130" align="right" src="base/weatherexample.jpg">
 
-Weather may be displayed when there is no trackl playing.
+Weather may be displayed when there is no track playing.
 
 To use weather you'll need a climacell account.
 
