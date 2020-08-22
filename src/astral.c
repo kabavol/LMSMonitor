@@ -174,7 +174,7 @@ wiconmap_t weatherIconXlate(char *key) {
         (wiconmap_t){"fog_light", "Mist", 6},
         (wiconmap_t){"freezing_drizzle", "Freezing Drizzle", 7},
         (wiconmap_t){"freezing_rain", "Freezing Rain", 8},
-        (wiconmap_t){"freezing_rain_heavy", "Frezing Raing", 9},
+        (wiconmap_t){"freezing_rain_heavy", "Frezing Rain", 9},
         (wiconmap_t){"freezing_rain_light", "Freezing Rain", 10},
         (wiconmap_t){"ice_pellets", "Hail", 11},
         (wiconmap_t){"ice_pellets_heavy", "Hail", 12},
