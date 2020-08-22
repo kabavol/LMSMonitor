@@ -276,7 +276,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case 'u':
             if (arg) {
                 float lat, lon;
-                sscanf(arg, "%f,%f", &lat,&lon);
+                sscanf(arg, "%f,%f", &lat, &lon);
                 arguments->lmsopt->locale.Latitude = lat;
                 arguments->lmsopt->locale.Longitude = lon;
             }

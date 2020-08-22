@@ -1121,22 +1121,14 @@ void clockWeatherPage(climacell_t *cc) {
     strftime(buff, sizeof(buff), "%02d/%m/%y", &loctm);
     putTextToRight(11, 126, buff);
 
-    strcpy(glopt->lastTime, "XXXXX"); 
+    strcpy(glopt->lastTime, "XXXXX"); // date and day ride rough
     sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
     setLastTime(buff, dt);
-
-    //sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
-    //if (strcmp(glopt->lastTime, buff) != 0)
-    //    setLastTime(buff, dt);
-
     // colon (blink)
     drawTimeBlink(((loctm.tm_sec % 2) ? ' ' : ':'), &dt);
 
-    //putTextToRight(55, 126, cc->current.text);
     putText(1, 21, cc->current.text);
-    //putWeatherTemp(1, 29, cc);
     putWeatherTemp(1, 30, cc);
-    //putWeatherIcon(84, 12, cc);
     putWeatherIcon(84, 21, cc);
 
     // set changed so we'll repaint on play
