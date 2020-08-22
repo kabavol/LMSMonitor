@@ -1127,9 +1127,9 @@ void clockWeatherPage(climacell_t *cc) {
     // colon (blink)
     drawTimeBlink(((loctm.tm_sec % 2) ? ' ' : ':'), &dt);
 
-    putText(1, 21, cc->current.text);
-    putWeatherTemp(1, 30, cc);
-    putWeatherIcon(84, 21, cc);
+    putText(1, 20, cc->current.text);
+    putWeatherTemp(1, 29, cc);
+    putWeatherIcon(84, 20, cc);
 
     // set changed so we'll repaint on play
     setupPlayMode();
