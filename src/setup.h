@@ -81,7 +81,10 @@ static struct argp_option options[] = {
     {"font", 'f', "FONT", 0, "Font used by clock, see list below for details"},
     {"flip", 'F', 0, 0, "Invert the display - if display mounted upside down"},
     {"invert", 'I', 0, OPTION_ALIAS},
-    {"weather",'W',"APIKEY,UNITS",0,"Climacell API key and required units (optional)"},
+    {"latlon", 'u', "LAT,LON", 0, "Latitude and Longitude - your location"},
+    {"location", 'u', 0, OPTION_ALIAS},
+    {"weather", 'W', "APIKEY,UNITS", 0,
+     "Climacell API key and required units (optional)"},
     {"apikey", 'W', 0, OPTION_ALIAS},
     {"metrics", 'k', 0, 0, "Show CPU load and temperature (clock mode)"},
     {"visualize", 'v', 0, 0,
@@ -126,7 +129,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     struct arguments *arguments = (struct arguments *)state->input;
     int test;
     char err[256];
-
 
     switch (key) {
         case 'q':
@@ -206,12 +208,16 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                         case EE_CASSETTE:
                             arguments->lmsopt->eeMode = EE_CASSETTE;
                             break;
-                        case EE_VINYL: arguments->lmsopt->eeMode = EE_VINYL; break;
+                        case EE_VINYL:
+                            arguments->lmsopt->eeMode = EE_VINYL;
+                            break;
                         case EE_REEL2REEL:
                             arguments->lmsopt->eeMode = EE_REEL2REEL;
                             break;
                         case EE_VCR: arguments->lmsopt->eeMode = EE_VCR; break;
-                        case EE_RADIO: arguments->lmsopt->eeMode = EE_RADIO; break;
+                        case EE_RADIO:
+                            arguments->lmsopt->eeMode = EE_RADIO;
+                            break;
                         default: arguments->lmsopt->visualize = safe;
                     }
                 }
@@ -263,8 +269,16 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             break;
         case 'W':
             if (arg) {
-                strcpy(arguments->lmsopt->weather,arg);
+                strcpy(arguments->lmsopt->weather, arg);
                 // run the init?
+            }
+            break;
+        case 'u':
+            if (arg) {
+                float lat, lon;
+                sscanf(arg, "%f,%f", &lat,&lon);
+                arguments->lmsopt->locale.Latitude = lat;
+                arguments->lmsopt->locale.Longitude = lon;
             }
             break;
 #endif

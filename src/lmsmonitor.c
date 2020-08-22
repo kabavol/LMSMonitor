@@ -448,11 +448,11 @@ void eggFX(size_t timer_id, void *user_data) {
                 }
                 break;
             case EE_RADIO:
-                    aio->rFrame++;
-                    if (aio->rFrame > aio->mxframe)
-                        aio->rFrame = 0;
-                    radioEffects(28, 40, aio->rFrame, aio->mxframe);
-            break;
+                aio->rFrame++;
+                if (aio->rFrame > aio->mxframe)
+                    aio->rFrame = 0;
+                radioEffects(28, 40, aio->rFrame, aio->mxframe);
+                break;
             case EE_VCR:
             case EE_VINYL:
                 aio->lFrame++;
@@ -584,6 +584,7 @@ int main(int argc, char *argv[]) {
         .lastVolume = -1,
         .flipDisplay = false,
         .weather = {0},
+        .locale = {0, 0},
         .i2cBus = 1, // number of I2C bus
         // CLOCK & DATA ???
         .oledRST = OLED_SPI_RESET, // SPI/IIC reset GPIO
@@ -681,7 +682,18 @@ int main(int argc, char *argv[]) {
     weather.refreshed = false;
     if (0 != strlen(lmsopt.weather)) {
         // if string contains comma split for api key and units
-        strcpy(weather.Apikey, lmsopt.weather);
+        if (strstr(lmsopt.weather, ",") != NULL) {
+            char a[128], u[3];
+            sscanf(lmsopt.weather, "%s,%s", &a, &u);
+            strncpy(weather.Apikey, a, 127);
+            strncpy(weather.units, u, 2);
+        } else {
+            strncpy(weather.Apikey, lmsopt.weather, 127);
+        }
+        if (0 != lmsopt.locale.Latitude)
+            weather.coords.Latitude = lmsopt.locale.Latitude;
+        if (0 != lmsopt.locale.Longitude)
+            weather.coords.Longitude = lmsopt.locale.Longitude;
         weather.refreshed = false;
         weather.active = false;
 
@@ -693,7 +705,7 @@ int main(int argc, char *argv[]) {
                        "Current Conditions ..: %s\n\n",
                        weather.coords.Latitude, weather.coords.Longitude,
                        weather.current.text);
-            weather.active = true;
+                weather.active = true;
             }
             size_t climacelltimer;
             timer_initialize();
@@ -803,11 +815,6 @@ int main(int argc, char *argv[]) {
 
     printFontMetrics();
 
-// bitmap capture
-#ifdef CAPTURE_BMP
-//setSnapOn();
-//setSnapOff();
-#endif
 #endif
 
     while (true) {
@@ -867,7 +874,7 @@ int main(int argc, char *argv[]) {
                     aio.compound[0] = {0};
                     if (weather.active) {
                         clockWeatherPage(&weather);
-                    }else{
+                    } else {
                         clockPage();
                     }
                 } else {
@@ -1077,7 +1084,6 @@ void radio50Page(A1Attributes *aio) {
     }
 }
 
-
 void clockWeatherPage(climacell_t *cc) {
 
     char buff[255];
@@ -1085,7 +1091,7 @@ void clockWeatherPage(climacell_t *cc) {
     DrawTime dt = {.charWidth = 12,
                    .charHeight = 17,
                    .bufferLen = LCD12X17_LEN,
-                   .pos = {3, 11},
+                   .pos = {2, 1}, //{3, 11},
                    .font = MON_FONT_LCD1217};
 
     if (glopt->refreshClock) {
@@ -1108,19 +1114,30 @@ void clockWeatherPage(climacell_t *cc) {
     time_t now = tv.tv_sec;
     struct tm loctm = *localtime(&now);
 
-    strftime(buff, sizeof(buff), "%a %02d/%m/%y", &loctm);
+    //strftime(buff, sizeof(buff), "%a %02d/%m/%y", &loctm);
+    strftime(buff, sizeof(buff), "%A", &loctm);
     putTextToRight(1, 126, buff);
 
+    strftime(buff, sizeof(buff), "%02d/%m/%y", &loctm);
+    putTextToRight(11, 126, buff);
+
+    strcpy(glopt->lastTime, "XXXXX"); 
     sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
-    if (strcmp(glopt->lastTime, buff) != 0)
-        setLastTime(buff, dt);
+    setLastTime(buff, dt);
+
+    //sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
+    //if (strcmp(glopt->lastTime, buff) != 0)
+    //    setLastTime(buff, dt);
 
     // colon (blink)
     drawTimeBlink(((loctm.tm_sec % 2) ? ' ' : ':'), &dt);
 
-    putTextToRight(55, 126, cc->current.text);
-    putWeatherTemp(1, 29, cc);
-    putWeatherIcon(84,12,cc);
+    //putTextToRight(55, 126, cc->current.text);
+    putText(1, 21, cc->current.text);
+    //putWeatherTemp(1, 29, cc);
+    putWeatherTemp(1, 30, cc);
+    //putWeatherIcon(84, 12, cc);
+    putWeatherIcon(84, 21, cc);
 
     // set changed so we'll repaint on play
     setupPlayMode();
