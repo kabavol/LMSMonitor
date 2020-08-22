@@ -1782,6 +1782,10 @@ void drawRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
     display.drawRect(x, y, w, h, color);
 }
 
+void fillRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
+    display.fillRect(x, y, w, h, color);
+}
+
 // rudimentry screen saver - only kicks in
 // if the user does not specify [c]lock
 

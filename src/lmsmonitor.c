@@ -1127,6 +1127,7 @@ void clockWeatherPage(climacell_t *cc) {
     // colon (blink)
     drawTimeBlink(((loctm.tm_sec % 2) ? ' ' : ':'), &dt);
 
+    fillRectangle(1, 20, 90, 11, BLACK); // erase what came before
     putText(1, 20, cc->current.text);
     putWeatherTemp(1, 29, cc);
     putWeatherIcon(84, 20, cc);

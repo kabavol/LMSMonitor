@@ -236,6 +236,7 @@ uint16_t charHeight(void);
 void drawHorizontalBargraph(int x, int y, int w, int h, int percent);
 void drawHorizontalCheckerBar(int x, int y, int w, int h, int percent);
 void drawRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
+void fillRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
 
 void setSnapOn(void);
 void setSnapOff(void);
