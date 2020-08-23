@@ -28,12 +28,14 @@
 #define CLIMACELL_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 
 typedef struct wiconmap_t {
     char code[30];
     char text[128];
     uint16_t icon;
+    bool changed;
 } wiconmap_t;
 
 typedef struct coord_t {
@@ -45,6 +47,7 @@ typedef struct ccdatum_t {
     char sdatum[128];
     double fdatum;
     char units[128];
+    bool changed;
 } ccdatum_t;
 
 // climacell free tier :: 1000 calls per day

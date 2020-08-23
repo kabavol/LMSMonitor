@@ -67,6 +67,7 @@ void free_request(struct Request *req);
 bool initAstral(void);
 void brightnessEvent(void);
 
+void baselineClimacell(climacell_t *climacell, bool changed);
 void weatherEvent(struct climacell_t *climacell);
 bool updClimacell(climacell_t *climacell);
 

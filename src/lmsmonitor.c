@@ -681,6 +681,8 @@ int main(int argc, char *argv[]) {
     }
     weather.refreshed = false;
     if (0 != strlen(lmsopt.weather)) {
+        weather.current.icon = 99; // set to out of bounds for change logic
+        baselineClimacell(&weather, true);
         // if string contains comma split for api key and units
         if (strstr(lmsopt.weather, ",") != NULL) {
             char a[128], u[3];
@@ -690,9 +692,9 @@ int main(int argc, char *argv[]) {
         } else {
             strncpy(weather.Apikey, lmsopt.weather, 127);
         }
-        if (0 != lmsopt.locale.Latitude)
+        if ((0 == weather.coords.Latitude) && (0 != lmsopt.locale.Latitude))
             weather.coords.Latitude = lmsopt.locale.Latitude;
-        if (0 != lmsopt.locale.Longitude)
+        if ((0 == weather.coords.Longitude) && (0 != lmsopt.locale.Longitude))
             weather.coords.Longitude = lmsopt.locale.Longitude;
         weather.refreshed = false;
         weather.active = false;
@@ -851,6 +853,7 @@ int main(int argc, char *argv[]) {
                         case EE_RADIO: radio50Page(&aio); break;
                     }
                     strcpy(remTime, "XXXXX");
+                    baselineClimacell(&weather, true);
                 } else {
                     if (strncmp(getVisMode(), VMODE_A1, 2) == 0) {
                         allInOnePage(&aio);
@@ -1127,10 +1130,15 @@ void clockWeatherPage(climacell_t *cc) {
     // colon (blink)
     drawTimeBlink(((loctm.tm_sec % 2) ? ' ' : ':'), &dt);
 
-    fillRectangle(1, 20, 90, 11, BLACK); // erase what came before
-    putText(1, 20, cc->current.text);
+    if ((cc->current.changed) || (cc->weather_code.changed)) {
+        fillRectangle(1, 20, 90, 11, BLACK); // erase what came before
+        putText(1, 20, cc->current.text);
+    }
+
     putWeatherTemp(1, 29, cc);
     putWeatherIcon(84, 20, cc);
+
+    baselineClimacell(cc, false);
 
     // set changed so we'll repaint on play
     setupPlayMode();
