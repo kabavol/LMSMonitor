@@ -270,7 +270,7 @@ This also specifies random visualization, further customization to your liking c
 
 ## Like The App - Git The Shirt
 
-Team Badger shirts are here [shunte88](https://www.zazzle.com/team_badger_t_shirt-235604841593837420)
+Team Badger shirts and other goodies are available at [shunte88](https://www.zazzle.com/team_badger_t_shirt-235604841593837420)
 
 ## Credits
 
