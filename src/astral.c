@@ -170,6 +170,7 @@ wiconmap_t weatherIconXlate(char *key) {
         (wiconmap_t){"clear", "Clear, Sunny", 0},
         (wiconmap_t){"clear_day", "Clear", 0},
         (wiconmap_t){"clear_night", "Clear", 1},
+
 */
         (wiconmap_t){"clear_day", "Clear", 0, true},
         (wiconmap_t){"clear_night", "Clear", 1, true},

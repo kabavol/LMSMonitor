@@ -207,7 +207,7 @@ Weather may be displayed when there is no track playing.
 
 To use weather you'll need a climacell account.
 
-Follow the instructions here <https://developer.climacell.co/sign-up> to sign up for the service
+Follow the instructions here [developer.climacell.co](https://developer.climacell.co/sign-up) to sign up for the service
 
 This is a free developer account that facilitates upto 100 requests per hour.
 
@@ -220,7 +220,13 @@ Once you have an key you'll simply pass it to LMSMonitor, thus
 ```
 Use the weather argument to pass the key and optionally the units you prefer.  By default units will be <b>us</b>
 
-As with the brightness control the monitor will automatically determin your location via your ISP; this may not be accurate so a command line argument will be provided to set your locale.
+As with the brightness control the monitor will automatically determin your location via your ISP; ifyou find this gives inaccurate current weather conditions you can specify your latitude and longitude via thecommand line.
+
+```bash
+/mnt/mmcblk0p2/tce/gomonitor rn --latlon "latitude,longitude"
+```
+
+You can find yourlatitude and longitude via Google maps or alternatively via [latlon.net](https://www.latlong.net/)
 
 Hopefully climacell won't see this as a commercial app and allow LMSmonitor usage.
 
@@ -264,7 +270,7 @@ This also specifies random visualization, further customization to your liking c
 
 ## Like The App - Git The Shirt
 
-Team Badger shirts are here <https://www.zazzle.com/team_badger_t_shirt-235604841593837420>
+Team Badger shirts are here [shunte88](https://www.zazzle.com/team_badger_t_shirt-235604841593837420)
 
 ## Credits
 
