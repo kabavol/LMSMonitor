@@ -401,7 +401,7 @@ void putWeatherTemp(int x, int y, climacell_t *cc) {
                             cc->humidity.units);
                     break;
             }
-            display.fillRect(x + szw + 2, y + 3 + (szh * p), 16 * _char_width,
+            display.fillRect(x + szw + 2, y + 3 + (szh * p), 11 * _char_width,
                              _char_height, BLACK);
             putText(x + szw + 2, y + 3 + (szh * p), buf);
         }

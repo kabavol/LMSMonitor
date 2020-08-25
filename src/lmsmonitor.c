@@ -700,15 +700,7 @@ int main(int argc, char *argv[]) {
         weather.active = false;
 
         if (updClimacell(&weather)) {
-            if (getVerbose() >= LL_DEBUG) {
-                printf("\n"
-                       "Check Latitude ......: %8.4f\n"
-                       "Check Longitude .....: %8.4f\n"
-                       "Current Conditions ..: %s\n\n",
-                       weather.coords.Latitude, weather.coords.Longitude,
-                       weather.current.text);
-                weather.active = true;
-            }
+            weather.active = true;
             size_t climacelltimer;
             timer_initialize();
             climacelltimer = timer_start(60 * 3 * 1000, checkWeather,
