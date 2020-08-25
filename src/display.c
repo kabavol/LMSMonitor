@@ -373,22 +373,25 @@ void putWeatherTemp(int x, int y, climacell_t *cc) {
     int w = elementLength(szh, szw);
     uint8_t dest[w];
     int start = 0;
+    uint16_t icon[3] = {0,2,1};
     bool update = false;
     // paint "icon" and metric
     for (uint16_t p = 0; p < 3; p++) {
 
-        switch (p) {
+        // hack to fix drawing temp, humidity, and then wind
+        // will retool graphic and remove complexity later 
+        switch (icon[p]) {
             case 0: update = cc->temp.changed; break;
-            case 1:
+            case 1: 
                 update = (cc->wind_speed.changed || cc->wind_direction.changed);
                 break;
             case 2: update = cc->humidity.changed; break;
         }
         if (update) {
-            memcpy(dest, thermo12x12 + (w * p), sizeof dest);
+            memcpy(dest, thermo12x12 + (w * icon[p]), sizeof dest);
             display.fillRect(x, y + (szh * p), szw, szh, BLACK);
             display.drawBitmap(x, y + (szh * p), dest, szw, szh, WHITE);
-            switch (p) {
+            switch (icon[p]) {
                 case 0:
                     sprintf(buf, "%3.01f%s", cc->temp.fdatum, cc->temp.units);
                     break;
