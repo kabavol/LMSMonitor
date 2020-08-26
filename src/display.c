@@ -373,40 +373,50 @@ void putWeatherTemp(int x, int y, climacell_t *cc) {
     int w = elementLength(szh, szw);
     uint8_t dest[w];
     int start = 0;
-    uint16_t icon[3] = {0,2,1};
+    uint16_t icon[4] = {0, 2, 3, 1};
+    size_t l = sizeof(icon) / sizeof(icon[0]);
     bool update = false;
     // paint "icon" and metric
-    for (uint16_t p = 0; p < 3; p++) {
-
+    for (uint16_t p = 0; p < l; p++) {
+        uint16_t py = (((icon[p] == 3) || (icon[p] == 1)) ? p - 1 : p);
         // hack to fix drawing temp, humidity, and then wind
-        // will retool graphic and remove complexity later 
+        // will retool graphic and remove complexity later
         switch (icon[p]) {
             case 0: update = cc->temp.changed; break;
-            case 1: 
+            case 1:
                 update = (cc->wind_speed.changed || cc->wind_direction.changed);
                 break;
-            case 2: update = cc->humidity.changed; break;
+            case 2:
+            case 3:
+                update = cc->humidity.changed || cc->precipitation.changed;
+                break;
         }
         if (update) {
-            memcpy(dest, thermo12x12 + (w * icon[p]), sizeof dest);
-            display.fillRect(x, y + (szh * p), szw, szh, BLACK);
-            display.drawBitmap(x, y + (szh * p), dest, szw, szh, WHITE);
             switch (icon[p]) {
                 case 0:
                     sprintf(buf, "%3.01f%s", cc->temp.fdatum, cc->temp.units);
                     break;
                 case 1:
-                    sprintf(buf, "%3.01f%s %s", cc->wind_speed.fdatum,
+                    sprintf(buf, "%d%s %s", (int)round(cc->wind_speed.fdatum),
                             cc->wind_speed.units, cc->wind_direction.sdatum);
                     break;
                 case 2:
-                    sprintf(buf, "%3.01f%s", cc->humidity.fdatum,
-                            cc->humidity.units);
+                case 3:
+                    sprintf(buf, "%d%s    %d%s",
+                            (int)round(cc->humidity.fdatum), cc->humidity.units,
+                            (int)round(cc->precipitation.fdatum),
+                            cc->precipitation.units);
                     break;
             }
-            display.fillRect(x + szw + 2, y + 3 + (szh * p), 11 * _char_width,
+            // skip on 3 - we addressed on 2
+            display.fillRect(x + szw + 2, y + 3 + (szh * py), 11 * _char_width,
                              _char_height, BLACK);
-            putText(x + szw + 2, y + 3 + (szh * p), buf);
+            putText(x + szw + 2, y + 3 + (szh * py), buf);
+            memcpy(dest, thermo12x12 + (w * icon[p]), sizeof dest);
+            display.fillRect(x + ((icon[p] == 3) ? 7 * _char_width : 0),
+                             y + (szh * py), szw, szh, BLACK);
+            display.drawBitmap(x + ((icon[p] == 3) ? 7 * _char_width : 0),
+                               y + (szh * py), dest, szw, szh, WHITE);
         }
     }
 }

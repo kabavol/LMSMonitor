@@ -102,6 +102,9 @@ void decodeKV(char *jsonData, ccdatum_t *datum, int i, int j, jsmntok_t jt[]) {
         char valStr[lenv + 1];
         memcpy(valStr, &jsonData[tok.start], lenv);
         valStr[lenv] = '\0';
+        // nibble so fits detail view
+        if (strncmp(valStr,"in/hr",5)==0) strcpy(valStr,"in");
+        if (strncmp(valStr,"cm/hr",5)==0) strcpy(valStr,"cm");
 
         if (strncmp("value", keyStr, 5) == 0) {
             if (strcmp(testdatum.sdatum, valStr) != 0) {
@@ -846,10 +849,8 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
             i++;
             if (jt[i].type == JSMN_OBJECT) {
                 decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
-                ///decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
                 if (climacell->temp.fdatum != tstd.fdatum) {
                     climacell->temp = tstd;
-                ///if (climacell->temp.changed) {
                     if (getVerbose() >= LL_DEBUG)
                         printf("debug: climacell %s -> %5.2f %s\n", keyStr,
                                climacell->temp.fdatum, climacell->temp.units);
@@ -860,10 +861,7 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
         } else if (strncmp("feels_like", keyStr, 10) == 0) {
             i++;
             if (jt[i].type == JSMN_OBJECT) {
-                //decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
                 decodeKV(jsonData, &climacell->feels_like, i + 1, i + 5, jt);
-                //if (climacell->feels_like.fdatum != tstd.fdatum) {
-                //    climacell->feels_like = tstd;
                 if (climacell->feels_like.changed) {
                     if (getVerbose() >= LL_DEBUG)
                         printf("debug: climacell %s -> %5.2f %s\n", keyStr,
@@ -876,10 +874,7 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
         } else if (strncmp("humidity", keyStr, 8) == 0) {
             i++;
             if (jt[i].type == JSMN_OBJECT) {
-                //decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
                 decodeKV(jsonData, &climacell->humidity, i + 1, i + 5, jt);
-                //if (climacell->humidity.fdatum != tstd.fdatum) {
-                //    climacell->humidity = tstd;
                 if (climacell->humidity.changed) {
                     if (getVerbose() >= LL_DEBUG)
                         printf("debug: climacell %s -> %5.2f %s\n", keyStr,
@@ -892,10 +887,7 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
         } else if (strncmp("wind_speed", keyStr, 10) == 0) {
             i++;
             if (jt[i].type == JSMN_OBJECT) {
-                //decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
                 decodeKV(jsonData, &climacell->wind_speed, i + 1, i + 5, jt);
-                //if (climacell->wind_speed.fdatum != tstd.fdatum) {
-                //    climacell->wind_speed = tstd;
                 if (climacell->wind_speed.changed) {
                     if (getVerbose() >= LL_DEBUG)
                         printf("debug: climacell %s -> %5.2f %s\n", keyStr,
@@ -908,10 +900,7 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
         } else if (strncmp("baro_pressure", keyStr, 13) == 0) {
             i++;
             if (jt[i].type == JSMN_OBJECT) {
-                //decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
                 decodeKV(jsonData, &climacell->baro_pressure, i + 1, i + 5, jt);
-                //if (climacell->baro_pressure.fdatum != tstd.fdatum) {
-                //    climacell->baro_pressure = tstd;
                 if (climacell->baro_pressure.changed) {
                     if (getVerbose() >= LL_DEBUG)
                         printf("debug: climacell %s -> %5.2f %s\n", keyStr,
@@ -924,10 +913,7 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
         } else if (strncmp("visibility", keyStr, 10) == 0) {
             i++;
             if (jt[i].type == JSMN_OBJECT) {
-                //decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
                 decodeKV(jsonData, &climacell->visibility, i + 1, i + 5, jt);
-                //if (climacell->visibility.fdatum != tstd.fdatum) {
-                //    climacell->visibility = tstd;
                 if (climacell->visibility.changed) {
                     if (getVerbose() >= LL_DEBUG)
                         printf("debug: climacell %s -> %5.2f %s\n", keyStr,
@@ -958,9 +944,6 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
             i++;
             if (jt[i].type == JSMN_OBJECT) {
                 decodeKV(jsonData, &climacell->precipitation, i + 1, i + 5, jt);
-                //decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
-                //if (climacell->precipitation.fdatum != tstd.fdatum) {
-                //    climacell->precipitation = tstd;
                 if (climacell->precipitation.changed) {
                     if (getVerbose() >= LL_DEBUG)
                         printf("debug: climacell %s -> %5.2f %s\n", keyStr,
