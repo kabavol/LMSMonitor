@@ -382,9 +382,9 @@ void putWeatherTemp(int x, int y, climacell_t *cc) {
         // hack to fix drawing temp, humidity, and then wind
         // will retool graphic and remove complexity later
         switch (icon[p]) {
-            case 0: update = cc->temp.changed; break;
+            case 0: update = cc->temp.changed || cc->feels_like.changed; break;
             case 1:
-                update = (cc->wind_speed.changed || cc->wind_direction.changed);
+                update = cc->wind_speed.changed || cc->wind_direction.changed;
                 break;
             case 2:
             case 3:
@@ -394,7 +394,9 @@ void putWeatherTemp(int x, int y, climacell_t *cc) {
         if (update) {
             switch (icon[p]) {
                 case 0:
-                    sprintf(buf, "%3.01f%s", cc->temp.fdatum, cc->temp.units);
+                    sprintf(buf, "%d%s (%d%s)", (int)round(cc->temp.fdatum),
+                            cc->temp.units, (int)round(cc->feels_like.fdatum),
+                            cc->feels_like.units);
                     break;
                 case 1:
                     sprintf(buf, "%d%s %s", (int)round(cc->wind_speed.fdatum),
