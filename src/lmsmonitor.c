@@ -452,7 +452,7 @@ void eggFX(size_t timer_id, void *user_data) {
                 aio->rFrame++;
                 if (aio->rFrame > aio->mxframe)
                     aio->rFrame = 0;
-                TVTEffects(20, 24, aio->rFrame, aio->mxframe);
+                TVTEffects(21, 24, aio->rFrame, aio->mxframe);
                 break;
             case EE_VCR:
             case EE_VINYL:
@@ -1158,7 +1158,7 @@ void TVTimePage(A1Attributes *aio) {
         (tags[DURATION].valid) ? strtol(tags[DURATION].tagData, NULL, 10) : 0;
     double pct = (pTime * 100.00) / (dTime == 0 ? 1 : dTime);
 
-    DrawTime rdt = {.pos = {17, 13}, .font = MON_FONT_STANDARD};
+    DrawTime rdt = {.pos = {18, 13}, .font = MON_FONT_STANDARD};
 
     // not hourly compliant!
     uint16_t rTime =
