@@ -55,14 +55,7 @@ static char doc[] = "OLED information display control program for piCorePlayer "
 
 static char args_doc[] = "--name \"NAME\"";
 
-/*
-these in usage
-#ifdef __arm__
-    printOledTypes();
-    printOledFontTypes();
-#endif
-    signature(executable);
-*/
+//static void print_help(void);
 
 static struct argp_option options[] = {
     {"name", 'n', "PLAYERNAME", 0, "Name of the squeeze device to monitor"},
@@ -122,10 +115,6 @@ struct arguments {
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 
-    //if (NULL==state->input)
-    //    return(0);
-    //printf("%c %s\n",key,arg);
-
     struct arguments *arguments = (struct arguments *)state->input;
     int test;
     char err[256];
@@ -136,6 +125,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case 'V': setVerbose(LL_VERBOSE); break;
         case 'n': arguments->lmsopt->playerName = arg; break;
 #ifdef __arm__
+        //case '?':
+        //    print_help();
+        //    return ARGP_HELP_EXIT_OK;
+        //    break; // ngh
         case 'o':
             sscanf(arg, "%d", &test);
             if (test < 0 || test >= OLED_LAST_OLED ||
@@ -218,6 +211,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                         case EE_RADIO:
                             arguments->lmsopt->eeMode = EE_RADIO;
                             break;
+                        case EE_TVTIME:
+                            arguments->lmsopt->eeMode = EE_TVTIME;
+                            break;
                         default: arguments->lmsopt->visualize = safe;
                     }
                 }
@@ -291,5 +287,21 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 }
 
 static struct argp argp = {options, parse_opt, args_doc, doc};
+
+/*
+static void argp_help(const struct argp_state *__restrict __state,
+			       FILE *__restrict __stream,
+			       unsigned int __flags) {
+    argp_help(&argp, stderr, ARGP_HELP_STD_HELP, (char *)APPNAME);
+#ifdef __arm__
+    printOledTypes();
+    printOledFontTypes();
+#endif
+}
+
+static void print_help(void) {
+    argp_help(&argp, stderr, ARGP_HELP_STD_HELP, (char *)APPNAME);
+}
+*/
 
 #endif

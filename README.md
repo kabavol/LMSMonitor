@@ -112,7 +112,7 @@ Several visualizer modes are supported
 - Large Downmix (visual data only) Spectrum
 - All-In-One - track details and spectrum/VU "swoosh"
 - All-In-One - fixed mode (use -aa)
-- Easter Eggs - fixed mode (use -E[1-5])
+- Easter Eggs - fixed mode (use -E[1-6])
 
 ### Installation
 

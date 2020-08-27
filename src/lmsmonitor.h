@@ -26,6 +26,13 @@
 #include <stdint.h>
 #include "lmsopts.h"
 
+#define SLEEP_TIME_SAVER 20
+#define SLEEP_TIME_SHORT 80
+#define SLEEP_TIME_LONG 160
+#define CHRPIXEL 8
+#define A1LINE_NUM 2
+#define A1SCROLLER 5
+
 bool isPlaying(void);
 bool lockOptions(void);
 bool acquireOptLock(void);

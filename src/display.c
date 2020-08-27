@@ -394,7 +394,7 @@ void putWeatherTemp(int x, int y, climacell_t *cc) {
         if (update) {
             switch (icon[p]) {
                 case 0:
-                    sprintf(buf, "%d%s (%d%s)", (int)round(cc->temp.fdatum),
+                    sprintf(buf, "%d%s [%d%s]", (int)round(cc->temp.fdatum),
                             cc->temp.units, (int)round(cc->feels_like.fdatum),
                             cc->feels_like.units);
                     break;
@@ -520,6 +520,36 @@ void technicsSL1200(bool blank) {
 
 void putRadio(audio_t audio) {
     // manipulate "switches" visualize fidelity
+}
+
+void putTVTime(audio_t audio) {
+    // manipulate "switches" visualize fidelity
+}
+
+void TVTime(bool blank) {
+    if (blank) {
+        display.fillRect(0, 0, 128, 64, BLACK);
+    }
+    display.drawBitmap(0, 0, tvtime88x64, 88, 64, WHITE);
+}
+
+void TVTEffects(int xpos, int ypos, int frame, int mxframe) {
+    int szw = 24;
+    int szh = 24;
+    int w = elementLength(szh, szw);
+    //int prev = frame + 1;
+    //if (prev < 0)
+    //    prev = mxframe;
+    //if (prev > mxframe)
+    //    prev = 0;
+    uint8_t dest[w];
+    //int start = prev * w;
+    //memcpy(dest, noodling24x24 + start, sizeof dest);
+    //display.drawBitmap(xpos, ypos, dest, szw, szh, BLACK);
+    display.fillRect(xpos, ypos, szw, szh, BLACK);
+    int start = frame * w;
+    memcpy(dest, noodling24x24 + start, sizeof dest);
+    display.drawBitmap(xpos, ypos, dest, szw, szh, WHITE);
 }
 
 void radio50(bool blank) {

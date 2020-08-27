@@ -30,7 +30,7 @@
 #include "climacell.h"
 
 enum clockMode{MON_CLOCK_OFF, MON_CLOCK_24H, MON_CLOCK_12H};
-enum eggYuks{EE_NONE, EE_CASSETTE, EE_VINYL, EE_REEL2REEL, EE_VCR, EE_RADIO};
+enum eggYuks{EE_NONE, EE_CASSETTE, EE_VINYL, EE_REEL2REEL, EE_VCR, EE_RADIO, EE_TVTIME};
 
 typedef struct MonitorAttrs {
     char *playerName;
@@ -59,7 +59,7 @@ typedef struct MonitorAttrs {
     int clockFont;
     bool flipDisplay;     // display mounted upside down
     char weather[128];    // weather init string, apikey and units (optional)
-    coord_t locale;       // lat, lon coordinates
+    coord_t locale;       // lat, lon coordinates specifics
     uint8_t i2cBus;       // number of I2C bus
     uint8_t oledRST;      // IIC/SPI reset GPIO
     uint8_t spiDC;        // SPI DC

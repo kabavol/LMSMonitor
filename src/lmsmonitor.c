@@ -75,13 +75,7 @@ struct MonitorAttrs *glopt;
 struct climacell_t weather;
 #endif
 
-#define SLEEP_TIME_SAVER 20
-#define SLEEP_TIME_SHORT 80
-#define SLEEP_TIME_LONG 160
-#define CHRPIXEL 8
 #define LINE_NUM 5
-#define A1LINE_NUM 2
-#define A1SCROLLER 5
 
 char stbl[BSIZE];
 char remTime[9];
@@ -173,6 +167,7 @@ void technicSL1200Page(A1Attributes *aio);
 void reelToReelPage(A1Attributes *aio);
 void vcrPage(A1Attributes *aio);
 void radio50Page(A1Attributes *aio);
+void TVTimePage(A1Attributes *aio);
 #endif
 
 static char *get_mac_address() {
@@ -452,6 +447,12 @@ void eggFX(size_t timer_id, void *user_data) {
                 if (aio->rFrame > aio->mxframe)
                     aio->rFrame = 0;
                 radioEffects(28, 40, aio->rFrame, aio->mxframe);
+                break;
+            case EE_TVTIME:
+                aio->rFrame++;
+                if (aio->rFrame > aio->mxframe)
+                    aio->rFrame = 0;
+                TVTEffects(20, 24, aio->rFrame, aio->mxframe);
                 break;
             case EE_VCR:
             case EE_VINYL:
@@ -753,6 +754,7 @@ int main(int argc, char *argv[]) {
             case EE_REEL2REEL: aio.mxframe = 17; break;
             case EE_VCR: aio.mxframe = 1; break;
             case EE_RADIO: aio.mxframe = 23; break;
+            case EE_TVTIME: aio.mxframe = 39; break;
         }
     }
 
@@ -843,6 +845,7 @@ int main(int argc, char *argv[]) {
                         case EE_REEL2REEL: reelToReelPage(&aio); break;
                         case EE_VCR: vcrPage(&aio); break;
                         case EE_RADIO: radio50Page(&aio); break;
+                        case EE_TVTIME: TVTimePage(&aio); break;
                     }
                     strcpy(remTime, "XXXXX");
                     baselineClimacell(&weather, true);
@@ -1066,6 +1069,96 @@ void radio50Page(A1Attributes *aio) {
     double pct = (pTime * 100.00) / (dTime == 0 ? 1 : dTime);
 
     DrawTime rdt = {.pos = {90, 57}, .font = MON_FONT_STANDARD};
+
+    // not hourly compliant!
+    uint16_t rTime =
+        (tags[REMAINING].valid) ? strtol(tags[REMAINING].tagData, NULL, 10) : 0;
+    sprintf(buff, "%02d:%02d", rTime / 60, rTime % 60);
+    setLastRemainingTime(buff, rdt);
+
+    if ((pct > 99.6) && (aio->eeFXActive)) {
+        aio->eeFXActive = false;
+        softClockReset(false);
+    }
+}
+
+void TVTimePage(A1Attributes *aio) {
+
+    tagtypes_t a1layout[A1LINE_NUM][3] = {
+        {TITLE, MAXTAG_TYPES, MAXTAG_TYPES},
+        {COMPOSER, ARTIST, MAXTAG_TYPES},
+    };
+
+    char buff[BSIZE] = {0};
+    char artist[255] = {0};
+    char title[255] = {0};
+
+    if (glopt->refreshLMS) {
+        resetDisplay(1);
+        softPlayRefresh(false);
+        TVTime(true);
+    }
+
+    setNagDone(false); // do not set refreshLMS
+    softClockReset(false);
+    softVisualizeRefresh(true);
+
+    // cfun noodling
+    if (!aio->eeFXActive)
+        aio->eeFXActive = true;
+
+    audio_t audioDetail = {.samplerate = 44.1,
+                           .samplesize = 16,
+                           .audioIcon = 1}; // 2 HD 3 SD 4 DSD
+
+    sampleDetails(&audioDetail);
+    audioDetail.audioIcon = 1;
+    if (1 == audioDetail.samplesize)
+        audioDetail.audioIcon++;
+    else if (16 != audioDetail.samplesize)
+        audioDetail.audioIcon--;
+
+    TVTime(false);
+    putTVTime(audioDetail);
+
+    // setup compound scrollers
+    bool filled = false;
+    bool changed = false;
+    for (int line = 0; line < A1LINE_NUM; line++) {
+        filled = false;
+        int myline = line + 5;
+        for (tagtypes_t *t = a1layout[line]; *t != MAXTAG_TYPES; t++) {
+            if (tags[*t].valid) {
+                filled = true;
+                if (tags[*t].changed) {
+                    changed = true;
+                    if (0 == line)
+                        strncpy(aio->title, tags[*t].tagData, 255);
+                    else
+                        strncpy(aio->artist, tags[*t].tagData, 255);
+                }
+            }
+        }
+    }
+
+    if (changed) {
+        sprintf(buff, "%s|%s", aio->artist, aio->title);
+        if ((strcmp(buff, aio->compound) != 0) ||
+            (0 == strlen(aio->compound))) // safe
+        {
+            strncpy(aio->compound, buff, 255);
+            putTinyTextMultiMaxWidth(86, 11, 17, 9, aio->compound);
+            setSleepTime(SLEEP_TIME_SAVER);
+        }
+    }
+
+    uint16_t pTime =
+        (tags[TIME].valid) ? strtol(tags[TIME].tagData, NULL, 10) : 0;
+    uint16_t dTime =
+        (tags[DURATION].valid) ? strtol(tags[DURATION].tagData, NULL, 10) : 0;
+    double pct = (pTime * 100.00) / (dTime == 0 ? 1 : dTime);
+
+    DrawTime rdt = {.pos = {17, 13}, .font = MON_FONT_STANDARD};
 
     // not hourly compliant!
     uint16_t rTime =

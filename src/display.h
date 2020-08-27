@@ -139,6 +139,9 @@ void vcrEffects(int xpos, int ypos, int frame, int mxframe);
 void radio50(bool blank);
 void radioEffects(int xpos, int ypos, int frame, int mxframe);
 
+void TVTime(bool blank);
+void TVTEffects(int xpos, int ypos, int frame, int mxframe);
+
 void printFontMetrics(void);
 
 void flipDisplay(struct MonitorAttrs dopts);
@@ -199,6 +202,7 @@ void putSL1200Btn(audio_t audio);
 void putReelToReel(audio_t audio);
 void putVcr(audio_t audio);
 void putRadio(audio_t audio);
+void putTVTime(audio_t audio);
 
 void putIFDetail(int icon, int xpos, int ypos, char *host);
 
