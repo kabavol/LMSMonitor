@@ -26,14 +26,14 @@
 #define PROGMEM
 #endif
 
+#include "climacell.h"
 #include "gfxfont.h"
+#include "lmsopts.h"
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "climacell.h"
-#include "lmsopts.h"
 
 #include "visdata.h"
 
@@ -41,7 +41,8 @@
 
 #define MAXSCROLL_DATA 255
 #define MAX_BRIGHTNESS 200
-#define NIGHT_BRIGHTNESS 88 // need to track down bit leak causing screen to flip/misalign
+#define NIGHT_BRIGHTNESS                                                       \
+    88 // need to track down bit leak causing screen to flip/misalign
 
 #define XPOS 0
 #define YPOS 1
@@ -70,12 +71,71 @@
 static const char *scrollerMode[] = {"Cylon (Default)", "Infinity (Sinister)",
                                      "Infinity (Dexter)", "Randomized"};
 
-typedef enum PageMode { DETAILS, CLOCK, VISUALIZER, ALLINONE } PageMode;
+typedef enum PageMode {
+    DETAILS,
+    CLOCK,
+    VISUALIZER,
+    ALLINONE,
+    EGG,
+    WEATHER
+} PageMode;
+
+enum inching { IW_WIDTH, IW_HEIGHT };
+enum honeymethod { IM_SHRINK, IM_GROW };
+enum inchdir {
+    ID_GLEFT,
+    ID_GRIGHT,
+    ID_GDOWN,
+    ID_GUP,
+    ID_SLEFT,
+    ID_SRIGHT,
+    ID_SDOWN,
+    ID_SUP
+};
 
 typedef struct point_t {
-    int x;
-    int y;
+    int16_t x;
+    int16_t y;
 } point_t;
+
+typedef struct limits_t {
+    int16_t min;
+    int16_t max;
+} limits_t;
+
+typedef struct dimention_t {
+    point_t tlpos;
+    int16_t w;
+    int16_t h;
+    int16_t radius;
+} dimention_t;
+
+// drawRoundRect(int16_t x0, int16_t y0, int16_t w, int16_t h, int16_t radius, uint16_t color)
+typedef struct inchingball_t {
+    dimention_t dimention;
+    enum inching direction; // modifying width/height
+    enum honeymethod hm;    // -1/+1 drives shrink/grow
+    enum inchdir sliding;   // modifying direction
+} inchingball_t;
+
+typedef struct plays_t {
+    int adj;
+    enum inching direction; // modifying width/height
+    enum honeymethod hm;    // -1/+1 drives shrink/grow
+    enum inchdir sliding;   // modifying direction
+} plays_t;
+
+typedef struct inching_t {
+    int drinkme; // active shrink/grow object
+    int currseq; // current pplay
+    size_t playcnt;
+    limits_t limitw;
+    limits_t limith;
+    limits_t limitx;
+    limits_t limity;
+    inchingball_t incher[3];
+    plays_t playseq[9];
+} inching_t;
 
 typedef struct audio_t {
     double samplerate;
@@ -151,7 +211,7 @@ void setInitRefresh(void);
 void printOledSetup(void);
 void printOledTypes(void);
 bool setOledType(int ot);
-bool setOledAddress(int8_t oa,int LR=0);
+bool setOledAddress(int8_t oa, int LR = 0);
 
 void setScrollMode(int sm);
 void printScrollerMode(void);
@@ -164,7 +224,6 @@ void displayBrightness(int bright, bool flip = false);
 
 void putWeatherTemp(int x, int y, climacell_t *cc);
 void putWeatherIcon(int x, int y, climacell_t *cc);
-
 
 void scrollerPause(void);
 void *scrollLine(void *input); // threadable
@@ -248,5 +307,9 @@ void shotAndDisplay(void);
 
 void nagSaverSetup(void);
 void nagSaverNotes(void);
+
+inching_t *initInching(const point_t pin, const limits_t lw, const limits_t lh,
+                       const limits_t lx, const limits_t ly);
+void animateInching(inching_t *b);
 
 #endif

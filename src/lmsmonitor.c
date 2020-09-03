@@ -808,7 +808,20 @@ int main(int argc, char *argv[]) {
     clearDisplay(); // clears the  splash if shown
     showConnect();  // connection helper
     clearDisplay();
+/*
+    inching_t *balls = initInching((const point_t){.x = 21, .y = 24},
+                                   (const limits_t){.min = 9, .max = 20},
+                                   (const limits_t){.min = 9, .max = 20},
+                                   (const limits_t){.min = 21, .max = 30},
+                                   (const limits_t){.min = 21, .max = 30});
 
+    for (int a = 0; a < 128; a++) {
+        animateInching(balls);
+        refreshDisplay();
+        dodelay((int)(SLEEP_TIME_SAVER / 12));
+    }
+    clearDisplay();
+*/
     printFontMetrics();
 
 #endif

@@ -1141,8 +1141,8 @@ bool updClimacell(climacell_t *climacell) {
         if (zz == zt) {
             if (res)
                 free(res);
-            if (getVerbose() >= LL_DEBUG)
-                printf("debug (%d):\n%s\n", zz, body);
+            //if (getVerbose() >= LL_DEBUG)
+            //    printf("debug (%d):\n%s\n", zz, body);
             climacell->refreshed = parseClimacell(body, climacell);
             break;
         }

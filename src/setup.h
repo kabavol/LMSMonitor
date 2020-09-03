@@ -87,7 +87,7 @@ static struct argp_option options[] = {
      "vu, pk, st, or rn for random"},
     {"oled", 'o', "OLEDTYPE", OPTION_ARG_OPTIONAL,
      "Specify OLED \"driver\" type (see options below)"},
-    {"addr", 'x', 0, 0,
+    {"addr", 'x', "OLEDADDR", 0,
      "OLED address if default does not work - use i2cdetect to find address "
      "(pi only)"},
     {"remain-time", 'r', 0, 0, "Display remaining time rather than track time"},
@@ -125,15 +125,14 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case 'V': setVerbose(LL_VERBOSE); break;
         case 'n': arguments->lmsopt->playerName = arg; break;
 #ifdef __arm__
-        //case '?':
-        //    print_help();
-        //    return ARGP_HELP_EXIT_OK;
-        //    break; // ngh
         case 'o':
             sscanf(arg, "%d", &test);
             if (test < 0 || test >= OLED_LAST_OLED ||
                 !strstr(oled_type_str[test], "128x64")) {
-                sprintf(err, "invalid 128x64 oled type %d specified\n", test);
+                sprintf(err,
+                        "you specified %d, it is an invalid 128x64 OLED type\n",
+                        test);
+                printOledTypes();
                 argp_failure(state, 1, 0, err);
             } else {
                 setOledType(test);
@@ -174,8 +173,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             if (arg) {
                 test = atoi(arg); // sscanf(arg, "%d", &test);
                 if (test < MON_FONT_CLASSIC || test >= MON_FONT_LCD1521) {
-                    sprintf(err, "invalid invalid oled font %d specified\n",
+                    sprintf(err,
+                            "you specified %d, it is an invalid OLED font\n",
                             test);
+                    printOledFontTypes();
                     argp_failure(state, 1, 0, err);
                 } else {
                     arguments->lmsopt->clockFont = test;
@@ -279,7 +280,12 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             break;
 #endif
 
-        case ARGP_KEY_END: break;
+        case ARGP_KEY_END:
+            if (!arguments->lmsopt->playerName) {
+                sprintf(err, "you MUST specify a player name\ne.g.\n--name \"piCorePlayer\"\n\n");
+                argp_failure(state, 1, 0, err);
+            }
+            break;
 
         default: return ARGP_ERR_UNKNOWN;
     }

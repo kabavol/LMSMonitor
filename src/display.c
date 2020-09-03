@@ -537,15 +537,7 @@ void TVTEffects(int xpos, int ypos, int frame, int mxframe) {
     int szw = 24;
     int szh = 24;
     int w = elementLength(szh, szw);
-    //int prev = frame + 1;
-    //if (prev < 0)
-    //    prev = mxframe;
-    //if (prev > mxframe)
-    //    prev = 0;
     uint8_t dest[w];
-    //int start = prev * w;
-    //memcpy(dest, noodling24x24 + start, sizeof dest);
-    //display.drawBitmap(xpos, ypos, dest, szw, szh, BLACK);
     display.fillRect(xpos, ypos, szw, szh, BLACK);
     int start = frame * w;
     memcpy(dest, noodling24x24 + start, sizeof dest);
@@ -1903,6 +1895,142 @@ void setScrollPosition(int line, int ypos) {
             scroll[line].pos.y = ypos;
         }
         pthread_mutex_unlock(&scroll[line].scrollox);
+    }
+}
+
+inching_t *initInching(const point_t pin, const limits_t lw, const limits_t lh,
+                       const limits_t lx, const limits_t ly) {
+
+    static inching_t ii = {.drinkme = 2,
+                           .currseq = 0,
+                           .playcnt = 0,
+                           .limitw = {0, 0},
+                           .limith = {0, 0},
+                           .limitx = {0, 0},
+                           .limity = {0, 0},
+                           .incher = {{.dimention = {{0, 0}, 0, 0, 3},
+                                       .direction = IW_WIDTH,
+                                       .hm = IM_GROW,
+                                       .sliding = ID_GRIGHT},
+                                      {.dimention = {{0, 0}, 0, 0, 3},
+                                       .direction = IW_HEIGHT,
+                                       .hm = IM_GROW,
+                                       .sliding = ID_GDOWN},
+                                      {.dimention = {{0, 0}, 0, 0, 3},
+                                       .direction = IW_WIDTH,
+                                       .hm = IM_SHRINK,
+                                       .sliding = ID_SLEFT}},
+                           .playseq = {
+                               {0, IW_WIDTH, IM_SHRINK, ID_SLEFT},
+                               {-1, IW_HEIGHT, IM_GROW, ID_GDOWN},
+                               {0, IW_HEIGHT, IM_SHRINK, ID_SDOWN},
+                               {-1, IW_WIDTH, IM_GROW, ID_GRIGHT},
+                               {0, IW_WIDTH, IM_SHRINK, ID_SRIGHT},
+                               {-1, IW_HEIGHT, IM_GROW, ID_GUP},
+                               {0, IW_HEIGHT, IM_SHRINK, ID_SUP},
+                               {-1, IW_WIDTH, IM_GROW, ID_GLEFT},
+                           }};
+
+    // fix limits
+    ii.limitw.min = lw.min;
+    ii.limitw.max = lw.max;
+    ii.limith.min = lh.min;
+    ii.limith.max = lh.max;
+    ii.limitx.min = lx.min;
+    ii.limitx.max = lx.max;
+    ii.limity.min = ly.min;
+    ii.limity.max = ly.max;
+    // fix init limit on the active incher
+    ii.incher[0].dimention.tlpos = pin;
+    ii.incher[0].dimention.w = lh.min;
+    ii.incher[0].dimention.h = lw.min;
+    ii.incher[1].dimention.tlpos = pin;
+    ii.incher[1].dimention.tlpos.x = pin.x + 2 + lh.min;
+    ii.incher[1].dimention.w = lh.min;
+    ii.incher[1].dimention.h = lw.min;
+    ii.incher[2].dimention.tlpos = pin;
+    ii.incher[2].dimention.tlpos.y = pin.y + 2 + lw.min;
+    ii.incher[2].dimention.w = lh.max;
+    ii.incher[2].dimention.h = lw.min;
+    ii.playcnt = (sizeof(ii.playseq) / sizeof(ii.playseq[0]))-1;
+    return (inching_t *)&ii;
+}
+
+void animateInching(inching_t *b) {
+
+    bool trip = false;
+    int ii = b->drinkme;
+
+    if (IW_WIDTH == b->incher[ii].direction) {
+        if (IM_SHRINK == b->incher[ii].hm) {
+            if ((ID_SLEFT == b->incher[ii].sliding) &&
+                (b->incher[ii].dimention.w > b->limitw.min)) {
+                b->incher[ii].dimention.w--;
+            } else if ((ID_SRIGHT == b->incher[ii].sliding) &&
+                       (b->incher[ii].dimention.w > b->limitw.min)) {
+                b->incher[ii].dimention.w--;
+                b->incher[ii].dimention.tlpos.x++;
+            }
+            trip = (b->incher[ii].dimention.w == b->limitw.min);
+        } else if (IM_GROW == b->incher[ii].hm) {
+            if ((ID_GRIGHT == b->incher[ii].sliding) &&
+                (b->incher[ii].dimention.w < b->limitw.max)) {
+                b->incher[ii].dimention.w++;
+            } else if ((ID_GLEFT == b->incher[ii].sliding) &&
+                       (b->incher[ii].dimention.w < b->limitw.max)) {
+                b->incher[ii].dimention.w++;
+                b->incher[ii].dimention.tlpos.x--;
+            }
+            trip = (b->incher[ii].dimention.w == b->limitw.max);
+        }
+    } else if (IW_HEIGHT == b->incher[ii].direction) {
+        if (IM_SHRINK == b->incher[ii].hm) {
+            if ((ID_SDOWN == b->incher[ii].sliding) &&
+                (b->incher[ii].dimention.h > b->limith.min)) {
+                b->incher[ii].dimention.tlpos.y++;
+                b->incher[ii].dimention.h--;
+            } else if (ID_SUP == b->incher[ii].sliding) {
+                b->incher[ii].dimention.h--;
+            }
+            trip = (b->incher[ii].dimention.h == b->limith.min);
+        } else if (IM_GROW == b->incher[ii].hm) {
+            if ((ID_GDOWN == b->incher[ii].sliding) &&
+                (b->incher[ii].dimention.h < b->limith.max)) {
+                b->incher[ii].dimention.h++;
+                trip = (b->incher[ii].dimention.h == b->limith.max);
+            } else if (ID_GUP == b->incher[ii].sliding) {
+                b->incher[ii].dimention.h++;
+                b->incher[ii].dimention.tlpos.y--;
+            }
+            trip = (b->incher[ii].dimention.h == b->limith.max);
+        }
+    }
+    // trip sequence
+    if (trip) {
+
+        b->currseq++;
+        if (b->currseq > (int)b->playcnt)
+            b->currseq = 0;
+
+        b->drinkme += b->playseq[b->currseq].adj;
+        if (b->drinkme < 0)
+            b->drinkme = 2;
+        if (b->drinkme > 2)
+            b->drinkme = 0;
+        ii = b->drinkme;
+
+        b->incher[ii].direction = b->playseq[b->currseq].direction;
+        b->incher[ii].hm = b->playseq[b->currseq].hm;
+        b->incher[ii].sliding = b->playseq[b->currseq].sliding;
+    }
+
+    // and paint
+    display.fillRect(19, 19, 45, 45, BLACK);
+    for (int i = 0; i < 3; i++) {
+        display.drawRoundRect(
+            b->incher[i].dimention.tlpos.x, b->incher[i].dimention.tlpos.y,
+            b->incher[i].dimention.w, b->incher[i].dimention.h,
+            b->incher[i].dimention.radius, WHITE);
     }
 }
 

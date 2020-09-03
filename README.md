@@ -110,8 +110,8 @@ Several visualizer modes are supported
 - Stereo Peak Meter - dBfs metered
 - Large Downmix (visual data only) VU meter
 - Large Downmix (visual data only) Spectrum
-- All-In-One - track details and spectrum/VU "swoosh"
-- All-In-One - fixed mode (use -aa)
+- All-In-One - track details and spectrum/VU "swoosh" (use -a1 or simply -a)
+- All-In-One - fixed mode (use -a2 or simply -a -a)
 - Easter Eggs - fixed mode (use -E[1-6])
 
 ### Installation
@@ -133,9 +133,13 @@ See the squeezelite page for more details
 
 We also need to install the i2c tools library so we can review setup and communicate with the OLED screen
 
+This can be done from the command line or via the pCP web forms.
+
 From the main web form click on Extensions button in the *Additional functions* section
 
-On the page displayed select *i2c-tools-dev.tcz* from the dropdown and install
+On the page displayed select *i2c-tools-dev.tcz* from the dropd own and install
+
+Alternatively use the following instructions 
 
 ## pCP Install
 
@@ -146,12 +150,17 @@ cd to the /mnt/mmcblk0p2/tce folder
 and, then type:
 
 ```bash
+tce-load -i i2c-tools-dev.tcz
+pcp bu
 wget "https://github.com/shunte88/LMSMonitor/blob/master/bin/lmsmonitorpcp.tgz?raw=true" -O lmsmonitorpcp.tgz && \
 tar -xzvf lmsmonitorpcp.tgz && \
 chmod +xX gomonitor
+pcp bu
 ```
 
-This downloads the monitor archive to pCP and extracts the contents and set execution permissions
+The first two commands takecare of therequired extension and perform a backup
+
+Theremaining commands download the monitor archive to pCP, extracts the contents, set execution permissions, and finally backup.
 
 With that you can manually start the monitor specifying the visualization you'd like to display, vu, sa, pk, st, sm or rn
 
@@ -194,8 +203,9 @@ There are currently 5 easter egg modes
 - 3 Open Reel To Reel, pure fantasy. Reels rotate, minor animation.
 - 4 VCR with flashing 12:00 AM clock! No additional animation - the clock is annoying enough.
 - 5 An old bakelite radio. Minor animation, radio changes station as track progresses.
+- 6 An old analog TV in all its 5x4 glory... and worms??
 
-Specify -E[1-5] to display eggs on track playback
+Specify -E[1-6] to display eggs on track playback
 </p>
 These are just fun display mode where visualization is not possible
 
