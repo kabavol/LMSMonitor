@@ -127,8 +127,9 @@ typedef struct plays_t {
 
 typedef struct inching_t {
     int drinkme; // active shrink/grow object
-    int currseq; // current pplay
-    size_t playcnt;
+    int currseq; // current play
+    int playcnt;
+    point_t pin;
     limits_t limitw;
     limits_t limith;
     limits_t limitx;
@@ -136,6 +137,29 @@ typedef struct inching_t {
     inchingball_t incher[3];
     plays_t playseq[9];
 } inching_t;
+
+typedef struct paddle_t {
+    point_t pos;
+    int16_t w;
+    int16_t h;
+} paddle_t; 
+
+typedef struct pongplay_t {
+    point_t left;
+    point_t right;
+    point_t ball;
+} pongplay_t;
+typedef struct pongem_t {
+    int currseq; // current play
+    int playcnt;
+    point_t fieldpos;
+    int16_t fieldw;
+    int16_t fieldh;
+    paddle_t left;
+    paddle_t right;
+    point_t ball;
+    pongplay_t playseq[20];
+} pongem_t;
 
 typedef struct audio_t {
     double samplerate;
@@ -200,7 +224,8 @@ void radio50(bool blank);
 void radioEffects(int xpos, int ypos, int frame, int mxframe);
 
 void TVTime(bool blank);
-void TVTEffects(int xpos, int ypos, int frame, int mxframe);
+void PCTime(bool blank);
+void pong(void);
 
 void printFontMetrics(void);
 
@@ -262,6 +287,7 @@ void putReelToReel(audio_t audio);
 void putVcr(audio_t audio);
 void putRadio(audio_t audio);
 void putTVTime(audio_t audio);
+void putPCTime(audio_t audio);
 
 void putIFDetail(int icon, int xpos, int ypos, char *host);
 

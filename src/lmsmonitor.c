@@ -154,6 +154,10 @@ void attach_signal_handler(void) {
 // "page" definitions, no break-out for visualizer
 void playingPage(void);
 #ifdef __arm__
+
+inching_t *balls = NULL;
+pongem_t *game = NULL;
+
 // if no driver params specified saverPage is displayed
 // subsequent track playback displays details deactivating saver
 void saverPage(void);
@@ -164,10 +168,9 @@ void clockWeatherPage(climacell_t *cc);
 // eggs anyone...
 void cassettePage(A1Attributes *aio);
 void technicSL1200Page(A1Attributes *aio);
-void reelToReelPage(A1Attributes *aio);
-void vcrPage(A1Attributes *aio);
-void radio50Page(A1Attributes *aio);
-void TVTimePage(A1Attributes *aio);
+// generic eggs - similar layout
+void OvaTimePage(A1Attributes *aio);
+
 #endif
 
 static char *get_mac_address() {
@@ -449,11 +452,18 @@ void eggFX(size_t timer_id, void *user_data) {
                 radioEffects(28, 40, aio->rFrame, aio->mxframe);
                 break;
             case EE_TVTIME:
-                aio->rFrame++;
-                if (aio->rFrame > aio->mxframe)
-                    aio->rFrame = 0;
-                TVTEffects(21, 24, aio->rFrame, aio->mxframe);
+                if (!balls) {
+                    balls =
+                        (inching_t*)initInching((const point_t){.x = 22, .y = 26},
+                                    (const limits_t){.min = 9, .max = 20},
+                                    (const limits_t){.min = 9, .max = 20},
+                                    (const limits_t){.min = 21, .max = 30},
+                                    (const limits_t){.min = 21, .max = 30});
+                }
+                animateInching(balls);
                 break;
+            case EE_PCTIME: //animateInching(balls);
+                break;      // fix this
             case EE_VCR:
             case EE_VINYL:
                 aio->lFrame++;
@@ -750,11 +760,14 @@ int main(int argc, char *argv[]) {
         aio.eeMode = lmsopt.eeMode;
         lmsopt.visualize = false;
         switch (aio.eeMode) {
+            case EE_NONE:
+            case EE_CASSETTE: break;
             case EE_VINYL:
             case EE_REEL2REEL: aio.mxframe = 17; break;
             case EE_VCR: aio.mxframe = 1; break;
             case EE_RADIO: aio.mxframe = 23; break;
-            case EE_TVTIME: aio.mxframe = 39; break;
+            case EE_TVTIME: aio.mxframe = 0; break; // mechanism is unused
+            case EE_PCTIME: aio.mxframe = 0; break; // mechanism is unused
         }
     }
 
@@ -808,20 +821,7 @@ int main(int argc, char *argv[]) {
     clearDisplay(); // clears the  splash if shown
     showConnect();  // connection helper
     clearDisplay();
-/*
-    inching_t *balls = initInching((const point_t){.x = 21, .y = 24},
-                                   (const limits_t){.min = 9, .max = 20},
-                                   (const limits_t){.min = 9, .max = 20},
-                                   (const limits_t){.min = 21, .max = 30},
-                                   (const limits_t){.min = 21, .max = 30});
 
-    for (int a = 0; a < 128; a++) {
-        animateInching(balls);
-        refreshDisplay();
-        dodelay((int)(SLEEP_TIME_SAVER / 12));
-    }
-    clearDisplay();
-*/
     printFontMetrics();
 
 #endif
@@ -854,11 +854,12 @@ int main(int argc, char *argv[]) {
                             playingPage();
                             break;
                         case EE_CASSETTE: cassettePage(&aio); break;
-                        case EE_VINYL: technicSL1200Page(&aio); break;
-                        case EE_REEL2REEL: reelToReelPage(&aio); break;
-                        case EE_VCR: vcrPage(&aio); break;
-                        case EE_RADIO: radio50Page(&aio); break;
-                        case EE_TVTIME: TVTimePage(&aio); break;
+                        case EE_VINYL:
+                        case EE_REEL2REEL:
+                        case EE_VCR:
+                        case EE_RADIO:
+                        case EE_TVTIME:
+                        case EE_PCTIME: OvaTimePage(&aio); break;
                     }
                     strcpy(remTime, "XXXXX");
                     baselineClimacell(&weather, true);
@@ -1005,7 +1006,7 @@ void clockPage(void) {
     refreshDisplay();
 }
 
-void radio50Page(A1Attributes *aio) {
+void OvaTimePage(A1Attributes *aio) {
 
     tagtypes_t a1layout[A1LINE_NUM][3] = {
         {TITLE, MAXTAG_TYPES, MAXTAG_TYPES},
@@ -1019,97 +1020,16 @@ void radio50Page(A1Attributes *aio) {
     if (glopt->refreshLMS) {
         resetDisplay(1);
         softPlayRefresh(false);
-        radio50(true);
-    }
-
-    setNagDone(false); // do not set refreshLMS
-    softClockReset(false);
-    softVisualizeRefresh(true);
-
-    // cassette hub, vinyl "wobble" or reel to reel effects
-    if (!aio->eeFXActive)
-        aio->eeFXActive = true;
-
-    audio_t audioDetail = {.samplerate = 44.1,
-                           .samplesize = 16,
-                           .audioIcon = 1}; // 2 HD 3 SD 4 DSD
-
-    sampleDetails(&audioDetail);
-    audioDetail.audioIcon = 1;
-    if (1 == audioDetail.samplesize)
-        audioDetail.audioIcon++;
-    else if (16 != audioDetail.samplesize)
-        audioDetail.audioIcon--;
-
-    radio50(false);
-    putRadio(audioDetail);
-
-    // setup compound scrollers
-    bool filled = false;
-    bool changed = false;
-    for (int line = 0; line < A1LINE_NUM; line++) {
-        filled = false;
-        int myline = line + 5;
-        for (tagtypes_t *t = a1layout[line]; *t != MAXTAG_TYPES; t++) {
-            if (tags[*t].valid) {
-                filled = true;
-                if (tags[*t].changed) {
-                    changed = true;
-                    if (0 == line)
-                        strncpy(aio->title, tags[*t].tagData, 255);
-                    else
-                        strncpy(aio->artist, tags[*t].tagData, 255);
-                }
-            }
+        switch (aio->eeMode) {
+            case EE_NONE:
+            case EE_CASSETTE: break;
+            case EE_VINYL: technicsSL1200(true); break;
+            case EE_REEL2REEL: reelToReel(true); break;
+            case EE_VCR: vcrPlayer(true); break;
+            case EE_RADIO: radio50(true); break;
+            case EE_TVTIME: TVTime(true); break;
+            case EE_PCTIME: PCTime(true); break;
         }
-    }
-
-    if (changed) {
-        sprintf(buff, "%s|%s", aio->artist, aio->title);
-        if ((strcmp(buff, aio->compound) != 0) ||
-            (0 == strlen(aio->compound))) // safe
-        {
-            strncpy(aio->compound, buff, 255);
-            putTinyTextMultiMaxWidth(71, 7, 20, 7, aio->compound);
-            setSleepTime(SLEEP_TIME_SAVER);
-        }
-    }
-
-    uint16_t pTime =
-        (tags[TIME].valid) ? strtol(tags[TIME].tagData, NULL, 10) : 0;
-    uint16_t dTime =
-        (tags[DURATION].valid) ? strtol(tags[DURATION].tagData, NULL, 10) : 0;
-    double pct = (pTime * 100.00) / (dTime == 0 ? 1 : dTime);
-
-    DrawTime rdt = {.pos = {90, 57}, .font = MON_FONT_STANDARD};
-
-    // not hourly compliant!
-    uint16_t rTime =
-        (tags[REMAINING].valid) ? strtol(tags[REMAINING].tagData, NULL, 10) : 0;
-    sprintf(buff, "%02d:%02d", rTime / 60, rTime % 60);
-    setLastRemainingTime(buff, rdt);
-
-    if ((pct > 99.6) && (aio->eeFXActive)) {
-        aio->eeFXActive = false;
-        softClockReset(false);
-    }
-}
-
-void TVTimePage(A1Attributes *aio) {
-
-    tagtypes_t a1layout[A1LINE_NUM][3] = {
-        {TITLE, MAXTAG_TYPES, MAXTAG_TYPES},
-        {COMPOSER, ARTIST, MAXTAG_TYPES},
-    };
-
-    char buff[BSIZE] = {0};
-    char artist[255] = {0};
-    char title[255] = {0};
-
-    if (glopt->refreshLMS) {
-        resetDisplay(1);
-        softPlayRefresh(false);
-        TVTime(true);
     }
 
     setNagDone(false); // do not set refreshLMS
@@ -1131,8 +1051,34 @@ void TVTimePage(A1Attributes *aio) {
     else if (16 != audioDetail.samplesize)
         audioDetail.audioIcon--;
 
-    TVTime(false);
-    putTVTime(audioDetail);
+    switch (aio->eeMode) {
+        case EE_NONE:
+        case EE_CASSETTE: break;
+        case EE_VINYL:
+            technicsSL1200(false);
+            putSL1200Btn(audioDetail);
+            break;
+        case EE_REEL2REEL:
+            reelToReel(false);
+            putReelToReel(audioDetail);
+            break;
+        case EE_VCR:
+            vcrPlayer(false);
+            putVcr(audioDetail);
+            break;
+        case EE_RADIO:
+            radio50(false);
+            putRadio(audioDetail);
+            break;
+        case EE_TVTIME:
+            TVTime(false);
+            putTVTime(audioDetail);
+            break;
+        case EE_PCTIME:
+            PCTime(false);
+            putPCTime(audioDetail);
+            break;
+    }
 
     // setup compound scrollers
     bool filled = false;
@@ -1160,7 +1106,11 @@ void TVTimePage(A1Attributes *aio) {
             (0 == strlen(aio->compound))) // safe
         {
             strncpy(aio->compound, buff, 255);
-            putTinyTextMultiMaxWidth(86, 11, 17, 9, aio->compound);
+            if (EE_TVTIME == aio->eeMode) {
+                putTinyTextMultiMaxWidth(86, 11, 17, 9, aio->compound);
+            } else {
+                putTinyTextMultiMaxWidth(69, 10, 22, 9, aio->compound);
+            }
             setSleepTime(SLEEP_TIME_SAVER);
         }
     }
@@ -1173,6 +1123,29 @@ void TVTimePage(A1Attributes *aio) {
 
     DrawTime rdt = {.pos = {18, 13}, .font = MON_FONT_STANDARD};
 
+    switch (aio->eeMode) {
+        case EE_NONE:
+        case EE_CASSETTE: break;
+        case EE_TVTIME:
+            rdt.pos.x = 18;
+            rdt.pos.y = 13;
+            break;
+        case EE_VINYL:
+        case EE_RADIO:
+        case EE_REEL2REEL:
+            rdt.pos.x = 94;
+            rdt.pos.y = 55;
+            break;
+        case EE_VCR:
+            rdt.pos.x = 90;
+            rdt.pos.y = 17;
+            break;
+        case EE_PCTIME:
+            rdt.pos.x = 20;
+            rdt.pos.y = 9;
+            break;
+    }
+
     // not hourly compliant!
     uint16_t rTime =
         (tags[REMAINING].valid) ? strtol(tags[REMAINING].tagData, NULL, 10) : 0;
@@ -1182,6 +1155,10 @@ void TVTimePage(A1Attributes *aio) {
     if ((pct > 99.6) && (aio->eeFXActive)) {
         aio->eeFXActive = false;
         softClockReset(false);
+    }
+
+    if (EE_VINYL == aio->eeMode) {
+        toneArm(pct, aio->eeFXActive);
     }
 }
 
@@ -1243,278 +1220,6 @@ void clockWeatherPage(climacell_t *cc) {
     setSleepTime(SLEEP_TIME_LONG);
 
     refreshDisplay();
-}
-
-void vcrPage(A1Attributes *aio) {
-
-    tagtypes_t a1layout[A1LINE_NUM][3] = {
-        {TITLE, MAXTAG_TYPES, MAXTAG_TYPES},
-        {COMPOSER, ARTIST, MAXTAG_TYPES},
-    };
-
-    char buff[BSIZE] = {0};
-    char artist[255] = {0};
-    char title[255] = {0};
-
-    if (glopt->refreshLMS) {
-        resetDisplay(1);
-        softPlayRefresh(false);
-        vcrPlayer(true);
-    }
-
-    setNagDone(false); // do not set refreshLMS
-    softClockReset(false);
-    softVisualizeRefresh(true);
-
-    // cassette hub, vinyl "wobble" or reel to reel effects
-    if (!aio->eeFXActive)
-        aio->eeFXActive = true;
-
-    audio_t audioDetail = {.samplerate = 44.1,
-                           .samplesize = 16,
-                           .audioIcon = 1}; // 2 HD 3 SD 4 DSD
-
-    sampleDetails(&audioDetail);
-    audioDetail.audioIcon = 1;
-    if (1 == audioDetail.samplesize)
-        audioDetail.audioIcon++;
-    else if (16 != audioDetail.samplesize)
-        audioDetail.audioIcon--;
-
-    vcrPlayer(false);
-    putVcr(audioDetail);
-
-    // setup compound scrollers
-    bool filled = false;
-    bool changed = false;
-    for (int line = 0; line < A1LINE_NUM; line++) {
-        filled = false;
-        int myline = line + 5;
-        for (tagtypes_t *t = a1layout[line]; *t != MAXTAG_TYPES; t++) {
-            if (tags[*t].valid) {
-                filled = true;
-                if (tags[*t].changed) {
-                    changed = true;
-                    if (0 == line)
-                        strncpy(aio->title, tags[*t].tagData, 255);
-                    else
-                        strncpy(aio->artist, tags[*t].tagData, 255);
-                }
-            }
-        }
-    }
-
-    if (changed) {
-        sprintf(buff, "%s|%s", aio->artist, aio->title);
-        if ((strcmp(buff, aio->compound) != 0) ||
-            (0 == strlen(aio->compound))) // safe
-        {
-            strncpy(aio->compound, buff, 255);
-            putTinyTextMultiMaxWidth(10, 7, 32, 3, aio->compound);
-            setSleepTime(SLEEP_TIME_SAVER);
-        }
-    }
-
-    uint16_t pTime =
-        (tags[TIME].valid) ? strtol(tags[TIME].tagData, NULL, 10) : 0;
-    uint16_t dTime =
-        (tags[DURATION].valid) ? strtol(tags[DURATION].tagData, NULL, 10) : 0;
-    double pct = (pTime * 100.00) / (dTime == 0 ? 1 : dTime);
-
-    DrawTime rdt = {.pos = {90, 17}, .font = MON_FONT_STANDARD};
-
-    // not hourly compliant!
-    uint16_t rTime =
-        (tags[REMAINING].valid) ? strtol(tags[REMAINING].tagData, NULL, 10) : 0;
-    sprintf(buff, "%02d:%02d", rTime / 60, rTime % 60);
-    setLastRemainingTime(buff, rdt);
-
-    if ((pct > 99.6) && (aio->eeFXActive)) {
-        aio->eeFXActive = false;
-        softClockReset(false);
-    }
-}
-
-void reelToReelPage(A1Attributes *aio) {
-
-    tagtypes_t a1layout[A1LINE_NUM][3] = {
-        {TITLE, MAXTAG_TYPES, MAXTAG_TYPES},
-        {COMPOSER, ARTIST, MAXTAG_TYPES},
-    };
-
-    char buff[BSIZE] = {0};
-    char artist[255] = {0};
-    char title[255] = {0};
-
-    if (glopt->refreshLMS) {
-        resetDisplay(1);
-        softPlayRefresh(false);
-        reelToReel(true);
-    }
-
-    setNagDone(false); // do not set refreshLMS
-    softClockReset(false);
-    softVisualizeRefresh(true);
-
-    // cassette hub, vinyl "wobble" or reel to reel effects
-    if (!aio->eeFXActive)
-        aio->eeFXActive = true;
-
-    audio_t audioDetail = {.samplerate = 44.1,
-                           .samplesize = 16,
-                           .audioIcon = 1}; // 2 HD 3 SD 4 DSD
-
-    sampleDetails(&audioDetail);
-    audioDetail.audioIcon = 1;
-    if (1 == audioDetail.samplesize)
-        audioDetail.audioIcon++;
-    else if (16 != audioDetail.samplesize)
-        audioDetail.audioIcon--;
-
-    reelToReel(false);
-    putReelToReel(audioDetail);
-
-    // setup compound scrollers
-    bool filled = false;
-    bool changed = false;
-    for (int line = 0; line < A1LINE_NUM; line++) {
-        filled = false;
-        int myline = line + 5;
-        for (tagtypes_t *t = a1layout[line]; *t != MAXTAG_TYPES; t++) {
-            if (tags[*t].valid) {
-                filled = true;
-                if (tags[*t].changed) {
-                    changed = true;
-                    if (0 == line)
-                        strncpy(aio->title, tags[*t].tagData, 255);
-                    else
-                        strncpy(aio->artist, tags[*t].tagData, 255);
-                }
-            }
-        }
-    }
-
-    if (changed) {
-        sprintf(buff, "%s|%s", aio->artist, aio->title);
-        if ((strcmp(buff, aio->compound) != 0) ||
-            (0 == strlen(aio->compound))) // safe
-        {
-            strncpy(aio->compound, buff, 255);
-            putTinyTextMultiMaxWidth(72, 7, 19, 7, aio->compound);
-            setSleepTime(SLEEP_TIME_SAVER);
-        }
-    }
-
-    uint16_t pTime =
-        (tags[TIME].valid) ? strtol(tags[TIME].tagData, NULL, 10) : 0;
-    uint16_t dTime =
-        (tags[DURATION].valid) ? strtol(tags[DURATION].tagData, NULL, 10) : 0;
-    double pct = (pTime * 100.00) / (dTime == 0 ? 1 : dTime);
-
-    DrawTime rdt = {.pos = {94, 55}, .font = MON_FONT_STANDARD};
-
-    // not hourly compliant!
-    uint16_t rTime =
-        (tags[REMAINING].valid) ? strtol(tags[REMAINING].tagData, NULL, 10) : 0;
-    sprintf(buff, "%02d:%02d", rTime / 60, rTime % 60);
-    setLastRemainingTime(buff, rdt);
-
-    if ((pct > 99.6) && (aio->eeFXActive)) {
-        aio->eeFXActive = false;
-        softClockReset(false);
-    }
-}
-
-void technicSL1200Page(A1Attributes *aio) {
-
-    tagtypes_t a1layout[A1LINE_NUM][3] = {
-        {TITLE, MAXTAG_TYPES, MAXTAG_TYPES},
-        {COMPOSER, ARTIST, MAXTAG_TYPES},
-    };
-
-    char buff[BSIZE] = {0};
-    char artist[255] = {0};
-    char title[255] = {0};
-
-    if (glopt->refreshLMS) {
-        resetDisplay(1);
-        softPlayRefresh(false);
-        technicsSL1200(true);
-    }
-
-    setNagDone(false); // do not set refreshLMS
-    softClockReset(false);
-    softVisualizeRefresh(true);
-
-    // cassette hub, vinyl "wobble" or reel to reel effects
-    if (!aio->eeFXActive)
-        aio->eeFXActive = true;
-
-    audio_t audioDetail = {.samplerate = 44.1,
-                           .samplesize = 16,
-                           .audioIcon = 1}; // 2 HD 3 SD 4 DSD
-
-    sampleDetails(&audioDetail);
-    audioDetail.audioIcon = 1;
-    if (1 == audioDetail.samplesize)
-        audioDetail.audioIcon++;
-    else if (16 != audioDetail.samplesize)
-        audioDetail.audioIcon--;
-
-    technicsSL1200(false);
-    putSL1200Btn(audioDetail);
-
-    // setup compound scrollers
-    bool filled = false;
-    bool changed = false;
-    for (int line = 0; line < A1LINE_NUM; line++) {
-        filled = false;
-        int myline = line + 5;
-        for (tagtypes_t *t = a1layout[line]; *t != MAXTAG_TYPES; t++) {
-            if (tags[*t].valid) {
-                filled = true;
-                if (tags[*t].changed) {
-                    changed = true;
-                    if (0 == line)
-                        strncpy(aio->title, tags[*t].tagData, 255);
-                    else
-                        strncpy(aio->artist, tags[*t].tagData, 255);
-                }
-            }
-        }
-    }
-
-    if (changed) {
-        sprintf(buff, "%s|%s", aio->artist, aio->title);
-        if ((strcmp(buff, aio->compound) != 0) ||
-            (0 == strlen(aio->compound))) // safe
-        {
-            strncpy(aio->compound, buff, 255);
-            putTinyTextMultiMaxWidth(84, 7, 14, 7, aio->compound);
-            ///setSleepTime(SLEEP_TIME_SAVER);
-        }
-    }
-
-    uint16_t pTime =
-        (tags[TIME].valid) ? strtol(tags[TIME].tagData, NULL, 10) : 0;
-    uint16_t dTime =
-        (tags[DURATION].valid) ? strtol(tags[DURATION].tagData, NULL, 10) : 0;
-    double pct = (pTime * 100.00) / (dTime == 0 ? 1 : dTime);
-
-    DrawTime rdt = {.pos = {94, 55}, .font = MON_FONT_STANDARD};
-
-    // not hourly compliant!
-    uint16_t rTime =
-        (tags[REMAINING].valid) ? strtol(tags[REMAINING].tagData, NULL, 10) : 0;
-    sprintf(buff, "%02d:%02d", rTime / 60, rTime % 60);
-    setLastRemainingTime(buff, rdt);
-
-    if ((pct > 99.6) && (aio->eeFXActive)) {
-        aio->eeFXActive = false;
-        softClockReset(false);
-    }
-
-    toneArm(pct, aio->eeFXActive);
 }
 
 void cassettePage(A1Attributes *aio) {

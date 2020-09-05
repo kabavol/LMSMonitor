@@ -29,8 +29,17 @@
 
 #include "climacell.h"
 
-enum clockMode{MON_CLOCK_OFF, MON_CLOCK_24H, MON_CLOCK_12H};
-enum eggYuks{EE_NONE, EE_CASSETTE, EE_VINYL, EE_REEL2REEL, EE_VCR, EE_RADIO, EE_TVTIME};
+enum clockMode { MON_CLOCK_OFF, MON_CLOCK_24H, MON_CLOCK_12H };
+enum eggYuks {
+    EE_NONE,
+    EE_CASSETTE,
+    EE_VINYL,
+    EE_REEL2REEL,
+    EE_VCR,
+    EE_RADIO,
+    EE_TVTIME,
+    EE_PCTIME
+};
 
 typedef struct MonitorAttrs {
     char *playerName;

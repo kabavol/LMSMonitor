@@ -215,6 +215,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                         case EE_TVTIME:
                             arguments->lmsopt->eeMode = EE_TVTIME;
                             break;
+                        case EE_PCTIME:
+                            arguments->lmsopt->eeMode = EE_PCTIME;
+                            break;
                         default: arguments->lmsopt->visualize = safe;
                     }
                 }

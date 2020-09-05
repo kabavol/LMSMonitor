@@ -526,6 +526,10 @@ void putTVTime(audio_t audio) {
     // manipulate "switches" visualize fidelity
 }
 
+void putPCTime(audio_t audio) {
+    // manipulate "switches" visualize fidelity
+}
+
 void TVTime(bool blank) {
     if (blank) {
         display.fillRect(0, 0, 128, 64, BLACK);
@@ -533,15 +537,11 @@ void TVTime(bool blank) {
     display.drawBitmap(0, 0, tvtime88x64, 88, 64, WHITE);
 }
 
-void TVTEffects(int xpos, int ypos, int frame, int mxframe) {
-    int szw = 24;
-    int szh = 24;
-    int w = elementLength(szh, szw);
-    uint8_t dest[w];
-    display.fillRect(xpos, ypos, szw, szh, BLACK);
-    int start = frame * w;
-    memcpy(dest, noodling24x24 + start, sizeof dest);
-    display.drawBitmap(xpos, ypos, dest, szw, szh, WHITE);
+void PCTime(bool blank) {
+    if (blank) {
+        display.fillRect(0, 0, 128, 64, BLACK);
+    }
+    display.drawBitmap(0, 0, pctime67x64, 67, 64, WHITE);
 }
 
 void radio50(bool blank) {
@@ -1904,6 +1904,7 @@ inching_t *initInching(const point_t pin, const limits_t lw, const limits_t lh,
     static inching_t ii = {.drinkme = 2,
                            .currseq = 0,
                            .playcnt = 0,
+                           .pin = {0, 0},
                            .limitw = {0, 0},
                            .limith = {0, 0},
                            .limitx = {0, 0},
@@ -1941,6 +1942,7 @@ inching_t *initInching(const point_t pin, const limits_t lw, const limits_t lh,
     ii.limity.min = ly.min;
     ii.limity.max = ly.max;
     // fix init limit on the active incher
+    ii.pin = pin;
     ii.incher[0].dimention.tlpos = pin;
     ii.incher[0].dimention.w = lh.min;
     ii.incher[0].dimention.h = lw.min;
@@ -1952,7 +1954,8 @@ inching_t *initInching(const point_t pin, const limits_t lw, const limits_t lh,
     ii.incher[2].dimention.tlpos.y = pin.y + 2 + lw.min;
     ii.incher[2].dimention.w = lh.max;
     ii.incher[2].dimention.h = lw.min;
-    ii.playcnt = (sizeof(ii.playseq) / sizeof(ii.playseq[0]))-1;
+    ii.playcnt = 7;
+
     return (inching_t *)&ii;
 }
 
@@ -2009,9 +2012,8 @@ void animateInching(inching_t *b) {
     if (trip) {
 
         b->currseq++;
-        if (b->currseq > (int)b->playcnt)
+        if (b->currseq > b->playcnt)
             b->currseq = 0;
-
         b->drinkme += b->playseq[b->currseq].adj;
         if (b->drinkme < 0)
             b->drinkme = 2;
@@ -2025,7 +2027,7 @@ void animateInching(inching_t *b) {
     }
 
     // and paint
-    display.fillRect(19, 19, 45, 45, BLACK);
+    display.fillRect(b->pin.x, b->pin.y, b->limitw.max, b->limith.max, BLACK);
     for (int i = 0; i < 3; i++) {
         display.drawRoundRect(
             b->incher[i].dimention.tlpos.x, b->incher[i].dimention.tlpos.y,
