@@ -18,8 +18,8 @@
  *
  */
 
-#ifndef GAMEMULATE_H
-#define GAMEMULATE_H
+#ifndef EEGZ_H
+#define EEGZ_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -38,6 +38,15 @@ enum inchdir {
     ID_SDOWN,
     ID_SUP
 };
+
+typedef struct audio_t {
+    double samplerate;
+    int8_t samplesize;
+    int8_t volume;
+    int8_t audioIcon;
+    int8_t repeat;
+    int8_t shuffle;
+} audio_t;
 
 typedef struct point_t {
     int16_t x;
@@ -109,6 +118,46 @@ typedef struct pongem_t {
     grect_t right;
     grect_t ball;
 } pongem_t;
+
+int lrand(int l, int u);
+
+// EE_CASSETTE
+void putTapeType(audio_t audio);
+// EE_VINYL
+void putSL1200Btn(audio_t audio);
+// EE_REEL2REEL
+void putReelToReel(audio_t audio);
+// EE_VCR
+void putVcr(audio_t audio);
+// EE_RADIO
+void putRadio(audio_t audio);
+// EE_TVTIME
+void putTVTime(audio_t audio);
+// EE_PCTIME
+void putPCTime(audio_t audio);
+// EE_SEQCIRC
+
+// EE_CASSETTE
+void compactCassette(void);
+void cassetteEffects(int xpos, int frame, int mxframe, int direction);
+// EE_VINYL
+void toneArm(double pct, bool init);
+void technicsSL1200(bool blank);
+void vinylEffects(int xpos, int lpos, int frame, int mxframe);
+// EE_REEL2REEL
+void reelToReel(bool blank);
+void reelEffects(int xpos, int ypos, int frame, int mxframe, int direction);
+// EE_VCR
+void vcrPlayer(bool blank);
+void vcrEffects(int xpos, int ypos, int frame, int mxframe);
+// EE_RADIO
+void radio50(bool blank);
+void radioEffects(int xpos, int ypos, int frame, int mxframe);
+// EE_TVTIME
+void TVTime(bool blank);
+// EE_PCTIME
+void PCTime(bool blank);
+// EE_SEQCIRC
 
 inching_t *initInching(const point_t pin, const limits_t lw, const limits_t lh,
                        const limits_t lx, const limits_t ly);

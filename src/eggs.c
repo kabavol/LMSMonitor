@@ -18,19 +18,253 @@
  *
  */
 
-#include <stdio.h>
-#include <string.h>
-
 #include <math.h>
 #include <stdint.h>
-#include <sys/types.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "common.h"
 
 #ifdef __arm__
-#include "display.h"
+#include "oledimg.h"
+#include "visualize.h"
 #include "ArduiPi_OLED.h"
+#include "display.h"
+#include "eggs.h"
+
+int lrand(int l, int u) {
+    int r = (rand() % (u - l + 1)) + l;
+    return r;
+}
+
+void putTapeType(audio_t audio) {
+
+    int szw = 6;
+    int szh = 4;
+    int w = elementLength(szh, szw);
+
+    int start = 0;
+    uint8_t dest[w];
+    start = audio.audioIcon * w;
+    int x = 99;
+    int y = 29;
+    memcpy(dest, cmedia + start, sizeof dest);
+    fillRectangle(x, y, szw, szh, BLACK);
+    drawBitmap(x, y, dest, szw, szh, WHITE);
+}
+
+void compactCassette(void) {
+    drawBitmap(0, 0, cassette, 128, 64, WHITE);
+}
+
+void cassetteEffects(int xpos, int frame, int mxframe, int direction) {
+
+    int szw = 10;
+    int szh = 10;
+    int w = elementLength(szh, szw);
+    int prev = frame + direction;
+    if (prev < 0)
+        prev = mxframe;
+    if (prev > mxframe)
+        prev = 0;
+    uint8_t dest[w];
+    int ypos = 23;
+    int start = prev * w;
+    memcpy(dest, hub10x10 + start, sizeof dest);
+    drawRectangle(xpos, ypos, szw, szh, BLACK);
+    drawBitmap(xpos, ypos, dest, szw, szh, BLACK);
+    start = frame * w;
+    memcpy(dest, hub10x10 + start, sizeof dest);
+    drawBitmap(xpos, ypos, dest, szw, szh, WHITE);
+}
+
+void putSL1200Btn(audio_t audio) {
+    int w = 7;
+    int h = 6;
+    int x = 71;
+    int yy[] = {35, 44, 50};
+    int y = yy[audio.audioIcon];
+    // draw slider position based on audio fidelity
+    fillRectangle(x + 1, 32, 5, 23, BLACK);
+    fillRectangle(x + 2, 33, 3, 23, WHITE);
+    drawLine(x + 3, 34, x + 3, 54, BLACK);
+
+    fillRectangle(x, y - 1, w, h, BLACK);
+    fillRectangle(x + 1, y, w - 2, h - 2, WHITE);
+    fillRectangle(x + 2, y + 1, w - 4, h - 4, BLACK);
+}
+
+void toneArm(double pct, bool init) {
+    int w = 270;
+    int h = 4;
+    int start = 0;
+    uint8_t dest[w];
+    if (init)
+        start = w * (1 + (int)(pct / 10));
+    memcpy(dest, tonearm + start, sizeof dest);
+    drawBitmap(39, 4, dest, 40, 54, BLACK); // shadow line
+    drawBitmap(38, 3, dest, 40, 54, WHITE);
+}
+
+void technicsSL1200(bool blank) {
+
+    if (blank) {
+        fillRectangle(0, 0, 128, 64, BLACK);
+    } else {
+        int x = 38;
+        uint16_t c = BLACK;
+        fillRectangle(x, 40, 32, 20, c);
+        drawLine(x, 42, 50, 42, c);
+        drawLine(x, 41, 50, 41, c);
+        drawLine(x + 1, 40, 50, 40, c);
+        drawLine(x + 2, 39, 50, 39, c);
+        drawLine(x + 3, 38, 50, 38, c);
+        drawLine(x + 4, 37, 50, 37, c);
+        drawLine(x + 5, 36, 50, 36, c);
+        fillRectangle(47, 27, 30, 24, c);
+        fillRectangle(60, 4, 17, 24, c);
+    }
+    drawBitmap(0, 0, sl1200t, 83, 64, WHITE);
+}
+
+void vinylEffects(int xpos, int lpos, int frame, int mxframe) {
+
+    int z = 50;
+    int erase = xpos - 2;
+    int place = xpos - 1;
+    drawBitmap(erase, erase, vinfx, z, z, BLACK);
+    drawBitmap(place, place, vinfx, z, z, WHITE);
+
+    z = 57;
+    int h = 19;
+    int start = 0;
+    uint8_t dest[z];
+    int blank = frame - 1;
+    if (blank < 0)
+        blank = mxframe;
+    // last frame
+    start = blank * z;
+    memcpy(dest, vinlbl + start, sizeof dest);
+    drawBitmap(lpos, lpos, dest, h, h, BLACK);
+    // this frame
+    start = frame * z;
+    memcpy(dest, vinlbl + start, sizeof dest);
+    drawBitmap(lpos, lpos, dest, h, h, WHITE);
+}
+
+void putReelToReel(audio_t audio) {
+    // manipulate "switches" visualize fidelity
+}
+
+void reelToReel(bool blank) {
+    if (blank) {
+        fillRectangle(0, 0, 128, 64, BLACK);
+    }
+    drawBitmap(4, 17, reel2reel, 62, 54, WHITE);
+}
+
+void reelEffects(int xpos, int ypos, int frame, int mxframe, int direction) {
+
+    int szw = 30;
+    int szh = 30;
+    int w = elementLength(szh, szw);
+
+    int prev = frame + direction;
+    if (prev < 0)
+        prev = mxframe;
+    if (prev > mxframe)
+        prev = 0;
+    uint8_t dest[w];
+    int start = prev * w;
+    memcpy(dest, smr2rc + start, sizeof dest);
+    drawBitmap(xpos, ypos, dest, szw, szh, BLACK);
+    start = frame * w;
+    memcpy(dest, smr2rc + start, sizeof dest);
+    drawBitmap(xpos, ypos, dest, szw, szh, WHITE);
+}
+
+void putVcr(audio_t audio) {
+    // manipulate "switches" visualize fidelity
+}
+
+void vcrPlayer(bool blank) {
+    if (blank) {
+        fillRectangle(0, 0, 128, 64, BLACK);
+    }
+    drawBitmap(3, 25, vcr, 118, 35, WHITE);
+}
+
+void vcrEffects(int xpos, int ypos, int frame, int mxframe) {
+
+    int szw = 25;
+    int szh = 6;
+    int w = elementLength(szh, szw);
+    int prev = frame + 1;
+    if (prev < 0)
+        prev = mxframe;
+    if (prev > mxframe)
+        prev = 0;
+    uint8_t dest[w];
+    int start = prev * w;
+    memcpy(dest, vcrclock + start, sizeof dest);
+    drawBitmap(xpos, ypos, dest, szw, szh, BLACK);
+    start = frame * w;
+    memcpy(dest, vcrclock + start, sizeof dest);
+    drawBitmap(xpos, ypos, dest, szw, szh, WHITE);
+}
+
+void putRadio(audio_t audio) {
+    // manipulate "switches" visualize fidelity
+}
+
+void radio50(bool blank) {
+    if (blank) {
+        fillRectangle(0, 0, 128, 64, BLACK);
+    }
+    drawBitmap(3, 8, radio50s, 67, 50, WHITE);
+}
+
+void radioEffects(int xpos, int ypos, int frame, int mxframe) {
+    int szw = 19;
+    int szh = 6;
+    int w = elementLength(szh, szw);
+    int prev = frame + 1;
+    if (prev < 0)
+        prev = mxframe;
+    if (prev > mxframe)
+        prev = 0;
+    uint8_t dest[w];
+    int start = prev * w;
+    memcpy(dest, radani19x6 + start, sizeof dest);
+    drawBitmap(xpos, ypos, dest, szw, szh, BLACK);
+    start = frame * w;
+    memcpy(dest, radani19x6 + start, sizeof dest);
+    drawBitmap(xpos, ypos, dest, szw, szh, WHITE);
+}
+
+void putTVTime(audio_t audio) {
+    // manipulate "switches" visualize fidelity
+}
+
+void TVTime(bool blank) {
+    if (blank) {
+        fillRectangle(0, 0, 128, 64, BLACK);
+    }
+    drawBitmap(0, 0, tvtime88x64, 88, 64, WHITE);
+}
+
+void putPCTime(audio_t audio) {
+    // manipulate "switches" visualize fidelity
+}
+
+void PCTime(bool blank) {
+    if (blank) {
+        fillRectangle(0, 0, 128, 64, BLACK);
+    }
+    drawBitmap(0, 0, pctime67x64, 67, 64, WHITE);
+}
+
 
 inching_t *initInching(const point_t pin, const limits_t lw, const limits_t lh,
                        const limits_t lx, const limits_t ly) {
@@ -170,18 +404,23 @@ void animateInching(inching_t *b) {
     }
 }
 
-int lrand(int l, int u) {
-    int r = (rand() % (u - l + 1)) + l;
-    if (r = 0)
-        r = lrand(l, u);
-    return r;
-}
-
 void centerBall(grect_t *b, grect_t c) {
     b->pos.x = c.pos.x + (c.w / 2);
     b->pos.y = c.pos.y + (c.h / 2);
-    b->phys.accel.x = lrand(-3, 3);
-    b->phys.accel.y = lrand(-3, 3);
+    b->phys.accel.x = 3;
+    b->phys.accel.y = (float)lrand(-3, 3);
+}
+
+double getDistance(int x1, int y1, int x2, int y2) {
+    int xd = x2 - x1;
+    int yd = y2 - y1;
+    return sqrt((xd ^ 2) + (yd ^ 2));
+}
+
+double getDistance(fpoint_t x1y1, fpoint_t x2y2) {
+    int xd = x2y2.x - x1y1.x;
+    int yd = x2y2.y - x1y1.y;
+    return sqrt((xd ^ 2) + (yd ^ 2));
 }
 
 pongem_t *initPongPlay(const point_t pin) {
@@ -189,10 +428,10 @@ pongem_t *initPongPlay(const point_t pin) {
     static pongem_t pp = {
         .plscore = 0,
         .prscore = 0,
-        .court = {.pos = {0, 0}, .w = 40, .h = 19,.phys={{0,0},0}},
-        .left = {.pos = {1, 8}, .w = 2, .h = 6,.phys={{0,2},2}},
-        .right = {.pos = {37, 8}, .w = 2, .h = 6,.phys={{0,-2},2}},
-        .ball = {.pos = {0, 0}, .w = 2, .h = 2,.phys={{3,3},3}},
+        .court = {.pos = {0, 0}, .w = 42, .h = 32, .phys = {{0, 0}, 0}},
+        .left = {.pos = {1, 14}, .w = 2, .h = 6, .phys = {{0, -2}, 2}},
+        .right = {.pos = {39, 14}, .w = 2, .h = 6, .phys = {{0, -2}, 2}},
+        .ball = {.pos = {0, 0}, .w = 2, .h = 2, .phys = {{3, 1}, 3}},
     };
 
     pp.court.pos.x = (int)pin.x;
@@ -201,7 +440,7 @@ pongem_t *initPongPlay(const point_t pin) {
     pp.left.pos.x += pin.x;
     pp.left.pos.y += pin.y;
     pp.left.phys.accel.y = lrand(-2, 2);
-    
+
     pp.right.pos.x += pin.x;
     pp.right.pos.y += pin.y;
     pp.right.phys.accel.y = lrand(-2, 2);
@@ -212,65 +451,132 @@ pongem_t *initPongPlay(const point_t pin) {
     return (pongem_t *)&pp;
 }
 
+void drawNet(pongem_t *p) {
+    // draw the net
+    int zx = p->court.pos.x + (int)(p->court.w / 2);
+    int zy = p->court.pos.y + p->court.h;
+
+    drawLine(zx, p->court.pos.y, zx, zy, WHITE);
+    for (int yy = p->court.pos.y; yy < zy; yy += 5) {
+        putPixel(zx, yy, BLACK);
+        putPixel(zx, yy + 1, BLACK);
+    }
+}
 void animatePong(pongem_t *p) {
 
     // clear the court
     fillRectangle(p->court.pos.x, p->court.pos.y, p->court.w, p->court.h,
                   BLACK);
 
-    // draw the net
-    int cx = p->court.pos.x + (int)(p->court.w / 2);
-    int my = p->court.pos.y + p->court.h;
-    drawALine(cx, p->court.pos.y, cx, my, WHITE);
-    for (int yy = p->court.pos.y; yy < my; yy += 5) {
-        putPixel(cx, yy, BLACK);
-        putPixel(cx, yy + 1, BLACK);
+    drawNet(p);
+
+    if (0 == p->ball.phys.accel.x) {
+        p->ball.phys.accel.x = p->ball.phys.delta;
     }
 
     // position actors
     p->ball.pos.x += p->ball.phys.accel.x;
     p->ball.pos.y += p->ball.phys.accel.y;
-    p->left.pos.y += p->left.phys.accel.y;
-    p->right.pos.y += p->right.phys.accel.y;
-    fillRectangle(p->left.pos.x, p->left.pos.y, p->left.w, p->left.h, WHITE);
-    fillRectangle(p->right.pos.x, p->right.pos.y, p->right.w, p->right.h,
-                  WHITE);
+
     fillRectangle(p->ball.pos.x, p->ball.pos.y, p->ball.w, p->ball.h, WHITE);
 
+    bool inplay = true;
     // test left loss
-    if (p->ball.pos.x < p->court.pos.x) {
+    if (p->ball.pos.x <= p->court.pos.x) {
         p->prscore++;
         centerBall(&p->ball, p->court);
+        //inplay = false;
     } // test right loss
-    else if (p->ball.pos.x < (p->court.pos.x + p->court.w)) {
+    else if (p->ball.pos.x >= (p->court.pos.x + p->court.w)) {
         p->plscore++;
         centerBall(&p->ball, p->court);
+        //inplay = false;
     }
 
     // collision logic top and bottom
-    if ((p->ball.pos.y + p->ball.h > p->court.pos.y + p->court.h) ||
+    if ((p->ball.pos.y + (p->ball.h / 2) > p->court.pos.y + p->court.h) ||
         (p->ball.pos.y < p->court.pos.y)) {
         p->ball.phys.accel.y *= -1;
     }
 
-    // left limits
-    if (p->left.pos.y + p->left.h > p->court.pos.y + p->court.h) {
-        p->left.pos.y -= p->left.h / 2;
-        p->left.phys.accel.y = lrand(-2, 2);
-    }
-    else if (p->left.pos.y < p->court.pos.y) {
-        p->left.pos.y += p->left.h / 2;
-        p->left.phys.accel.y = lrand(-2, 2);
+int follow = 4;
+    if (inplay) {
+
+        p->left.pos.y += p->left.phys.accel.y;
+        p->right.pos.y += p->right.phys.accel.y;
+
+        // left paddle limits
+        if (p->left.pos.y + p->left.h >= p->court.pos.y + p->court.h) {
+            p->left.pos.y = (p->court.pos.y + p->court.h) - p->left.h;
+            p->left.phys.accel.y = lrand(-3, 1);
+        } else if (p->left.pos.y < p->court.pos.y) {
+            p->left.pos.y = p->court.pos.y;
+            p->left.phys.accel.y = 2; //lrand(-1, 3);
+        }
+
+        // ball following
+        if (p->left.pos.y > p->ball.pos.y)
+            p->left.phys.accel.y = follow;
+        if (p->left.pos.y < p->ball.pos.y)
+            p->left.phys.accel.y = -follow;
+        else
+            p->left.phys.accel.y = 0;
+
+        // right paddle limits
+        if (p->right.pos.y + p->right.h > p->court.pos.y + p->court.h) {
+            p->right.pos.y = (p->court.pos.y + p->court.h) - p->right.h;
+            p->right.phys.accel.y = lrand(-3, 1);
+        } else if (p->right.pos.y < p->court.pos.y) {
+            p->right.pos.y = p->court.pos.y;
+            p->right.phys.accel.y = 2; //lrand(-1, 3);
+        }
+
+        // ball following
+        if (p->right.pos.y > p->ball.pos.y)
+            p->right.phys.accel.y = follow;
+        else if (p->left.pos.y < p->ball.pos.y)
+            p->right.phys.accel.y = -follow;
+        else
+            p->right.phys.accel.y = 0;
     }
 
-    // right limits
-    if (p->right.pos.y + p->right.h > p->court.pos.y + p->court.h) {
-        p->right.pos.y -= p->right.h / 2;
-        p->right.phys.accel.y = lrand(-2, 2);
+    fillRectangle(p->left.pos.x, p->left.pos.y, p->left.w, p->left.h, WHITE);
+    fillRectangle(p->right.pos.x, p->right.pos.y, p->right.w, p->right.h,
+                  WHITE);
+
+    // collision right paddle
+    if (p->ball.pos.x >= p->right.pos.x && p->ball.pos.y >= p->right.pos.y &&
+        p->ball.pos.y <= (p->right.pos.y + p->right.h)) {
+        p->ball.phys.accel.x *= -1;
+        p->ball.phys.accel.y *= -1;
     }
-    else if (p->right.pos.y < p->court.pos.y) {
-        p->right.pos.y += p->right.h / 2;
-        p->right.phys.accel.y = lrand(-2, 2);
+
+    // collision left paddle
+    if (p->ball.pos.x <= (p->left.pos.x + p->left.w) &&
+        p->ball.pos.y >= p->left.pos.y &&
+        p->ball.pos.y <= (p->left.pos.y + p->left.h)) {
+        p->ball.phys.accel.x *= -1;
+        p->ball.phys.accel.y *= -1;
+    }
+
+    // scores
+    char buf[4];
+    int zy = p->court.pos.y + 8;
+    int zx = (int)(p->court.w / 4);
+    sprintf(buf, "%02d", p->plscore);
+    putTinyTextMaxWidth(p->court.pos.x + zx - 3, zy, 2, buf);
+    sprintf(buf, "%02d", p->prscore);
+    putTinyTextMaxWidth(p->court.pos.x + (3 * zx) - 5, zy, 2, buf);
+
+    drawNet(p);
+
+    //printf("L: %f\n", getDistance(p->left.pos, p->ball.pos));
+    //printf("R: %f\n", getDistance(p->ball.pos, p->right.pos));
+
+    // roll on 20
+    if (p->plscore > 20 || p->prscore > 20) {
+        p->plscore = 0;
+        p->prscore = 0;
     }
 }
 
