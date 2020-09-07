@@ -36,6 +36,7 @@
 #include <unistd.h>
 
 #include "visdata.h"
+#include "eggs.h"
 
 #define MAX_LINES 8
 
@@ -80,96 +81,6 @@ typedef enum PageMode {
     WEATHER
 } PageMode;
 
-enum inching { IW_WIDTH, IW_HEIGHT };
-enum honeymethod { IM_SHRINK, IM_GROW };
-enum inchdir {
-    ID_GLEFT,
-    ID_GRIGHT,
-    ID_GDOWN,
-    ID_GUP,
-    ID_SLEFT,
-    ID_SRIGHT,
-    ID_SDOWN,
-    ID_SUP
-};
-
-typedef struct point_t {
-    int16_t x;
-    int16_t y;
-} point_t;
-
-typedef struct limits_t {
-    int16_t min;
-    int16_t max;
-} limits_t;
-
-typedef struct dimention_t {
-    point_t tlpos;
-    int16_t w;
-    int16_t h;
-    int16_t radius;
-} dimention_t;
-
-// drawRoundRect(int16_t x0, int16_t y0, int16_t w, int16_t h, int16_t radius, uint16_t color)
-typedef struct inchingball_t {
-    dimention_t dimention;
-    enum inching direction; // modifying width/height
-    enum honeymethod hm;    // -1/+1 drives shrink/grow
-    enum inchdir sliding;   // modifying direction
-} inchingball_t;
-
-typedef struct plays_t {
-    int adj;
-    enum inching direction; // modifying width/height
-    enum honeymethod hm;    // -1/+1 drives shrink/grow
-    enum inchdir sliding;   // modifying direction
-} plays_t;
-
-typedef struct inching_t {
-    int drinkme; // active shrink/grow object
-    int currseq; // current play
-    int playcnt;
-    point_t pin;
-    limits_t limitw;
-    limits_t limith;
-    limits_t limitx;
-    limits_t limity;
-    inchingball_t incher[3];
-    plays_t playseq[9];
-} inching_t;
-
-typedef struct paddle_t {
-    point_t pos;
-    int16_t w;
-    int16_t h;
-} paddle_t; 
-
-typedef struct pongplay_t {
-    point_t left;
-    point_t right;
-    point_t ball;
-} pongplay_t;
-typedef struct pongem_t {
-    int currseq; // current play
-    int playcnt;
-    point_t fieldpos;
-    int16_t fieldw;
-    int16_t fieldh;
-    paddle_t left;
-    paddle_t right;
-    point_t ball;
-    pongplay_t playseq[20];
-} pongem_t;
-
-typedef struct audio_t {
-    double samplerate;
-    int8_t samplesize;
-    int8_t volume;
-    int8_t audioIcon;
-    int8_t repeat;
-    int8_t shuffle;
-} audio_t;
-
 typedef struct Scroller {
     bool active;
     bool initialized;
@@ -207,25 +118,7 @@ typedef struct DrawVisualize {
     char downmix[5];
 } DrawVisualize;
 
-void compactCassette(void);
-void cassetteEffects(int xpos, int frame, int mxframe, int direction);
-
-void toneArm(double pct, bool init);
-void technicsSL1200(bool blank);
-void vinylEffects(int xpos, int lpos, int frame, int mxframe);
-
-void reelToReel(bool blank);
-void reelEffects(int xpos, int ypos, int frame, int mxframe, int direction);
-
-void vcrPlayer(bool blank);
-void vcrEffects(int xpos, int ypos, int frame, int mxframe);
-
-void radio50(bool blank);
-void radioEffects(int xpos, int ypos, int frame, int mxframe);
-
-void TVTime(bool blank);
-void PCTime(bool blank);
-void pong(void);
+int elementLength(int szh, int szw);
 
 void printFontMetrics(void);
 
@@ -240,6 +133,9 @@ bool setOledAddress(int8_t oa, int LR = 0);
 
 void setScrollMode(int sm);
 void printScrollerMode(void);
+
+void drawBitmap(int16_t x, int16_t y,
+  uint8_t *bitmap, int16_t w, int16_t h, uint16_t color);
 
 double deg2Rad(double angDeg);
 double rad2Deg(double angRad);
@@ -281,13 +177,6 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter,
 // audio attributes
 void putVolume(bool v, char *buff);
 void putAudio(audio_t audio, char *buff, bool full = true);
-void putTapeType(audio_t audio);
-void putSL1200Btn(audio_t audio);
-void putReelToReel(audio_t audio);
-void putVcr(audio_t audio);
-void putRadio(audio_t audio);
-void putTVTime(audio_t audio);
-void putPCTime(audio_t audio);
 
 void putIFDetail(int icon, int xpos, int ypos, char *host);
 
@@ -322,10 +211,14 @@ int maxYPixel(void);
 uint16_t charWidth(void);
 uint16_t charHeight(void);
 
+// drawing primitives
 void drawHorizontalBargraph(int x, int y, int w, int h, int percent);
 void drawHorizontalCheckerBar(int x, int y, int w, int h, int percent);
 void drawRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
+void drawRoundRectangle(int16_t x0, int16_t y0, int16_t w, int16_t h,int16_t radius, uint16_t color);
 void fillRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
+void drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color);
+void putPixel(int16_t x, int16_t y, uint16_t color);
 
 void setSnapOn(void);
 void setSnapOff(void);
@@ -333,9 +226,5 @@ void shotAndDisplay(void);
 
 void nagSaverSetup(void);
 void nagSaverNotes(void);
-
-inching_t *initInching(const point_t pin, const limits_t lw, const limits_t lh,
-                       const limits_t lx, const limits_t ly);
-void animateInching(inching_t *b);
 
 #endif

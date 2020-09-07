@@ -31,8 +31,6 @@
 
 #include "common.h"
 #include "display.h"
-#include "oledimg.h"
-#include "visualize.h"
 
 #ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
@@ -44,6 +42,8 @@
 
 // clang-format off
 // retain this include order
+#include "oledimg.h"
+#include "visualize.h"
 #include "ArduiPi_OLED_lib.h"
 #include "Adafruit_GFX.h"
 #include "ArduiPi_OLED.h"
@@ -93,6 +93,11 @@ double rad2Deg(double angRad) { return (180.0 * angRad / PI); }
 #ifdef __arm__
 
 int elementLength(int szh, int szw) { return szh * (int)((szw + 7) / 8); }
+
+void drawBitmap(int16_t x, int16_t y,
+  uint8_t *bitmap, int16_t w, int16_t h, uint16_t color) {
+      display.drawBitmap(x, y, bitmap, w, h, color);
+  }
 
 meter_chan_t lastVU = {-1000, -1000};
 meter_chan_t overVU = {0, 0};
@@ -225,18 +230,10 @@ void flipDisplay() {
 }
 
 void displayBrightness(int bright, bool flip) {
-    int r = display.getRotation();
-    printf("rotation ....(in)....: %d\n", r);
     display.setBrightness(bright);
-    r = display.getRotation();
-    printf("rotation ....(02)....: %d\n", r);
     if ((flip) && (isFlipped)) {
         flipDisplay();
-        r = display.getRotation();
-        printf("rotation ...(*03)....: %d\n", r);
     }
-    r = display.getRotation();
-    printf("rotation ....(out)...: %d\n", r);
 }
 
 int initDisplay(struct MonitorAttrs dopts) {
@@ -436,50 +433,6 @@ void putWeatherIcon(int x, int y, climacell_t *cc) {
     }
 }
 
-void putTapeType(audio_t audio) {
-
-    int szw = 6;
-    int szh = 4;
-    int w = elementLength(szh, szw);
-
-    int start = 0;
-    uint8_t dest[w];
-    start = audio.audioIcon * w;
-    int x = 99;
-    int y = 29;
-    memcpy(dest, cmedia + start, sizeof dest);
-    display.fillRect(x, y, szw, szh, BLACK);
-    display.drawBitmap(x, y, dest, szw, szh, WHITE);
-}
-
-void putSL1200Btn(audio_t audio) {
-    int w = 7;
-    int h = 6;
-    int x = 71;
-    int yy[] = {35, 44, 50};
-    int y = yy[audio.audioIcon];
-    // draw slider position based on audio fidelity
-    display.fillRect(x + 1, 32, 5, 23, BLACK);
-    display.fillRect(x + 2, 33, 3, 23, WHITE);
-    display.drawLine(x + 3, 34, x + 3, 54, BLACK);
-
-    display.fillRect(x, y - 1, w, h, BLACK);
-    display.fillRect(x + 1, y, w - 2, h - 2, WHITE);
-    display.fillRect(x + 2, y + 1, w - 4, h - 4, BLACK);
-}
-
-void toneArm(double pct, bool init) {
-    int w = 270;
-    int h = 4;
-    int start = 0;
-    uint8_t dest[w];
-    if (init)
-        start = w * (1 + (int)(pct / 10));
-    memcpy(dest, tonearm + start, sizeof dest);
-    display.drawBitmap(39, 4, dest, 40, 54, BLACK); // shadow line
-    display.drawBitmap(38, 3, dest, 40, 54, WHITE);
-}
-
 void putIFDetail(int icon, int xpos, int ypos, char *host) {
     int szw = 17;
     int szh = 12;
@@ -491,168 +444,6 @@ void putIFDetail(int icon, int xpos, int ypos, char *host) {
     display.fillRect(xpos, ypos - 2, 45, szh + 2, BLACK);
     display.drawBitmap(xpos, ypos - 2, dest, szw, szh, WHITE);
     putText(xpos + 19, ypos, host);
-}
-
-void compactCassette(void) {
-    display.drawBitmap(0, 0, cassette, 128, 64, WHITE);
-}
-
-void technicsSL1200(bool blank) {
-
-    if (blank) {
-        display.fillRect(0, 0, 128, 64, BLACK);
-    } else {
-        int x = 38;
-        uint16_t c = BLACK;
-        display.fillRect(x, 40, 32, 20, c);
-        display.drawLine(x, 42, 50, 42, c);
-        display.drawLine(x, 41, 50, 41, c);
-        display.drawLine(x + 1, 40, 50, 40, c);
-        display.drawLine(x + 2, 39, 50, 39, c);
-        display.drawLine(x + 3, 38, 50, 38, c);
-        display.drawLine(x + 4, 37, 50, 37, c);
-        display.drawLine(x + 5, 36, 50, 36, c);
-        display.fillRect(47, 27, 30, 24, c);
-        display.fillRect(60, 4, 17, 24, c);
-    }
-    display.drawBitmap(0, 0, sl1200t, 83, 64, WHITE);
-}
-
-void putRadio(audio_t audio) {
-    // manipulate "switches" visualize fidelity
-}
-
-void putTVTime(audio_t audio) {
-    // manipulate "switches" visualize fidelity
-}
-
-void putPCTime(audio_t audio) {
-    // manipulate "switches" visualize fidelity
-}
-
-void TVTime(bool blank) {
-    if (blank) {
-        display.fillRect(0, 0, 128, 64, BLACK);
-    }
-    display.drawBitmap(0, 0, tvtime88x64, 88, 64, WHITE);
-}
-
-void PCTime(bool blank) {
-    if (blank) {
-        display.fillRect(0, 0, 128, 64, BLACK);
-    }
-    display.drawBitmap(0, 0, pctime67x64, 67, 64, WHITE);
-}
-
-void radio50(bool blank) {
-    if (blank) {
-        display.fillRect(0, 0, 128, 64, BLACK);
-    }
-    display.drawBitmap(3, 8, radio50s, 67, 50, WHITE);
-}
-
-void radioEffects(int xpos, int ypos, int frame, int mxframe) {
-    int szw = 19;
-    int szh = 6;
-    int w = elementLength(szh, szw);
-    int prev = frame + 1;
-    if (prev < 0)
-        prev = mxframe;
-    if (prev > mxframe)
-        prev = 0;
-    uint8_t dest[w];
-    int start = prev * w;
-    memcpy(dest, radani19x6 + start, sizeof dest);
-    display.drawBitmap(xpos, ypos, dest, szw, szh, BLACK);
-    start = frame * w;
-    memcpy(dest, radani19x6 + start, sizeof dest);
-    display.drawBitmap(xpos, ypos, dest, szw, szh, WHITE);
-}
-
-void putVcr(audio_t audio) {
-    // manipulate "switches" visualize fidelity
-}
-
-void vcrPlayer(bool blank) {
-    if (blank) {
-        display.fillRect(0, 0, 128, 64, BLACK);
-    }
-    display.drawBitmap(3, 25, vcr, 118, 35, WHITE);
-}
-
-void vcrEffects(int xpos, int ypos, int frame, int mxframe) {
-
-    int szw = 25;
-    int szh = 6;
-    int w = elementLength(szh, szw);
-    int prev = frame + 1;
-    if (prev < 0)
-        prev = mxframe;
-    if (prev > mxframe)
-        prev = 0;
-    uint8_t dest[w];
-    int start = prev * w;
-    memcpy(dest, vcrclock + start, sizeof dest);
-    display.drawBitmap(xpos, ypos, dest, szw, szh, BLACK);
-    start = frame * w;
-    memcpy(dest, vcrclock + start, sizeof dest);
-    display.drawBitmap(xpos, ypos, dest, szw, szh, WHITE);
-}
-
-void putReelToReel(audio_t audio) {
-    // manipulate "switches" visualize fidelity
-}
-
-void reelToReel(bool blank) {
-    if (blank) {
-        display.fillRect(0, 0, 128, 64, BLACK);
-    }
-    display.drawBitmap(4, 17, reel2reel, 62, 54, WHITE);
-}
-
-void reelEffects(int xpos, int ypos, int frame, int mxframe, int direction) {
-
-    int szw = 30;
-    int szh = 30;
-    int w = elementLength(szh, szw);
-
-    int prev = frame + direction;
-    if (prev < 0)
-        prev = mxframe;
-    if (prev > mxframe)
-        prev = 0;
-    uint8_t dest[w];
-    int start = prev * w;
-    memcpy(dest, smr2rc + start, sizeof dest);
-    display.drawBitmap(xpos, ypos, dest, szw, szh, BLACK);
-    start = frame * w;
-    memcpy(dest, smr2rc + start, sizeof dest);
-    display.drawBitmap(xpos, ypos, dest, szw, szh, WHITE);
-}
-
-void vinylEffects(int xpos, int lpos, int frame, int mxframe) {
-
-    int z = 50;
-    int erase = xpos - 2;
-    int place = xpos - 1;
-    display.drawBitmap(erase, erase, vinfx, z, z, BLACK);
-    display.drawBitmap(place, place, vinfx, z, z, WHITE);
-
-    z = 57;
-    int h = 19;
-    int start = 0;
-    uint8_t dest[z];
-    int blank = frame - 1;
-    if (blank < 0)
-        blank = mxframe;
-    // last frame
-    start = blank * z;
-    memcpy(dest, vinlbl + start, sizeof dest);
-    display.drawBitmap(lpos, lpos, dest, h, h, BLACK);
-    // this frame
-    start = frame * z;
-    memcpy(dest, vinlbl + start, sizeof dest);
-    display.drawBitmap(lpos, lpos, dest, h, h, WHITE);
 }
 
 void drawHorizontalCheckerBar(int x, int y, int w, int h, int percent) {
@@ -669,25 +460,12 @@ void drawHorizontalCheckerBar(int x, int y, int w, int h, int percent) {
     }
 }
 
-void cassetteEffects(int xpos, int frame, int mxframe, int direction) {
+void drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color){
+    display.drawLine(x0, y0, x1, y1, color);
+}
 
-    int szw = 10;
-    int szh = 10;
-    int w = elementLength(szh, szw);
-    int prev = frame + direction;
-    if (prev < 0)
-        prev = mxframe;
-    if (prev > mxframe)
-        prev = 0;
-    uint8_t dest[w];
-    int ypos = 23;
-    int start = prev * w;
-    memcpy(dest, hub10x10 + start, sizeof dest);
-    drawRectangle(xpos, ypos, szw, szh, BLACK);
-    display.drawBitmap(xpos, ypos, dest, szw, szh, BLACK);
-    start = frame * w;
-    memcpy(dest, hub10x10 + start, sizeof dest);
-    display.drawBitmap(xpos, ypos, dest, szw, szh, WHITE);
+void putPixel(int16_t x, int16_t y, uint16_t color) {
+    display.drawPixel(x, y, color);
 }
 
 void downmixVU(struct vissy_meter_t *vissy_meter,
@@ -1836,6 +1614,11 @@ void putTinyText(int x, int y, char *buff) {
 void putTinyTextCenterColor(int y, char *buff, uint16_t color) {}
 void putTinyTextToCenter(int y, char *buff) {}
 
+
+void drawRoundRectangle(int16_t x0, int16_t y0, int16_t w, int16_t h,int16_t radius, uint16_t color) {
+    display.drawRoundRect(x0, y0, w, h, radius, color);
+}
+
 void drawRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
     display.drawRect(x, y, w, h, color);
 }
@@ -1898,142 +1681,5 @@ void setScrollPosition(int line, int ypos) {
     }
 }
 
-inching_t *initInching(const point_t pin, const limits_t lw, const limits_t lh,
-                       const limits_t lx, const limits_t ly) {
-
-    static inching_t ii = {.drinkme = 2,
-                           .currseq = 0,
-                           .playcnt = 0,
-                           .pin = {0, 0},
-                           .limitw = {0, 0},
-                           .limith = {0, 0},
-                           .limitx = {0, 0},
-                           .limity = {0, 0},
-                           .incher = {{.dimention = {{0, 0}, 0, 0, 3},
-                                       .direction = IW_WIDTH,
-                                       .hm = IM_GROW,
-                                       .sliding = ID_GRIGHT},
-                                      {.dimention = {{0, 0}, 0, 0, 3},
-                                       .direction = IW_HEIGHT,
-                                       .hm = IM_GROW,
-                                       .sliding = ID_GDOWN},
-                                      {.dimention = {{0, 0}, 0, 0, 3},
-                                       .direction = IW_WIDTH,
-                                       .hm = IM_SHRINK,
-                                       .sliding = ID_SLEFT}},
-                           .playseq = {
-                               {0, IW_WIDTH, IM_SHRINK, ID_SLEFT},
-                               {-1, IW_HEIGHT, IM_GROW, ID_GDOWN},
-                               {0, IW_HEIGHT, IM_SHRINK, ID_SDOWN},
-                               {-1, IW_WIDTH, IM_GROW, ID_GRIGHT},
-                               {0, IW_WIDTH, IM_SHRINK, ID_SRIGHT},
-                               {-1, IW_HEIGHT, IM_GROW, ID_GUP},
-                               {0, IW_HEIGHT, IM_SHRINK, ID_SUP},
-                               {-1, IW_WIDTH, IM_GROW, ID_GLEFT},
-                           }};
-
-    // fix limits
-    ii.limitw.min = lw.min;
-    ii.limitw.max = lw.max;
-    ii.limith.min = lh.min;
-    ii.limith.max = lh.max;
-    ii.limitx.min = lx.min;
-    ii.limitx.max = lx.max;
-    ii.limity.min = ly.min;
-    ii.limity.max = ly.max;
-    // fix init limit on the active incher
-    ii.pin = pin;
-    ii.incher[0].dimention.tlpos = pin;
-    ii.incher[0].dimention.w = lh.min;
-    ii.incher[0].dimention.h = lw.min;
-    ii.incher[1].dimention.tlpos = pin;
-    ii.incher[1].dimention.tlpos.x = pin.x + 2 + lh.min;
-    ii.incher[1].dimention.w = lh.min;
-    ii.incher[1].dimention.h = lw.min;
-    ii.incher[2].dimention.tlpos = pin;
-    ii.incher[2].dimention.tlpos.y = pin.y + 2 + lw.min;
-    ii.incher[2].dimention.w = lh.max;
-    ii.incher[2].dimention.h = lw.min;
-    ii.playcnt = 7;
-
-    return (inching_t *)&ii;
-}
-
-void animateInching(inching_t *b) {
-
-    bool trip = false;
-    int ii = b->drinkme;
-
-    if (IW_WIDTH == b->incher[ii].direction) {
-        if (IM_SHRINK == b->incher[ii].hm) {
-            if ((ID_SLEFT == b->incher[ii].sliding) &&
-                (b->incher[ii].dimention.w > b->limitw.min)) {
-                b->incher[ii].dimention.w--;
-            } else if ((ID_SRIGHT == b->incher[ii].sliding) &&
-                       (b->incher[ii].dimention.w > b->limitw.min)) {
-                b->incher[ii].dimention.w--;
-                b->incher[ii].dimention.tlpos.x++;
-            }
-            trip = (b->incher[ii].dimention.w == b->limitw.min);
-        } else if (IM_GROW == b->incher[ii].hm) {
-            if ((ID_GRIGHT == b->incher[ii].sliding) &&
-                (b->incher[ii].dimention.w < b->limitw.max)) {
-                b->incher[ii].dimention.w++;
-            } else if ((ID_GLEFT == b->incher[ii].sliding) &&
-                       (b->incher[ii].dimention.w < b->limitw.max)) {
-                b->incher[ii].dimention.w++;
-                b->incher[ii].dimention.tlpos.x--;
-            }
-            trip = (b->incher[ii].dimention.w == b->limitw.max);
-        }
-    } else if (IW_HEIGHT == b->incher[ii].direction) {
-        if (IM_SHRINK == b->incher[ii].hm) {
-            if ((ID_SDOWN == b->incher[ii].sliding) &&
-                (b->incher[ii].dimention.h > b->limith.min)) {
-                b->incher[ii].dimention.tlpos.y++;
-                b->incher[ii].dimention.h--;
-            } else if (ID_SUP == b->incher[ii].sliding) {
-                b->incher[ii].dimention.h--;
-            }
-            trip = (b->incher[ii].dimention.h == b->limith.min);
-        } else if (IM_GROW == b->incher[ii].hm) {
-            if ((ID_GDOWN == b->incher[ii].sliding) &&
-                (b->incher[ii].dimention.h < b->limith.max)) {
-                b->incher[ii].dimention.h++;
-                trip = (b->incher[ii].dimention.h == b->limith.max);
-            } else if (ID_GUP == b->incher[ii].sliding) {
-                b->incher[ii].dimention.h++;
-                b->incher[ii].dimention.tlpos.y--;
-            }
-            trip = (b->incher[ii].dimention.h == b->limith.max);
-        }
-    }
-    // trip sequence
-    if (trip) {
-
-        b->currseq++;
-        if (b->currseq > b->playcnt)
-            b->currseq = 0;
-        b->drinkme += b->playseq[b->currseq].adj;
-        if (b->drinkme < 0)
-            b->drinkme = 2;
-        if (b->drinkme > 2)
-            b->drinkme = 0;
-        ii = b->drinkme;
-
-        b->incher[ii].direction = b->playseq[b->currseq].direction;
-        b->incher[ii].hm = b->playseq[b->currseq].hm;
-        b->incher[ii].sliding = b->playseq[b->currseq].sliding;
-    }
-
-    // and paint
-    display.fillRect(b->pin.x, b->pin.y, b->limitw.max, b->limith.max, BLACK);
-    for (int i = 0; i < 3; i++) {
-        display.drawRoundRect(
-            b->incher[i].dimention.tlpos.x, b->incher[i].dimention.tlpos.y,
-            b->incher[i].dimention.w, b->incher[i].dimention.h,
-            b->incher[i].dimention.radius, WHITE);
-    }
-}
 
 #endif
