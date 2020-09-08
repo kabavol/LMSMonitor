@@ -59,9 +59,9 @@ static char args_doc[] = "--name \"NAME\"";
 
 static struct argp_option options[] = {
     {"name", 'n', "PLAYERNAME", 0, "Name of the squeeze device to monitor"},
-    {"allinone", 'a', 0, 0,
+    {"allinone", 'a', "A1MODE", OPTION_ARG_OPTIONAL,
      "One screen to rule them all. Track details and visualizer on single "
-     "screen (pi only)"},
+     "screen, a=1 optional visualization, a=2 fixed visualization (pi only)"},
     {"brightness", 'b', 0, 0,
      "Automatically set brightness of display at sunset and sunrise (connected "
      "to internet, pi only)"},
@@ -142,7 +142,11 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             arguments->lmsopt->allInOne = true;
             arguments->lmsopt->downmix = true;
             arguments->lmsopt->visualize = true;
-            arguments->lmsopt->a1test++;
+            sscanf(arg, "%d", &test);
+            if (test > 0 && test < 3)
+                arguments->lmsopt->a1test = test;
+            else
+                arguments->lmsopt->a1test++;
             break;
         case 'b': arguments->lmsopt->astral = true; break;
         case 'm':
@@ -285,7 +289,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 
         case ARGP_KEY_END:
             if (!arguments->lmsopt->playerName) {
-                sprintf(err, "you MUST specify a player name\ne.g.\n--name \"piCorePlayer\"\n\n");
+                sprintf(err, "you MUST specify a player name\ne.g.\n--name "
+                             "\"piCorePlayer\"\n\n");
                 argp_failure(state, 1, 0, err);
             }
             break;

@@ -27,11 +27,11 @@
 #include "common.h"
 
 #ifdef __arm__
-#include "oledimg.h"
-#include "visualize.h"
 #include "ArduiPi_OLED.h"
 #include "display.h"
 #include "eggs.h"
+#include "oledimg.h"
+#include "visualize.h"
 
 int lrand(int l, int u) {
     int r = (rand() % (u - l + 1)) + l;
@@ -54,9 +54,7 @@ void putTapeType(audio_t audio) {
     drawBitmap(x, y, dest, szw, szh, WHITE);
 }
 
-void compactCassette(void) {
-    drawBitmap(0, 0, cassette, 128, 64, WHITE);
-}
+void compactCassette(void) { drawBitmap(0, 0, cassette, 128, 64, WHITE); }
 
 void cassetteEffects(int xpos, int frame, int mxframe, int direction) {
 
@@ -265,7 +263,6 @@ void PCTime(bool blank) {
     drawBitmap(0, 0, pctime67x64, 67, 64, WHITE);
 }
 
-
 inching_t *initInching(const point_t pin, const limits_t lw, const limits_t lh,
                        const limits_t lx, const limits_t ly) {
 
@@ -407,8 +404,12 @@ void animateInching(inching_t *b) {
 void centerBall(grect_t *b, grect_t c) {
     b->pos.x = c.pos.x + (c.w / 2);
     b->pos.y = c.pos.y + (c.h / 2);
-    b->phys.accel.x = 3;
-    b->phys.accel.y = (float)lrand(-3, 3);
+    b->phys.accel.x = 4;
+    b->phys.accel.y = (float)lrand(-4, 4);
+}
+
+void resetPaddle(grect_t *p, grect_t c) {
+    p->pos.y = c.pos.y + (c.h / 2) - (p->h / 2);
 }
 
 double getDistance(int x1, int y1, int x2, int y2) {
@@ -421,6 +422,26 @@ double getDistance(fpoint_t x1y1, fpoint_t x2y2) {
     int xd = x2y2.x - x1y1.x;
     int yd = x2y2.y - x1y1.y;
     return sqrt((xd ^ 2) + (yd ^ 2));
+}
+
+void paddleFollower(grect_t *p, grect_t b, grect_t c, int follow) {
+
+    // "dumb" ball following
+    if (b.pos.y > p->pos.y)
+        p->phys.accel.y = -1 * (p->pos.y - b.pos.y) * .5;
+    if (b.pos.y < p->pos.y)
+        p->phys.accel.y = (b.pos.y - p->pos.y) * .5;
+    p->pos.y += p->phys.accel.y;
+
+    // paddle limits (top & bottom of court)
+    if (p->pos.y > c.pos.y + c.h - p->h) {
+        p->pos.y = (c.pos.y + c.h) - p->h;
+        p->phys.accel.y = lrand(-3, 1);
+    }
+    if (p->pos.y < c.pos.y) {
+        p->pos.y = c.pos.y;
+        p->phys.accel.y = 2;
+    }
 }
 
 pongem_t *initPongPlay(const point_t pin) {
@@ -438,13 +459,10 @@ pongem_t *initPongPlay(const point_t pin) {
     pp.court.pos.y = (int)pin.y;
 
     pp.left.pos.x += pin.x;
-    pp.left.pos.y += pin.y;
-    pp.left.phys.accel.y = lrand(-2, 2);
-
     pp.right.pos.x += pin.x;
-    pp.right.pos.y += pin.y;
-    pp.right.phys.accel.y = lrand(-2, 2);
 
+    resetPaddle(&pp.left, pp.court);
+    resetPaddle(&pp.right, pp.court);
     // center and randomize travel
     centerBall(&pp.ball, pp.court);
 
@@ -480,17 +498,18 @@ void animatePong(pongem_t *p) {
 
     fillRectangle(p->ball.pos.x, p->ball.pos.y, p->ball.w, p->ball.h, WHITE);
 
-    bool inplay = true;
     // test left loss
     if (p->ball.pos.x <= p->court.pos.x) {
         p->prscore++;
         centerBall(&p->ball, p->court);
-        //inplay = false;
+        resetPaddle(&p->left, p->court);
+        resetPaddle(&p->right, p->court);
     } // test right loss
     else if (p->ball.pos.x >= (p->court.pos.x + p->court.w)) {
         p->plscore++;
         centerBall(&p->ball, p->court);
-        //inplay = false;
+        resetPaddle(&p->left, p->court);
+        resetPaddle(&p->right, p->court);
     }
 
     // collision logic top and bottom
@@ -499,45 +518,34 @@ void animatePong(pongem_t *p) {
         p->ball.phys.accel.y *= -1;
     }
 
-int follow = 4;
-    if (inplay) {
+    int follow = 4;
 
-        p->left.pos.y += p->left.phys.accel.y;
-        p->right.pos.y += p->right.phys.accel.y;
+    // "dumb" ball following
+    paddleFollower(&p->left, p->ball, p->court, follow);
+    p->left.pos.y += p->left.phys.accel.y;
 
-        // left paddle limits
-        if (p->left.pos.y + p->left.h >= p->court.pos.y + p->court.h) {
-            p->left.pos.y = (p->court.pos.y + p->court.h) - p->left.h;
-            p->left.phys.accel.y = lrand(-3, 1);
-        } else if (p->left.pos.y < p->court.pos.y) {
-            p->left.pos.y = p->court.pos.y;
-            p->left.phys.accel.y = 2; //lrand(-1, 3);
-        }
+    // left paddle limits
+    if (p->left.pos.y > p->court.pos.y + p->court.h - p->left.h) {
+        p->left.pos.y = (p->court.pos.y + p->court.h) - p->left.h;
+        p->left.phys.accel.y = lrand(-3, 1);
+    }
+    if (p->left.pos.y < p->court.pos.y) {
+        p->left.pos.y = p->court.pos.y;
+        p->left.phys.accel.y = 1.5 * follow;
+    }
 
-        // ball following
-        if (p->left.pos.y > p->ball.pos.y)
-            p->left.phys.accel.y = follow;
-        if (p->left.pos.y < p->ball.pos.y)
-            p->left.phys.accel.y = -follow;
-        else
-            p->left.phys.accel.y = 0;
+    // "dumb" ball following
+    paddleFollower(&p->right, p->ball, p->court, 1.5 * follow);
+    p->right.pos.y += p->right.phys.accel.y;
 
-        // right paddle limits
-        if (p->right.pos.y + p->right.h > p->court.pos.y + p->court.h) {
-            p->right.pos.y = (p->court.pos.y + p->court.h) - p->right.h;
-            p->right.phys.accel.y = lrand(-3, 1);
-        } else if (p->right.pos.y < p->court.pos.y) {
-            p->right.pos.y = p->court.pos.y;
-            p->right.phys.accel.y = 2; //lrand(-1, 3);
-        }
-
-        // ball following
-        if (p->right.pos.y > p->ball.pos.y)
-            p->right.phys.accel.y = follow;
-        else if (p->left.pos.y < p->ball.pos.y)
-            p->right.phys.accel.y = -follow;
-        else
-            p->right.phys.accel.y = 0;
+    // right paddle limits
+    if (p->right.pos.y > p->court.pos.y + p->court.h - p->right.h) {
+        p->right.pos.y = (p->court.pos.y + p->court.h) - p->right.h;
+        p->right.phys.accel.y = lrand(-3, 1);
+    }
+    if (p->right.pos.y < p->court.pos.y) {
+        p->right.pos.y = p->court.pos.y;
+        p->right.phys.accel.y = follow;
     }
 
     fillRectangle(p->left.pos.x, p->left.pos.y, p->left.w, p->left.h, WHITE);
@@ -549,6 +557,8 @@ int follow = 4;
         p->ball.pos.y <= (p->right.pos.y + p->right.h)) {
         p->ball.phys.accel.x *= -1;
         p->ball.phys.accel.y *= -1;
+    p->ball.phys.accel.y += lrand(-10,10)/10;
+    p->ball.phys.accel.x += lrand(-10,10)/10;
     }
 
     // collision left paddle
@@ -557,6 +567,9 @@ int follow = 4;
         p->ball.pos.y <= (p->left.pos.y + p->left.h)) {
         p->ball.phys.accel.x *= -1;
         p->ball.phys.accel.y *= -1;
+    p->ball.phys.accel.y += lrand(-10,10)/10;
+    p->ball.phys.accel.x += lrand(-10,10)/10;
+
     }
 
     // scores
@@ -564,20 +577,26 @@ int follow = 4;
     int zy = p->court.pos.y + 8;
     int zx = (int)(p->court.w / 4);
     sprintf(buf, "%02d", p->plscore);
-    putTinyTextMaxWidth(p->court.pos.x + zx - 3, zy, 2, buf);
+    putTinyTextMaxWidth(p->court.pos.x + zx - 2, zy, 2, buf);
     sprintf(buf, "%02d", p->prscore);
-    putTinyTextMaxWidth(p->court.pos.x + (3 * zx) - 5, zy, 2, buf);
+    putTinyTextMaxWidth(p->court.pos.x + (3 * zx) - 2, zy, 2, buf);
 
     drawNet(p);
-
-    //printf("L: %f\n", getDistance(p->left.pos, p->ball.pos));
-    //printf("R: %f\n", getDistance(p->ball.pos, p->right.pos));
 
     // roll on 20
     if (p->plscore > 20 || p->prscore > 20) {
         p->plscore = 0;
         p->prscore = 0;
     }
+    // cleanup a tad
+    drawLine(p->court.pos.x - 4, p->court.pos.y - 5,
+             p->court.pos.x + p->court.w + 12, p->court.pos.y - 5, BLACK);
+    putPixel(p->court.pos.x, p->court.pos.y, WHITE);
+    putPixel(p->court.pos.x + p->court.w, p->court.pos.y, WHITE);
+    putPixel(p->court.pos.x, p->court.pos.y + p->court.h, WHITE);
+    putPixel(p->court.pos.x + p->court.w, p->court.pos.y + p->court.h, WHITE);
+
+
 }
 
 #endif

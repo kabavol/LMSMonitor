@@ -112,7 +112,7 @@ Several visualizer modes are supported
 - Large Downmix (visual data only) Spectrum
 - All-In-One - track details and spectrum/VU "swoosh" (use -a1 or simply -a)
 - All-In-One - fixed mode (use -a2 or simply -a -a)
-- Easter Eggs - fixed mode (use -E[1-6])
+- Easter Eggs - fixed mode (use -E[1-7])
 
 ### Installation
 
@@ -137,7 +137,7 @@ This can be done from the command line or via the pCP web forms.
 
 From the main web form click on Extensions button in the *Additional functions* section
 
-On the page displayed select *i2c-tools-dev.tcz* from the dropd own and install
+On the page displayed select *i2c-tools-dev.tcz* from the dropdown and install
 
 Alternatively use the following instructions 
 
@@ -150,8 +150,9 @@ cd to the /mnt/mmcblk0p2/tce folder
 and, then type:
 
 ```bash
-tce-load -i i2c-tools-dev.tcz
+tce-load -i i2c-tools.tcz
 pcp bu
+cd /mnt/mmcblk0p2/tce
 wget "https://github.com/shunte88/LMSMonitor/blob/master/bin/lmsmonitorpcp.tgz?raw=true" -O lmsmonitorpcp.tgz && \
 tar -xzvf lmsmonitorpcp.tgz && \
 chmod +xX gomonitor
@@ -197,15 +198,16 @@ the visualization parameter must always be specified first
 There are several "easter egg" modes provided for those setups that cannot process the audio data for visualization.
 That said theres nothing stopping you using them as your main visualization.
 
-There are currently 5 easter egg modes
+There are currently 7 easter egg modes:
 - 1 Compact Cassette, as visually correct as possible given the OLED limitations.  Hubs turn and the tape window shows the track "progress"
 - 2 Technics SL-1200, as visually correct as possible given the OLED limitations.  Tone arm traverses platter to indicate progress.
 - 3 Open Reel To Reel, pure fantasy. Reels rotate, minor animation.
 - 4 VCR with flashing 12:00 AM clock! No additional animation - the clock is annoying enough.
 - 5 An old bakelite radio. Minor animation, radio changes station as track progresses.
 - 6 An old analog TV in all its 5x4 glory... and worms??
+- 7 A crusty oldIBM PS/2 clone... playing pong! Equally matched "AI" players make for an uneventful game!
 
-Specify -E[1-6] to display eggs on track playback
+Specify -E[1-7] to display eggs on track playback
 </p>
 These are just fun display mode where visualization is not possible
 

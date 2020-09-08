@@ -58,6 +58,7 @@
 #include "Adafruit_GFX.h"
 #include "ArduiPi_OLED.h"
 #include "display.h"
+#include "eggs.h"
 #ifdef SSE_VIZDATA
 #include "../sse/vizsse.h"
 #endif
@@ -453,17 +454,25 @@ void eggFX(size_t timer_id, void *user_data) {
                 break;
             case EE_TVTIME:
                 if (!balls) {
-                    balls =
-                        (inching_t*)initInching((const point_t){.x = 22, .y = 26},
-                                    (const limits_t){.min = 9, .max = 20},
-                                    (const limits_t){.min = 9, .max = 20},
-                                    (const limits_t){.min = 21, .max = 30},
-                                    (const limits_t){.min = 21, .max = 30});
+                    balls = (inching_t *)initInching(
+                        (const point_t){.x = 22, .y = 26},
+                        (const limits_t){.min = 9, .max = 20},
+                        (const limits_t){.min = 9, .max = 20},
+                        (const limits_t){.min = 21, .max = 30},
+                        (const limits_t){.min = 21, .max = 30});
+                    if (getVerbose() >= LL_DEBUG) {
+                        printf("Check Worms Init ....: %d\n", balls->currseq);
+                    }
                 }
                 animateInching(balls);
                 break;
-            case EE_PCTIME: //animateInching(balls);
-                break;      // fix this
+            case EE_PCTIME:
+                if (!game) {
+                    game = (pongem_t *)initPongPlay(
+                        (const point_t){.x = 13, .y = 6});
+                }
+                animatePong(game);
+                break; // fix this
             case EE_VCR:
             case EE_VINYL:
                 aio->lFrame++;
@@ -645,7 +654,8 @@ int main(int argc, char *argv[]) {
     } else {
         if (!(lmsopt.meterMode)) {
             char vinit[3] = {0};
-            strcpy(vinit, VMODE_RN); // intermediate - pointers be damned!
+            strcpy(vinit,
+                   VMODE_RN); // intermediate - pointers be damned!
             setVisList(vinit);
         }
     }
@@ -1106,10 +1116,31 @@ void OvaTimePage(A1Attributes *aio) {
             (0 == strlen(aio->compound))) // safe
         {
             strncpy(aio->compound, buff, 255);
-            if (EE_TVTIME == aio->eeMode) {
-                putTinyTextMultiMaxWidth(86, 11, 17, 9, aio->compound);
-            } else {
-                putTinyTextMultiMaxWidth(69, 10, 22, 9, aio->compound);
+
+            switch (aio->eeMode) {
+                case EE_NONE:
+                case EE_CASSETTE:
+                    putTinyTextMaxWidthP(20, 12, 92, aio->title);
+                    putTinyTextMaxWidthP(20, 18, 92, aio->artist);
+                    break;
+                case EE_VINYL:
+                    putTinyTextMultiMaxWidth(84, 7, 14, 7, aio->compound);
+                    break;
+                case EE_REEL2REEL:
+                    putTinyTextMultiMaxWidth(72, 7, 19, 7, aio->compound);
+                    break;
+                case EE_VCR:
+                    putTinyTextMultiMaxWidth(10, 7, 32, 3, aio->compound);
+                    break;
+                case EE_RADIO:
+                    putTinyTextMultiMaxWidth(71, 7, 20, 7, aio->compound);
+                    break;
+                case EE_TVTIME:
+                    putTinyTextMultiMaxWidth(86, 11, 17, 9, aio->compound);
+                    break;
+                case EE_PCTIME:
+                    putTinyTextMultiMaxWidth(69, 10, 22, 7, aio->compound);
+                    break;
             }
             setSleepTime(SLEEP_TIME_SAVER);
         }
@@ -1133,16 +1164,13 @@ void OvaTimePage(A1Attributes *aio) {
         case EE_VINYL:
         case EE_RADIO:
         case EE_REEL2REEL:
+        case EE_PCTIME:
             rdt.pos.x = 94;
             rdt.pos.y = 55;
             break;
         case EE_VCR:
             rdt.pos.x = 90;
             rdt.pos.y = 17;
-            break;
-        case EE_PCTIME:
-            rdt.pos.x = 20;
-            rdt.pos.y = 9;
             break;
     }
 
@@ -1274,7 +1302,8 @@ void cassettePage(A1Attributes *aio) {
         {
             strncpy(aio->compound, buff, 255);
             putTinyTextMaxWidthP(
-                20, 12, 92, aio->title); // workable - tweak for proportional
+                20, 12, 92,
+                aio->title); // workable - tweak for proportional
             putTinyTextMaxWidthP(20, 18, 92, aio->artist);
             ///setSleepTime(SLEEP_TIME_SAVER);
         }
