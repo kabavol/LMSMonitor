@@ -140,8 +140,9 @@ void drawBitmap(int16_t x, int16_t y,
 double deg2Rad(double angDeg);
 double rad2Deg(double angRad);
 
+void hazardSign(void);
 void splashScreen(void);
-void displayBrightness(int bright, bool flip = false);
+void displayBrightness(int bright, bool flip=false);
 
 void putWeatherTemp(int x, int y, climacell_t *cc);
 void putWeatherIcon(int x, int y, climacell_t *cc);
@@ -158,7 +159,8 @@ bool activeScroller(void);
 bool isScrollerActive(int line);
 
 void resetDisplay(int fontSize);
-int initDisplay(struct MonitorAttrs dopts);
+int restartDisplay(struct MonitorAttrs dopts);
+int initDisplay(struct MonitorAttrs dopts, bool init=true);
 void closeDisplay(void);
 void softClear(void);
 
@@ -195,7 +197,7 @@ void putTinyTextCenterColor(int y, char *buff, uint16_t color);
 void putTinyTextToCenter(int y, char *buff);
 
 void clearLine(int y);
-void clearDisplay();
+void clearDisplay(void);
 
 void drawTimeBlink(uint8_t cc, DrawTime *dt);
 void drawTimeText(char *buff, char *last, DrawTime *dt);

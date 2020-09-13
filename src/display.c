@@ -94,10 +94,10 @@ double rad2Deg(double angRad) { return (180.0 * angRad / PI); }
 
 int elementLength(int szh, int szw) { return szh * (int)((szw + 7) / 8); }
 
-void drawBitmap(int16_t x, int16_t y,
-  uint8_t *bitmap, int16_t w, int16_t h, uint16_t color) {
-      display.drawBitmap(x, y, bitmap, w, h, color);
-  }
+void drawBitmap(int16_t x, int16_t y, uint8_t *bitmap, int16_t w, int16_t h,
+                uint16_t color) {
+    display.drawBitmap(x, y, bitmap, w, h, color);
+}
 
 meter_chan_t lastVU = {-1000, -1000};
 meter_chan_t overVU = {0, 0};
@@ -236,16 +236,56 @@ void displayBrightness(int bright, bool flip) {
     }
 }
 
-int initDisplay(struct MonitorAttrs dopts) {
+// will only be called if in "idle" - nothing playing mode
+// remediation for bogus flips and mirror exhibits
+int restartDisplay(struct MonitorAttrs dopts) {
+// needs a hard reset !!!!
+    scrollerPause();
+    clearDisplay();
+    closeDisplay();
+    int ret = initDisplay(dopts);
+    if (EXIT_SUCCESS==ret)
+        hazardSign(); // if all is well
+    return ret;
+}
+
+int initDisplay(struct MonitorAttrs dopts, bool init = true) {
 
     char stbl[BSIZE];
     /*
+
 3 wire SPI
+==========
 GND ....: 0v on the Pi
 VDD  ...: 3v3 on the Pi
 SCLK ...: to BCM 11 on the Pi
 SDIN ...: to BCM 9 on the Pi
 DC .....: 0Ov on the Pi
+
+4 wire SPI
+==========
+GND ....: 0v on the Pi
+VDD  ...: 3v3 on the Pi
+SCLK ...: to BCM 11 on the Pi
+SDIN ...: to BCM 10 on the Pi
+DC .....: to BCM24  on the Pi
+CS .....: to BCM8 on the pi
+
+1322 Audiophonics Device
+https://www.audiophonics.fr/en/screens-vu-meters/white-spi-iic-256x64-oled-312-screen-p-14604.html
+CONFIGURATION INTERFACE 4-SPI
+Pin	Symbole	Niveau	Function
+1	GND	0V	Power Ground
+2	VDD	3.3 ... +5.0V	Power Supply
+3	NC	-	No connect
+4	SCLK (D0)	H/L	Serial CLock Signal
+5	SDIN (D1)	H/L	Serial Data Input SIgnal
+6	NC	-	No connect
+7-13	NC	-	No connect ( or power ground)
+14	D/C(RS)	H/L	H : Data L : Command
+15	/RST	H/L	Active LOW : reset Signal
+16	/CS	L	Chip Select
+
 */
 
     if ((OLED_ADAFRUIT_SPI_128x64 == oledType) ||
@@ -274,17 +314,16 @@ DC .....: 0Ov on the Pi
     // flip (rotate 180) if requested
     if (dopts.flipDisplay) {
         isFlipped = true;
-        //display.sendCommand(0xA0);
-        //display.sendCommand(0xC0); // COMSCANINC
         flipDisplay();
     }
 
     display.setFont();
-    fontMetrics();
+    if (init)
+        fontMetrics();
     display.setBrightness(0);
     resetDisplay(1);
     scrollerInit();
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 void closeDisplay(void) {
@@ -293,7 +332,7 @@ void closeDisplay(void) {
     display.close();
 }
 
-void clearDisplay() {
+void clearDisplay(void) {
     display.clearDisplay();
     display.display();
 }
@@ -352,6 +391,13 @@ void peakMeterH(bool inv) {
         display.drawBitmap(0, 0, peak_rms, 128, 64, WHITE);
 }
 
+void hazardSign(void) {
+    display.clearDisplay();
+    display.drawBitmap(64, 16, hazard37x34, 37, 34, WHITE);
+    display.display();
+    dodelay(10);
+}
+
 void splashScreen(void) {
     display.clearDisplay();
     display.drawBitmap(0, 0, splash, 128, 64, WHITE);
@@ -401,9 +447,9 @@ void putWeatherTemp(int x, int y, climacell_t *cc) {
                     break;
                 case 2:
                 case 3:
-                    sprintf(buf, "%d%s    %d%s",
+                    sprintf(buf, "%d%s   %.1f%s",
                             (int)round(cc->humidity.fdatum), cc->humidity.units,
-                            (int)round(cc->precipitation.fdatum),
+                            cc->precipitation.fdatum, // this per hour
                             cc->precipitation.units);
                     break;
             }
@@ -412,9 +458,9 @@ void putWeatherTemp(int x, int y, climacell_t *cc) {
                              _char_height, BLACK);
             putText(x + szw + 2, y + 3 + (szh * py), buf);
             memcpy(dest, thermo12x12 + (w * icon[p]), sizeof dest);
-            display.fillRect(x + ((icon[p] == 3) ? 7 * _char_width : 0),
+            display.fillRect(x + ((icon[p] == 3) ? 5.8 * _char_width : 0),
                              y + (szh * py), szw, szh, BLACK);
-            display.drawBitmap(x + ((icon[p] == 3) ? 7 * _char_width : 0),
+            display.drawBitmap(x + ((icon[p] == 3) ? 5.8 * _char_width : 0),
                                y + (szh * py), dest, szw, szh, WHITE);
         }
     }
@@ -460,7 +506,7 @@ void drawHorizontalCheckerBar(int x, int y, int w, int h, int percent) {
     }
 }
 
-void drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color){
+void drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color) {
     display.drawLine(x0, y0, x1, y1, color);
 }
 
@@ -1614,8 +1660,8 @@ void putTinyText(int x, int y, char *buff) {
 void putTinyTextCenterColor(int y, char *buff, uint16_t color) {}
 void putTinyTextToCenter(int y, char *buff) {}
 
-
-void drawRoundRectangle(int16_t x0, int16_t y0, int16_t w, int16_t h,int16_t radius, uint16_t color) {
+void drawRoundRectangle(int16_t x0, int16_t y0, int16_t w, int16_t h,
+                        int16_t radius, uint16_t color) {
     display.drawRoundRect(x0, y0, w, h, radius, color);
 }
 
@@ -1680,6 +1726,5 @@ void setScrollPosition(int line, int ypos) {
         pthread_mutex_unlock(&scroll[line].scrollox);
     }
 }
-
 
 #endif
