@@ -925,6 +925,26 @@ int main(int argc, char *argv[]) {
 
     printFontMetrics();
 
+/*
+    // TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST
+    // TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST
+    // TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST
+    int demo = 80;
+    while (demo > 0) {
+        strcpy(lmsopt.pauseMessage, "The quick brown fox jumped over the lazy dog");
+        warningsPage();
+        refreshDisplay();
+        if (lmsopt.sleepTime < 1)
+            setSleepTime(SLEEP_TIME_LONG);
+        dodelay(lmsopt.sleepTime);
+        demo--;
+    }
+    clearDisplay();
+    // TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST
+    // TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST
+    // TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST
+*/
+
     // setup server/player online tests
     size_t onlineTimer;
     onlineTimer = timer_start(2000, onlineTests, TIMER_PERIODIC, (void *)&aio);
@@ -1302,13 +1322,55 @@ void OvaTimePage(A1Attributes *aio) {
 }
 
 void warningsPage(void) {
+
+    char buff[255];
+
     if (glopt->refreshLMS) {
         resetDisplay(1);
         softPlayRefresh(false);
     }
-    softClockReset(false);
+
+    if (glopt->refreshClock) {
+        instrument(__LINE__, __FILE__, "clock reset");
+        softClockReset();
+        softClockRefresh(false);
+    }
+    instrument(__LINE__, __FILE__, "warningsPage");
+
+    softPlayReset();
     softVisualizeRefresh(true);
-    putWarning(glopt->pauseMessage);
+    setSleepTime(SLEEP_TIME_LONG);
+
+    instrument(__LINE__, __FILE__, "putWarning");
+    int pin = putWarning(glopt->pauseMessage, true);
+
+    // date and time
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    time_t now = tv.tv_sec;
+    struct tm loctm = *localtime(&now);
+
+    DrawTime dt = {.charWidth = 12,
+                   .charHeight = 17,
+                   .bufferLen = LCD12X17_LEN,
+                   .pos = {pin - (5 * 12), 36},
+                   .font = MON_FONT_LCD1217};
+
+    setLastTime(buff, dt);
+
+/*
+    strftime(buff, sizeof(buff), "%A", &loctm);
+    putTinyTextToRight(pin, 34, 10, buff);
+
+    strftime(buff, sizeof(buff), "%02d/%m/%y", &loctm);
+    putTinyTextToRight(pin, 44, 10, buff);
+*/
+    strcpy(glopt->lastTime, "XXXXX"); // date and day ride rough
+    sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
+    // colon (blink)
+    drawTimeBlink(((loctm.tm_sec % 2) ? ' ' : ':'), &dt);
+
+    putWarning(glopt->pauseMessage, false);
 }
 
 void clockWeatherPage(climacell_t *cc) {
@@ -1333,7 +1395,7 @@ void clockWeatherPage(climacell_t *cc) {
     softVisualizeRefresh(true);
     setSleepTime(SLEEP_TIME_LONG);
 
-    instrument(__LINE__, __FILE__, "putkWeather");
+    instrument(__LINE__, __FILE__, "putWeather");
 
     // date and time
     struct timeval tv;

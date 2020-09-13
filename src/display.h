@@ -179,7 +179,7 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter,
 // audio attributes
 void putVolume(bool v, char *buff);
 void putAudio(audio_t audio, char *buff, bool full = true);
-void putWarning(char *msg);
+int putWarning(char *msg, bool init);
 
 void putIFDetail(int icon, int xpos, int ypos, char *host);
 
@@ -196,6 +196,7 @@ void putTinyTextMultiMaxWidth(int x, int y, int w, int lines, char *buff);
 void putTinyText(int x, int y, char *buff);
 void putTinyTextCenterColor(int y, char *buff, uint16_t color);
 void putTinyTextToCenter(int y, char *buff);
+void putTinyTextToRight(int y, int r, int w, char *buff);
 
 void clearLine(int y);
 void clearDisplay(void);

@@ -1191,29 +1191,35 @@ void putAudio(audio_t audio, char *buff, bool full = true) {
         display.drawBitmap((maxXPixel() / 2) - (w + 1), 0, dest, w, w, WHITE);
 }
 
-void putWarning(char *msg) {
-    softClear();
+int putWarning(char *msg, bool init) {
+    if (init)
+        softClear();
+
     int16_t szw = 37;
     int16_t szh = 34;
-    int16_t x = 3; //5 + szw + 3;
+    int16_t x = 3;
     int16_t y = 5;
     int16_t w = 128 - (x * 2);
     int16_t h = 54;
-    display.fillRect(x, y, w, h, WHITE);
-    x += 2;
-    y += 2;
-    w -= 4;
-    h -= 4;
-    display.fillRect(x, y, w, h, BLACK);
-    display.drawBitmap(8, 14, hazard37x34, szw, szh, WHITE);
-    char stb[BSIZE];
-    strcpy(stb, msg);
-    if (0 == strlen(stb)) {
-        sprintf(stb, "Please Wait, Working...");
+
+    // nice thick rectangle
+    int xx = x + 3;
+    for (; x < xx; x++, y++, w -= 2, h -= 2) {
+        display.drawRect(x, y, w, h, WHITE);
     }
-    x += szw+11;
-    y += 9;
-    putTinyTextMultiMaxWidth(x, y, (int)((w - (x + 7)) / 7), 5, stb);
+    if (init) {
+        display.drawBitmap(x + 3, y + 8, hazard37x34, szw, szh, WHITE);
+        char stb[BSIZE];
+        strcpy(stb, msg);
+        if (0 == strlen(stb)) {
+            sprintf(stb, "Please Wait, Working...");
+        }
+        x += szw + 11;
+        y += 9;
+        putTinyTextMultiMaxWidth(x, y, (int)((w - (x + 7)) / 7), 5, stb);
+    }
+
+    return w - 2;
 }
 
 void scrollerFinalize(void) {
@@ -1678,12 +1684,48 @@ void putTinyText(int x, int y, char *buff) {
     display.setTextSize(1);
     display.fillRect(x, y, (int16_t)strlen(buff) * _tt_char_width,
                      _tt_char_height, BLACK);
-    display.setCursor(x, y);
-    display.print(buff);
+    putText(x, y, buff);
     display.setFont();
 }
-void putTinyTextCenterColor(int y, char *buff, uint16_t color) {}
-void putTinyTextToCenter(int y, char *buff) {}
+
+void putTinyTextCenterColor(int y, char *buff, uint16_t color) {
+    display.setFont(&TomThumb);
+    display.setTextSize(1);
+    display.setTextColor(color);
+    int tlen = strlen(buff);
+    int px = (maxXPixel() < (tlen * _tt_char_width))
+                 ? 0
+                 : (maxXPixel() - (tlen * _tt_char_width)) / 2;
+    display.fillRect(0, y, maxXPixel(), _tt_char_height + 2, BLACK);
+    putText(px, y, buff);
+    display.setFont();
+}
+
+void putTinyTextToCenter(int y, char *buff) {
+    putTinyTextCenterColor(y, buff, WHITE);
+}
+
+void putTinyTextToRight(int y, int r, int w, char *buff) {
+
+    display.setFont(&TomThumb);
+    int tlen = strlen(buff);
+    display.setTextSize(1);
+    int px;
+
+    if (0 == w)
+        w = tlen;
+    if (tlen > w) { // assumes monospaced - we're not!
+        buff[w] = {0}; // simple chop - safe!
+    }
+    tlen = strlen(buff);
+    px = (int)((maxXPixel() - (tlen * _tt_char_width)));
+    int16_t x1 = r - (w * _tt_char_width);
+    display.fillRect(x1, y - _tt_char_height, w * _tt_char_width,
+                     2 + _tt_char_height, BLACK);
+    putText(px, y, buff);
+
+    display.setFont();
+}
 
 void drawRoundRectangle(int16_t x0, int16_t y0, int16_t w, int16_t h,
                         int16_t radius, uint16_t color) {

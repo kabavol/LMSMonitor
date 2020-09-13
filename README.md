@@ -211,6 +211,18 @@ Specify -E[1-7] to display eggs on track playback
 </p>
 These are just a fun display mode where visualization is not possible.
 
+## Robust Communication
+<p>
+<img width="300" align="center" src="base/robust.png">
+
+The monitor is robust, the LMS server or/and the player being monitored can offline orhave its connection interrupted.
+
+I we do lose the connection the monitor will move to a sleep mode displaying the screens shown above.
+
+As soon as the services comes back online we seamless handle the reconnect.
+
+TODO: bounce with IP change on return.
+
 ## Weather
 <p>
 <img width="130" align="right" src="base/weatherexample.jpg">
@@ -273,7 +285,7 @@ This also specifies random visualization, further customization to your liking c
 - DONE! Make OLED driver user selectable
 - DONE! Make OLED I2C address user selectable
 - DONE! All-In-One display, clock, track details and downmix visualizer in one 
-- Reconnect to player, after reboot or offlined
+- DONE! Reconnect to player/server, after reboot or offlined
 - DONE! Weather: climacell incorporation
 - Audiophonics EVO-SABRE Balanced DAC 2x ES9038Q2M support: TBD
 - Dual OLED visualizer mode: TBD
