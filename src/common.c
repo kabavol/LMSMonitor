@@ -259,3 +259,11 @@ int alreadyRunning() {
     write(fd, buff, strlen(buff) + 1);
     return (0);
 }
+
+int strcicmp(char const *a, char const *b) {
+    for (;; a++, b++) {
+        int d = tolower((unsigned char)*a) - tolower((unsigned char)*b);
+        if (d != 0 || !*a)
+            return d;
+    }
+}
