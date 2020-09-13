@@ -34,6 +34,8 @@
 
 #include "climacell.h"
 
+////#include "slimJSON.h"
+
 typedef struct isp_locale_t {
     time_t sunrise;
     time_t sunset;
@@ -44,31 +46,13 @@ typedef struct isp_locale_t {
     char Timezone[128]; // string not GMT offset!
 } isp_locale_t;
 
-typedef enum Method { UNSUPPORTED, GET, HEAD, POST } Method;
-
-typedef struct Header {
-    char *name;
-    char *value;
-    struct Header *next;
-} Header;
-
-typedef struct Request {
-    enum Method method;
-    char *url;
-    char *version;
-    struct Header *headers;
-    char *body;
-} Request;
-
-struct Request *parse_request(const char *raw);
-void free_header(struct Header *h);
-void free_request(struct Request *req);
-
 bool initAstral(void);
 void brightnessEvent(void);
 
 void baselineClimacell(climacell_t *climacell, bool changed);
 void weatherEvent(struct climacell_t *climacell);
 bool updClimacell(climacell_t *climacell);
+
+bool testJRPC(char* playerMAC, char *host, uint16_t port);
 
 #endif

@@ -42,21 +42,20 @@
 #include <openssl/ssl.h>
 
 #include "astral.h"
+#include "basehttp.h"
 #include "climacell.h"
 #include "common.h"
-#ifndef JSMN_STATIC
-#define JSMN_STATIC
-#endif
-#include "../src/jsmn.h"
-
 #include "display.h"
 
 #ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
 #endif
 
-bool daymode = true;
-isp_locale_t isp_locale;
+#ifndef JSMN_STATIC
+#define JSMN_STATIC
+#endif
+
+#include "jsmn.h"
 
 static int jsonEq(const char *json, jsmntok_t *tok, const char *s) {
     if (tok->type == JSMN_STRING && (int)strlen(s) == tok->end - tok->start &&
@@ -65,6 +64,9 @@ static int jsonEq(const char *json, jsmntok_t *tok, const char *s) {
     }
     return -1;
 }
+
+bool daymode = true;
+isp_locale_t isp_locale;
 
 void baselineClimacell(climacell_t *climacell, bool changed) {
     climacell->current.changed = changed;
@@ -85,8 +87,8 @@ void decodeKV(char *jsonData, ccdatum_t *datum, int i, int j, jsmntok_t jt[]) {
 
     ccdatum_t testdatum;
     testdatum.fdatum = datum->fdatum;
-    strcpy(testdatum.sdatum,datum->sdatum);
-    strcpy(testdatum.units,datum->units);
+    strcpy(testdatum.sdatum, datum->sdatum);
+    strcpy(testdatum.units, datum->units);
 
     for (int z = i; z < j; z++) {
 
@@ -103,8 +105,10 @@ void decodeKV(char *jsonData, ccdatum_t *datum, int i, int j, jsmntok_t jt[]) {
         memcpy(valStr, &jsonData[tok.start], lenv);
         valStr[lenv] = '\0';
         // nibble so fits detail view
-        if (strncmp(valStr,"in/hr",5)==0) strcpy(valStr,"in");
-        if (strncmp(valStr,"cm/hr",5)==0) strcpy(valStr,"cm");
+        if (strncmp(valStr, "in/hr", 5) == 0)
+            strcpy(valStr, "in");
+        if (strncmp(valStr, "cm/hr", 5) == 0)
+            strcpy(valStr, "cm");
 
         if (strncmp("value", keyStr, 5) == 0) {
             if (strcmp(testdatum.sdatum, valStr) != 0) {
@@ -132,19 +136,6 @@ static const char *degToCompass(double deg) {
     return (const char *)windd[d16];
 }
 
-// debug usage only
-static char *whatsitJson(int typ) {
-    switch (typ) {
-        case JSMN_UNDEFINED: return (char *)"Undef"; break;
-        case JSMN_OBJECT: return (char *)"Obj"; break;
-        case JSMN_ARRAY: return (char *)"Array"; break;
-        case JSMN_STRING: return (char *)"String"; break;
-        case JSMN_PRIMITIVE: return (char *)"Primitive"; break;
-        default: return (char *)"Unk?";
-    }
-    return (char *)"Unk?";
-}
-
 wiconmap_t weatherIconXlate(char *key) {
 
     // add day night logic for specifics
@@ -152,38 +143,6 @@ wiconmap_t weatherIconXlate(char *key) {
     sprintf(wspecific, "%s%s", key, (daymode) ? "_day" : "_night");
 
     const static struct wiconmap_t wmap[] = {
-        /*
-// more granular/detailed icons
-        (wiconmap_t){"rain_heavy", "Heavy Rain", 11},
-        (wiconmap_t){"rain", "Rain", 9},
-        (wiconmap_t){"rain_light", "Light Rain", 8},
-        (wiconmap_t){"freezing_rain_heavy", "Freezing Rain/Sleet", 12},
-        (wiconmap_t){"freezing_rain", "Freezing Rain", 12},
-        (wiconmap_t){"freezing_rain_light", "Light Freezing Rain", 12},
-        (wiconmap_t){"freezing_drizzle", "Freezing Drizzle", 12},
-        (wiconmap_t){"drizzle", "Drizzle", 9},
-        (wiconmap_t){"ice_pellets_heavy", "Hail", 16},
-        (wiconmap_t){"ice_pellets", "Hail", 16},
-        (wiconmap_t){"ice_pellets_light", "Light Hail", 16},
-        (wiconmap_t){"snow_heavy", "Heavy Snow", 21},
-        (wiconmap_t){"snow", "Snow", 20},
-        (wiconmap_t){"snow_light", "Snow Showers", 17},
-        (wiconmap_t){"flurries", "Snow Flurries", 20},
-        (wiconmap_t){"tstorm", "Thunderstorm", 4},
-        (wiconmap_t){"fog_light", "Light Fog", 22},
-        (wiconmap_t){"fog", "Fog", 21},
-        (wiconmap_t){"cloudy", "Cloudy", 2},
-        (wiconmap_t){"mostly_cloudy", "Mostly Cloudy", 6},
-        (wiconmap_t){"partly_cloudy", "Partly Cloudy", 2},
-        (wiconmap_t){"partly_cloudy_night", "Partly Cloudy", 0},
-        (wiconmap_t){"mostly_clear", "Mostly Clear", 0},
-        (wiconmap_t){"mostly_clear_day", "Mostly Clear", 3},
-        (wiconmap_t){"mostly_clear_night", "Clear", 1},
-        (wiconmap_t){"clear", "Clear, Sunny", 0},
-        (wiconmap_t){"clear_day", "Clear", 0},
-        (wiconmap_t){"clear_night", "Clear", 1},
-
-*/
         (wiconmap_t){"clear_day", "Clear", 0, true},
         (wiconmap_t){"clear_night", "Clear", 1, true},
         (wiconmap_t){"clear", "Clear", 0, true},
@@ -219,7 +178,7 @@ wiconmap_t weatherIconXlate(char *key) {
     };
 
     int i;
-    size_t l = sizeof(wmap) / sizeof(wmap[0]);
+    int l = (int)(sizeof(wmap) / sizeof(wmap[0]));
     // dictionary, hash - next pass...
     for (i = 0; i < l; i++) {
         //icon mapping inclusive day night modes
@@ -488,122 +447,10 @@ void brightnessEvent(void) {
     }
 }
 
-struct Request *parse_request(const char *raw) {
-    struct Request *req = NULL;
-    req = malloc(sizeof(struct Request));
-    if (!req) {
-        return NULL;
-    }
-    memset(req, 0, sizeof(struct Request));
-
-    // Method
-    size_t meth_len = strcspn(raw, " ");
-    if (memcmp(raw, "GET", strlen("GET")) == 0) {
-        req->method = GET;
-    } else if (memcmp(raw, "POST", strlen("POST")) == 0) {
-        req->method = POST;
-    } else if (memcmp(raw, "HEAD", strlen("HEAD")) == 0) {
-        req->method = HEAD;
-    } else {
-        req->method = UNSUPPORTED;
-    }
-    raw += meth_len + 1; // move past <SP>
-
-    // Request-URI
-    size_t url_len = strcspn(raw, " ");
-    req->url = malloc(url_len + 1);
-    if (!req->url) {
-        free_request(req);
-        return NULL;
-    }
-    memcpy(req->url, raw, url_len);
-    req->url[url_len] = '\0';
-    raw += url_len + 1; // move past <SP>
-
-    // HTTP-Version
-    size_t ver_len = strcspn(raw, "\r\n");
-    req->version = malloc(ver_len + 1);
-    if (!req->version) {
-        free_request(req);
-        return NULL;
-    }
-    memcpy(req->version, raw, ver_len);
-    req->version[ver_len] = '\0';
-    raw += ver_len + 2; // move past <CR><LF>
-
-    struct Header *header = NULL, *last = NULL;
-    while (raw[0] != '\r' || raw[1] != '\n') {
-        last = header;
-        header = malloc(sizeof(Header));
-        if (!header) {
-            free_request(req);
-            return NULL;
-        }
-
-        // name
-        size_t name_len = strcspn(raw, ":");
-        header->name = malloc(name_len + 1);
-        if (!header->name) {
-            free_request(req);
-            return NULL;
-        }
-        memcpy(header->name, raw, name_len);
-        header->name[name_len] = '\0';
-        raw += name_len + 1; // move past :
-        while (*raw == ' ') {
-            raw++;
-        }
-
-        // value
-        size_t value_len = strcspn(raw, "\r\n");
-        header->value = malloc(value_len + 1);
-        if (!header->value) {
-            free_request(req);
-            return NULL;
-        }
-        memcpy(header->value, raw, value_len);
-        header->value[value_len] = '\0';
-        raw += value_len + 2; // move past <CR><LF>
-
-        // next
-        header->next = last;
-    }
-    req->headers = header;
-    raw += 2; // move past <CR><LF>
-
-    size_t body_len = strlen(raw);
-    req->body = malloc(body_len + 1);
-    if (!req->body) {
-        free_request(req);
-        return NULL;
-    }
-    memcpy(req->body, raw, body_len);
-    req->body[body_len] = '\0';
-
-    return req;
-}
-
-void free_header(struct Header *h) {
-    if (h) {
-        free(h->name);
-        free(h->value);
-        free_header(h->next);
-        free(h);
-    }
-}
-
-void free_request(struct Request *req) {
-    free(req->url);
-    free(req->version);
-    free_header(req->headers);
-    free(req->body);
-    free(req);
-}
-
 void parseISP(char *data, struct isp_locale_t *isp) {
 
     jsmn_parser p;
-    jsmntok_t jt[30]; // Expect no more than 30 tokens
+    jsmntok_t jt[40]; // Expect no more than 40 tokens
 
     jsmn_init(&p);
     int r = jsmn_parse(&p, data, strlen(data), jt, sizeof(jt) / sizeof(jt[0]));
@@ -641,107 +488,16 @@ void parseISP(char *data, struct isp_locale_t *isp) {
     }
 }
 
-bool http_get(char *host, uint8_t port, char *uri, char *response) {
-
-    char buffer[BUFSIZ];
-    enum CONSTEXPR { MAX_REQUEST_LEN = 1024 };
-    char request[MAX_REQUEST_LEN];
-
-    char request_template[] = "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n";
-    struct protoent *protoent;
-    in_addr_t in_addr;
-    int sockFD;
-    struct hostent *hostent;
-    struct sockaddr_in sockaddr_in;
-    ssize_t req_len, nbytes_total;
-
-    req_len = snprintf(request, MAX_REQUEST_LEN, request_template, uri, host);
-    if (req_len >= MAX_REQUEST_LEN) {
-        fprintf(stderr, "request length overrun: %ld\n", (long)req_len);
-        return false;
-    }
-
-    // open the socket.
-    protoent = getprotobyname("tcp");
-    if (protoent == NULL) {
-        fprintf(stderr, "error on getprotobyname(\"tcp\")\n");
-        return false;
-    }
-    sockFD = socket(AF_INET, SOCK_STREAM, protoent->p_proto);
-    if (sockFD == -1) {
-        fprintf(stderr, "bad socket descriptor\n");
-        return false;
-    }
-
-    // flesh the address
-    hostent = gethostbyname(host);
-    if (hostent == NULL) {
-        fprintf(stderr, "error: gethostbyname(\"%s\")\n", host);
-        return false;
-    }
-    in_addr = inet_addr(inet_ntoa(*(struct in_addr *)*(hostent->h_addr_list)));
-    if (in_addr == (in_addr_t)-1) {
-        fprintf(stderr, "error: inet_addr(\"%s\")\n", *(hostent->h_addr_list));
-        return false;
-    }
-    sockaddr_in.sin_addr.s_addr = in_addr;
-    sockaddr_in.sin_family = AF_INET;
-    sockaddr_in.sin_port = htons(port);
-
-    // And connect ...
-    if (connect(sockFD, (struct sockaddr *)&sockaddr_in, sizeof(sockaddr_in)) ==
-        -1) {
-        fprintf(stderr, "error: connect - %s\n", host);
-        return false;
-    }
-
-    // Send HTTP request.
-    if (write(sockFD, request, strlen(request)) < 0) {
-        fprintf(stderr, "ERROR writing to socket!");
-        return false;
-    }
-    if ((nbytes_total = read(sockFD, buffer, BUFSIZ - 1)) < 0) {
-        fprintf(stderr, "ERROR reading from socket!");
-        return false;
-    }
-    buffer[nbytes_total] = 0;
-
-    close(sockFD);
-
-    if (nbytes_total == -1) {
-        fprintf(stderr, "error: bad request - %s\n", host);
-        return false;
-    }
-
-    char *data = strstr(buffer, "200 OK");
-    if (data == NULL)
-        return false;
-    else
-        data += 7;
-
-    data = strstr(data, "\r\n\r\n");
-    if (data != NULL) {
-        data += 4;
-        strcpy(response, data);
-    } else
-        return false;
-
-    return true;
-}
-
 bool getLocation(void) {
 
     uint8_t port = 80;
-    char host[BSIZE] = {0};
-    char uri[BSIZE] = {0};
+    char host[BSIZE] = "bot.whatismyipaddress.com";
+    char uri[BSIZE] = "/";
+    char header[1] = "";
     char lookupIP[20] = {0};
     char stb[BSIZE] = {0};
 
-    // get ISP IP
-    strcpy(host, "bot.whatismyipaddress.com");
-    strcpy(uri, "/");
-
-    if (http_get(host, port, uri, (char *)lookupIP)) {
+    if (httpGet(host, port, uri, header, (char *)lookupIP)) {
 
         if (!isEmptyStr(lookupIP)) {
 
@@ -755,7 +511,7 @@ bool getLocation(void) {
 
             char jsonData[4096] = {0};
 
-            if (http_get(host, port, uri, (char *)jsonData)) {
+            if (httpGet(host, port, uri, header, (char *)jsonData)) {
 
                 // parse/decompose and map json
                 parseISP(jsonData, &isp_locale);
@@ -804,13 +560,13 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
     int r = jsmn_parse(&p, jsonData, strlen(jsonData), jt,
                        sizeof(jt) / sizeof(jt[0]));
     if (r < 0) {
-        printf("Failed to parse JSON: %d\n", r);
-        return 1;
+        printf("Failed to parse JSON\nheck enough tokens allocated [parseClimacell]: %d\n", r);
+        return false;
     }
 
     if (r < 1 || jt[0].type != JSMN_OBJECT) {
-        printf("Object expected\n");
-        return 1;
+        printf("Object expected, [parseClimacell]\n");
+        return false;
     }
 
     int done = 14;
@@ -1013,10 +769,10 @@ bool updClimacell(climacell_t *climacell) {
         strcpy(climacell->uri, "/v3/weather/realtime");
     }
     if (isEmptyStr(climacell->fields)) {
-        strcpy(
-            climacell->fields,
-            "temp,feels_like,baro_pressure,visibility,humidity,precipitation,"
-            "wind_speed,wind_direction,sunrise,sunset,weather_code");
+        strcpy(climacell->fields,
+               "temp,feels_like,baro_pressure,visibility,humidity,"
+               "precipitation,"
+               "wind_speed,wind_direction,sunrise,sunset,weather_code");
     }
     if (isEmptyStr(climacell->units)) {
         strcpy(climacell->units, "us");
@@ -1082,13 +838,13 @@ bool updClimacell(climacell_t *climacell) {
 
     char *write_buf;
     int r = asprintf(&write_buf,
-                     "GET %s HTTP/1.1\r\n"
+                     "%s %s HTTP/1.1\r\n"
                      "Host: %s\r\n"
                      "Accept: application/json\r\n"
                      "Content-Type: application/json\r\n"
                      "Connection: close\r\n"
                      "\r\n",
-                     uri, climacell->host);
+                     (char *)httpMethodString(GET), uri, climacell->host);
 
     if (0 == r) {
         if (bio)
@@ -1120,7 +876,6 @@ bool updClimacell(climacell_t *climacell) {
         buf[size] = 0;
 
         if (strstr(buf, "HTTP/1.1 200 OK") == NULL) {
-            printf("no 200\n");
             if (bio)
                 BIO_free_all(bio);
             if (ctx)
@@ -1141,8 +896,6 @@ bool updClimacell(climacell_t *climacell) {
         if (zz == zt) {
             if (res)
                 free(res);
-            //if (getVerbose() >= LL_DEBUG)
-            //    printf("debug (%d):\n%s\n", zz, body);
             climacell->refreshed = parseClimacell(body, climacell);
             break;
         }
@@ -1157,3 +910,4 @@ bool updClimacell(climacell_t *climacell) {
 
     return true;
 }
+
