@@ -223,6 +223,7 @@ bool lookupLMSPlayer(char *jsonData, char *checkPName) {
         return false;
     }
 
+    const int trip = 4;
     int plk = 0;
     lms.activePlayer = -1;
     if (r < 1 || jt[0].type != JSMN_OBJECT) {
@@ -230,13 +231,13 @@ bool lookupLMSPlayer(char *jsonData, char *checkPName) {
         return false;
     } else {
 
-        int playerAttribs = 3;
+        int playerAttribs = trip;
         for (int i = 1; (i < r); i++) {
 
             jsmntok_t tok = jt[i];
 
             if (0 == playerAttribs) {
-                playerAttribs = 3;
+                playerAttribs = trip;
                 plk++;
             }
 
@@ -256,21 +257,25 @@ bool lookupLMSPlayer(char *jsonData, char *checkPName) {
                 lms.playerCount = atoi(valStr); // capture, done use yet
             } else if (strncmp("players_loop", keyStr, 12) == 0) {
                 plk = 0;
-                playerAttribs = 3;
+                playerAttribs = trip;
             } else if (strncmp("playerid", keyStr, 8) == 0) {
-                strcpy(lms.players[plk].playerID, valStr);
+                strncpy(lms.players[plk].playerID, valStr, 17);
+                playerAttribs--;
+            } else if (strncmp("modelname", keyStr, 9) == 0) {
+                strncpy(lms.players[plk].modelName, valStr, 29);
                 playerAttribs--;
             } else if (strncmp("ip", keyStr, 2) == 0) {
+                printf("%s\n",valStr);
                 char *colon;
                 if ((colon = strstr(valStr, ":")) != NULL) {
                     int cpos;
                     cpos = colon - valStr;
                     valStr[cpos] = '\0';
                 }
-                strcpy(lms.players[plk].playerIP, valStr);
+                strncpy(lms.players[plk].playerIP, valStr, 27);
                 playerAttribs--;
             } else if (strncmp("name", keyStr, 4) == 0) {
-                strcpy(lms.players[plk].playerName, valStr);
+                strncpy(lms.players[plk].playerName, valStr, 127);
                 if (strcicmp(lms.players[plk].playerName, checkPName) == 0) {
                     lms.activePlayer = plk;
                 }
@@ -282,9 +287,10 @@ bool lookupLMSPlayer(char *jsonData, char *checkPName) {
     int v = getVerbose();
     for (int p = 0; p < plk; p++) {
         if ((0 != strlen(lms.players[p].playerName)) && (v > LL_INFO)) {
-            printf("%s%02d %20s %17s %s\n", (p == lms.activePlayer) ? "*" : " ",
-                   p, lms.players[p].playerName, lms.players[p].playerID,
-                   lms.players[p].playerIP);
+            printf("%s%02d %29s %20s %17s %s\n",
+                   (p == lms.activePlayer) ? "*" : " ", p,
+                   lms.players[p].modelName, lms.players[p].playerName,
+                   lms.players[p].playerID, lms.players[p].playerIP);
         }
     }
 
@@ -606,9 +612,9 @@ void *serverPolling(void *x_voidptr) {
                         }
                     }
                 }
-                strcpy(lmsTags[SERVER].tagData,"Yes");
+                strcpy(lmsTags[SERVER].tagData, "Yes");
             } else {
-                strcpy(lmsTags[SERVER].tagData,"No");
+                strcpy(lmsTags[SERVER].tagData, "No");
             }
         }
         refreshed();
@@ -699,7 +705,9 @@ tag_t *initSliminfo(char *playerName) {
 char *getPlayerIP(void) {
     return (char *)lms.players[lms.activePlayer].playerIP;
 }
-char *playerMAC(void) { return lms.players[lms.activePlayer].playerID; }
+char *getPlayerID(void) { return lms.players[lms.activePlayer].playerID; }
+char *getPlayerMAC(void) { return getPlayerID(); }
+char *getModelName(void) { return lms.players[lms.activePlayer].modelName; }
 
 bool playerConnected(void) {
     return (0 != strcmp(lmsTags[CONNECTED].tagData, "0"));

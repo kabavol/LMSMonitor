@@ -284,25 +284,34 @@ bool acquireOptLock(void) {
 
 void onlineTests(size_t timer_id, void *user_data) {
     if (glopt) {
+
         char stb[BSIZE] = {0};
         bool notruck = glopt->pauseDisplay;
+
         if (!isServerOnline()) {
             notruck = true;
             strcpy(stb, "LMS Server is Offline");
         } else if (!isPlayerOnline()) {
             notruck = true;
-            sprintf(stb, "Player \"%s\" is Offline", glopt->playerName);
+            sprintf(stb, "%s player \"%s\" is Offline", getModelName(),
+                    glopt->playerName);
         } else {
             notruck = false;
         }
-        // printf("[onlineTests] %d == %d ? %s\n", notruck, glopt->pauseDisplay, stb);
+
         if (notruck != glopt->pauseDisplay) {
             if (acquireOptLock()) {
                 if (notruck) {
+                    // no all-in-one or eggs
                     A1Attributes *aio;
                     aio = ((struct A1Attributes *)user_data);
                     if (aio->eeFXActive)
                         aio->eeFXActive = false;
+                    // no visualization
+                    if (glopt->visualize)
+                        deactivateVisualizer();
+                    if (activeScroller())
+                        scrollerPause();
                 }
                 glopt->pauseDisplay = notruck;
                 strcpy(glopt->pauseMessage, stb);
@@ -767,7 +776,7 @@ int main(int argc, char *argv[]) {
     instrument(__LINE__, __FILE__, "generalReset active");
 
 #endif
-    thatMAC = playerMAC();
+    thatMAC = getPlayerMAC();
 
     // init here - splash delay mucks the refresh flagging
     if ((tags = initSliminfo(lmsopt.playerName)) == NULL) {
@@ -1204,9 +1213,9 @@ void OvaTimePage(A1Attributes *aio) {
                 if (tags[*t].changed) {
                     changed = true;
                     if (0 == line)
-                        strncpy(aio->title, tags[*t].tagData, 255);
+                        strncpy(aio->title, tags[*t].tagData, 254);
                     else
-                        strncpy(aio->artist, tags[*t].tagData, 255);
+                        strncpy(aio->artist, tags[*t].tagData, 254);
                 }
             }
         }
@@ -1217,7 +1226,7 @@ void OvaTimePage(A1Attributes *aio) {
         if ((strcmp(buff, aio->compound) != 0) ||
             (0 == strlen(aio->compound))) // safe
         {
-            strncpy(aio->compound, buff, 255);
+            strncpy(aio->compound, buff, 254);
 
             switch (aio->eeMode) {
                 case EE_NONE:
@@ -1399,9 +1408,9 @@ void cassettePage(A1Attributes *aio) {
                 if (tags[*t].changed) {
                     changed = true;
                     if (0 == line)
-                        strncpy(aio->title, tags[*t].tagData, 255);
+                        strncpy(aio->title, tags[*t].tagData, 254);
                     else
-                        strncpy(aio->artist, tags[*t].tagData, 255);
+                        strncpy(aio->artist, tags[*t].tagData, 254);
                 }
             }
         }
@@ -1412,7 +1421,7 @@ void cassettePage(A1Attributes *aio) {
         if ((strcmp(buff, aio->compound) != 0) ||
             (0 == strlen(aio->compound))) // safe
         {
-            strncpy(aio->compound, buff, 255);
+            strncpy(aio->compound, buff, 254);
             putTinyTextMaxWidthP(
                 20, 12, 92,
                 aio->title); // workable - tweak for proportional
@@ -1547,9 +1556,9 @@ void allInOnePage(A1Attributes *aio) {
                 if (tags[*t].changed) {
                     changed = true;
                     if (0 == line)
-                        strncpy(aio->title, tags[*t].tagData, 255);
+                        strncpy(aio->title, tags[*t].tagData, 254);
                     else
-                        strncpy(aio->artist, tags[*t].tagData, 255);
+                        strncpy(aio->artist, tags[*t].tagData, 254);
                 }
             }
         }
@@ -1560,7 +1569,7 @@ void allInOnePage(A1Attributes *aio) {
             (0 == strlen(aio->compound)) ||
             (!isScrollerActive(A1SCROLLER))) // safe
         {
-            strncpy(aio->compound, buff, 255);
+            strncpy(aio->compound, buff, 254);
             setScrollPosition(A1SCROLLER, A1SCROLLPOS);
             if (putScrollable(A1SCROLLER, aio->compound)) {
                 setSleepTime(SLEEP_TIME_SHORT);
@@ -1693,7 +1702,7 @@ void playingPage(void) {
                     filled = true;
 #endif
                     if (tags[*t].changed) {
-                        strncpy(buff, tags[*t].tagData, 255);
+                        strncpy(buff, tags[*t].tagData, 254);
 #ifdef __arm__
                         if (putScrollable(line, buff)) {
                             setSleepTime(SLEEP_TIME_SHORT);

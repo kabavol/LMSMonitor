@@ -1,5 +1,5 @@
 /*
- *	metrics.h
+ *	hash.h
  *
  *	(c) 2020 Stuart Hunter
  *
@@ -22,11 +22,26 @@
 
 #ifndef HASHSH_H
 #define HASHSH_H
-
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
-typedef struct {
+// your bog standard linked list
+typedef struct llist_t {
+    char *key;
+    char *value;
+    struct llist_t *next;
+} llist_t;
+
+typedef struct hash_table_t {
+    u_int16_t size;
+    llist_t *arr;
+} hash_table_t;
+
+u_int16_t hash (const char *key, u_int16_t size);
+
+// impl. 2
+typedef struct hash_t {
     int size;
     void **keys;
     void **values;

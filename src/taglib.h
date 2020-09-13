@@ -28,10 +28,29 @@
 #include "common.h"
 
 typedef struct player_t {
-    char playerName[BSIZE];
-    char playerIP[BSIZE];
-    char playerID[BSIZE];
+    char playerName[128];
+    char playerIP[40];
+    char playerID[30];
+    char modelName[32];
 } player_t;
+
+/*
+    model       modelname
+    =========== ==============
+	slimp3      SliMP3
+	Squeezebox  Squeezebox 1
+	squeezebox2 Squeezebox 2
+	squeezebox3 Squeezebox 3
+	transporter Transporter
+	receiver    Squeezebox Receiver
+	boom        Squeezebox Boom
+	softsqueeze Softsqueeze
+	controller  Squeezebox Controller
+	squeezeplay SqueezePlay
+	squeezelite SqueezeLite
+	baby        Squeezebox Radio
+	fab4        Squeezebox Touch
+*/
 
 typedef struct lms_t {
     int playerCount;

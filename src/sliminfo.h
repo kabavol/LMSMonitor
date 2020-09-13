@@ -36,7 +36,9 @@ void askRefresh(void);
 bool isRefreshed(void);
 bool playerConnected(void);
 
-char *playerMAC(void);
+char *getPlayerMAC(void);
+char *getPlayerID(void);
+char *getModelName(void);
 char *getPlayerIP(void);
 lms_t *lmsDetail(void);
 
