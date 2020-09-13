@@ -63,5 +63,6 @@ meminfo_t memInfo(void) {
     uint16_t MemAvailMiB; // -1 ~ no data
     double   MemAvailPct; // percent of total memory that is available
     */
-    ;
+    meminfo_t m = {};
+    return m;
 }
