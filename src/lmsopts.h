@@ -79,6 +79,7 @@ typedef struct MonitorAttrs {
     char lastTime[7];  // support 12H AM/PM
     char lastTemp[10]; // should be a double
     char lastLoad[10]; // should be a double
+    bool pauseDisplay;
     pthread_mutex_t update;
 } MonitorAttrs;
 
