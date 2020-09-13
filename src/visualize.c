@@ -31,7 +31,6 @@
 #include "display.h"
 #include "visdata.h"
 #include "visualize.h"
-////#include "hash.h"
 
 uint8_t cm = -1;
 bool vis_is_active = false;
