@@ -126,16 +126,21 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case 'n': arguments->lmsopt->playerName = arg; break;
 #ifdef __arm__
         case 'o':
-            sscanf(arg, "%d", &test);
-            if (test < 0 || test >= OLED_LAST_OLED ||
-                !strstr(oled_type_str[test], "128x64")) {
-                sprintf(err,
+            if (arg) {
+                sscanf(arg, "%d", &test);
+                if (test < 0 || test >= OLED_LAST_OLED ||
+                    !strstr(oled_type_str[test], "128x64")) {
+                    sprintf(
+                        err,
                         "you specified %d, it is an invalid 128x64 OLED type\n",
                         test);
-                printOledTypes();
-                argp_failure(state, 1, 0, err);
-            } else {
-                setOledType(test);
+                    printOledTypes();
+                    argp_failure(state, 1, 0, err);
+                } else {
+                    setOledType(test);
+                }
+            }else{
+                printf("WARNING: null argument? Sspecify OLED parameter as -o[number] or --oled=[number]\n");
             }
             break;
         case 'a':
