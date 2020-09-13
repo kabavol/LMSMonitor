@@ -72,17 +72,12 @@ bool storeTagData(tag_t *st, char *value) {
     return false;
 }
 
-int showme = 20;
 // decompose LMS jsonRPC response
 bool parseLMSResponse(char *jsonData) {
 
     jsmn_parser p;
     jsmntok_t jt[210];
 
-if(showme>0){
-printf("%s\n",jsonData);
-showme--;
-}
     jsmn_init(&p);
     int r = jsmn_parse(&p, jsonData, strlen(jsonData), jt,
                        sizeof(jt) / sizeof(jt[0]));
@@ -469,6 +464,7 @@ tag_t *initTags(void) {
     lmsTags[REPEAT].name = "playlist repeat";
     lmsTags[SAMPLERATE].name = "samplerate";
     lmsTags[SAMPLESIZE].name = "samplesize";
+    lmsTags[SERVER].name = "not_a_real_server_tag";
     lmsTags[SHUFFLE].name = "playlist shuffle";
     lmsTags[TIME].name = "time";
     lmsTags[TITLE].name = "title";
@@ -529,80 +525,91 @@ void *serverPolling(void *x_voidptr) {
 
     while (true) {
 
-        if ((lms.refresh) && (httpPost(lms.LMSHost, lms.LMSPort, uri, header,
-                                       lms.body, (char *)jsonData))) {
-            if (!isEmptyStr(jsonData)) {
-                if (parseLMSResponse(jsonData)) {
+        if (lms.refresh) {
 
-                    long pTime = getMinute(&lmsTags[TIME]);
-                    long dTime = getMinute(&lmsTags[DURATION]);
+            if (httpPost(lms.LMSHost, lms.LMSPort, uri, header, lms.body,
+                         (char *)jsonData)) {
+                if (!isEmptyStr(jsonData)) {
+                    if (parseLMSResponse(jsonData)) {
 
-                    if (pTime && dTime) {
-                        snprintf(buffer, MAXTAG_DATA, "%ld", (dTime - pTime));
-                        storeTagData(&lmsTags[REMAINING], buffer);
-                    }
+                        long pTime = getMinute(&lmsTags[TIME]);
+                        long dTime = getMinute(&lmsTags[DURATION]);
 
-                    // Fix Various Artists
-                    if (getTagBool(&lmsTags[COMPILATION])) {
-                        if (strcmp(variousArtist,
-                                   lmsTags[ALBUMARTIST].tagData) != 0) {
-                            strncpy(lmsTags[ALBUMARTIST].tagData, variousArtist,
-                                    MAXTAG_DATA);
+                        if (pTime && dTime) {
+                            snprintf(buffer, MAXTAG_DATA, "%ld",
+                                     (dTime - pTime));
+                            storeTagData(&lmsTags[REMAINING], buffer);
+                        }
+
+                        // Fix Various Artists
+                        if (getTagBool(&lmsTags[COMPILATION])) {
+                            if (strcmp(variousArtist,
+                                       lmsTags[ALBUMARTIST].tagData) != 0) {
+                                strncpy(lmsTags[ALBUMARTIST].tagData,
+                                        variousArtist, MAXTAG_DATA);
+                                lmsTags[ALBUMARTIST].valid = true;
+                                lmsTags[ALBUMARTIST].changed = true;
+                            }
+                        }
+
+                        if (isEmptyStr(lmsTags[ALBUMARTIST].tagData)) {
+                            if (isEmptyStr(lmsTags[CONDUCTOR].tagData)) {
+                                strncpy(lmsTags[ALBUMARTIST].tagData,
+                                        lmsTags[ARTIST].tagData, MAXTAG_DATA);
+                                lmsTags[ALBUMARTIST].valid = true;
+                                lmsTags[ALBUMARTIST].changed = true;
+                            } else {
+                                strncpy(lmsTags[ALBUMARTIST].tagData,
+                                        lmsTags[CONDUCTOR].tagData,
+                                        MAXTAG_DATA);
+                                lmsTags[ALBUMARTIST].valid = true;
+                                lmsTags[ALBUMARTIST].changed = true;
+                            }
+                        } else if (strcicmp(variousArtist,
+                                            lmsTags[ALBUMARTIST].tagData) ==
+                                   0) {
+                            if (!isEmptyStr(lmsTags[ARTIST].tagData)) {
+                                strncpy(lmsTags[ALBUMARTIST].tagData,
+                                        lmsTags[ARTIST].tagData, MAXTAG_DATA);
+                            } else if (!isEmptyStr(
+                                           lmsTags[PERFORMER].tagData)) {
+                                strncpy(lmsTags[ALBUMARTIST].tagData,
+                                        lmsTags[PERFORMER].tagData,
+                                        MAXTAG_DATA);
+                            }
                             lmsTags[ALBUMARTIST].valid = true;
                             lmsTags[ALBUMARTIST].changed = true;
                         }
-                    }
 
-                    if (isEmptyStr(lmsTags[ALBUMARTIST].tagData)) {
-                        if (isEmptyStr(lmsTags[CONDUCTOR].tagData)) {
-                            strncpy(lmsTags[ALBUMARTIST].tagData,
-                                    lmsTags[ARTIST].tagData, MAXTAG_DATA);
+                        if (isEmptyStr(lmsTags[ALBUMARTIST].tagData)) {
+                            if (!isEmptyStr(lmsTags[ARTIST].tagData)) {
+                                strncpy(lmsTags[ALBUMARTIST].tagData,
+                                        lmsTags[ARTIST].tagData, MAXTAG_DATA);
+                            } else if (!isEmptyStr(
+                                           lmsTags[PERFORMER].tagData)) {
+                                strncpy(lmsTags[ALBUMARTIST].tagData,
+                                        lmsTags[PERFORMER].tagData,
+                                        MAXTAG_DATA);
+                            }
                             lmsTags[ALBUMARTIST].valid = true;
                             lmsTags[ALBUMARTIST].changed = true;
-                        } else {
-                            strncpy(lmsTags[ALBUMARTIST].tagData,
-                                    lmsTags[CONDUCTOR].tagData, MAXTAG_DATA);
-                            lmsTags[ALBUMARTIST].valid = true;
-                            lmsTags[ALBUMARTIST].changed = true;
                         }
-                    } else if (strcicmp(variousArtist,
-                                        lmsTags[ALBUMARTIST].tagData) == 0) {
-                        if (!isEmptyStr(lmsTags[ARTIST].tagData)) {
-                            strncpy(lmsTags[ALBUMARTIST].tagData,
-                                    lmsTags[ARTIST].tagData, MAXTAG_DATA);
-                        } else if (!isEmptyStr(lmsTags[PERFORMER].tagData)) {
-                            strncpy(lmsTags[ALBUMARTIST].tagData,
-                                    lmsTags[PERFORMER].tagData, MAXTAG_DATA);
+                        // need valid checks - surely?
+                        if (isEmptyStr(lmsTags[ARTIST].tagData)) {
+                            if (!isEmptyStr(lmsTags[PERFORMER].tagData)) {
+                                strncpy(lmsTags[ARTIST].tagData,
+                                        lmsTags[PERFORMER].tagData,
+                                        MAXTAG_DATA);
+                            }
+                            lmsTags[ARTIST].valid = true;
+                            lmsTags[ARTIST].changed = true;
                         }
-                        lmsTags[ALBUMARTIST].valid = true;
-                        lmsTags[ALBUMARTIST].changed = true;
                     }
-
-                    if (isEmptyStr(lmsTags[ALBUMARTIST].tagData)) {
-                        if (!isEmptyStr(lmsTags[ARTIST].tagData)) {
-                            strncpy(lmsTags[ALBUMARTIST].tagData,
-                                    lmsTags[ARTIST].tagData, MAXTAG_DATA);
-                        } else if (!isEmptyStr(lmsTags[PERFORMER].tagData)) {
-                            strncpy(lmsTags[ALBUMARTIST].tagData,
-                                    lmsTags[PERFORMER].tagData, MAXTAG_DATA);
-                        }
-                        lmsTags[ALBUMARTIST].valid = true;
-                        lmsTags[ALBUMARTIST].changed = true;
-                    }
-                    // need valid checks - surely?
-                    if (isEmptyStr(lmsTags[ARTIST].tagData)) {
-                        if (!isEmptyStr(lmsTags[PERFORMER].tagData)) {
-                            strncpy(lmsTags[ARTIST].tagData,
-                                    lmsTags[PERFORMER].tagData, MAXTAG_DATA);
-                        }
-                        lmsTags[ARTIST].valid = true;
-                        lmsTags[ARTIST].changed = true;
-                    }
-
                 }
+                strcpy(lmsTags[SERVER].tagData,"Yes");
+            } else {
+                strcpy(lmsTags[SERVER].tagData,"No");
             }
-        } else {
-            lms.serverOnline = false;
         }
         refreshed();
         sleep(1);

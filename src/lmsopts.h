@@ -80,6 +80,7 @@ typedef struct MonitorAttrs {
     char lastTemp[10]; // should be a double
     char lastLoad[10]; // should be a double
     bool pauseDisplay;
+    char pauseMessage[128];
     pthread_mutex_t update;
 } MonitorAttrs;
 

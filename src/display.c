@@ -239,19 +239,19 @@ void displayBrightness(int bright, bool flip) {
 // will only be called if in "idle" - nothing playing mode
 // remediation for bogus flips and mirror exhibits
 int restartDisplay(struct MonitorAttrs dopts) {
-// needs a hard reset !!!!
+    // needs a hard reset !!!!
     scrollerPause();
     clearDisplay();
     closeDisplay();
     int ret = initDisplay(dopts);
-    if (EXIT_SUCCESS==ret)
+    if (EXIT_SUCCESS == ret)
         hazardSign(); // if all is well
     return ret;
 }
 
 int initDisplay(struct MonitorAttrs dopts, bool init = true) {
 
-    char stbl[BSIZE];
+    char stb[BSIZE];
     /*
 
 3 wire SPI
@@ -290,14 +290,14 @@ Pin	Symbole	Niveau	Function
 
     if ((OLED_ADAFRUIT_SPI_128x64 == oledType) ||
         (OLED_SH1106_SPI_128x64 == oledType)) {
-        sprintf(stbl, "%s %s\n", labelIt("OLED Mode", LABEL_WIDTH, "."), "SPI");
-        putMSG(stbl, LL_QUIET);
+        sprintf(stb, "%s %s\n", labelIt("OLED Mode", LABEL_WIDTH, "."), "SPI");
+        putMSG(stb, LL_QUIET);
         if (!display.init(dopts.spiDC, dopts.oledRST, dopts.spiCS, oledType)) {
             return EXIT_FAILURE;
         }
     } else {
-        sprintf(stbl, "%s %s\n", labelIt("OLED Mode", LABEL_WIDTH, "."), "IIC");
-        putMSG(stbl, LL_QUIET);
+        sprintf(stb, "%s %s\n", labelIt("OLED Mode", LABEL_WIDTH, "."), "IIC");
+        putMSG(stb, LL_QUIET);
         if (0 != oledAddress) {
             if (!display.init(dopts.oledRST, oledType, oledAddress)) {
                 return EXIT_FAILURE;
@@ -416,12 +416,12 @@ void putWeatherTemp(int x, int y, climacell_t *cc) {
     int w = elementLength(szh, szw);
     uint8_t dest[w];
     int start = 0;
-    uint16_t icon[4] = {0, 2, 3, 1};
+    int16_t icon[4] = {0, 2, 3, 1};
     size_t l = sizeof(icon) / sizeof(icon[0]);
     bool update = false;
     // paint "icon" and metric
-    for (uint16_t p = 0; p < l; p++) {
-        uint16_t py = (((icon[p] == 3) || (icon[p] == 1)) ? p - 1 : p);
+    for (int16_t p = 0; p < l; p++) {
+        int16_t py = (((icon[p] == 3) || (icon[p] == 1)) ? p - 1 : p);
         // hack to fix drawing temp, humidity, and then wind
         // will retool graphic and remove complexity later
         switch (icon[p]) {
@@ -1189,6 +1189,31 @@ void putAudio(audio_t audio, char *buff, bool full = true) {
         display.drawBitmap(maxXPixel() - (w + 2), 0, dest, w, w, WHITE);
     else
         display.drawBitmap((maxXPixel() / 2) - (w + 1), 0, dest, w, w, WHITE);
+}
+
+void putWarning(char *msg) {
+    softClear();
+    int16_t szw = 37;
+    int16_t szh = 34;
+    int16_t x = 3; //5 + szw + 3;
+    int16_t y = 5;
+    int16_t w = 128 - (x * 2);
+    int16_t h = 54;
+    display.fillRect(x, y, w, h, WHITE);
+    x += 2;
+    y += 2;
+    w -= 4;
+    h -= 4;
+    display.fillRect(x, y, w, h, BLACK);
+    display.drawBitmap(8, 14, hazard37x34, szw, szh, WHITE);
+    char stb[BSIZE];
+    strcpy(stb, msg);
+    if (0 == strlen(stb)) {
+        sprintf(stb, "Please Wait, Working...");
+    }
+    x += szw+11;
+    y += 9;
+    putTinyTextMultiMaxWidth(x, y, (int)((w - (x + 7)) / 7), 5, stb);
 }
 
 void scrollerFinalize(void) {

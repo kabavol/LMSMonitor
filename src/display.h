@@ -179,6 +179,7 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter,
 // audio attributes
 void putVolume(bool v, char *buff);
 void putAudio(audio_t audio, char *buff, bool full = true);
+void putWarning(char *msg);
 
 void putIFDetail(int icon, int xpos, int ypos, char *host);
 

@@ -7,7 +7,7 @@
  *	TODO:
  *          DONE - Automatic server discovery
  *          DONE - Get playerID automatically
- *          Reconnect to server (after bounce)
+ *          DONE - Reconnect to server (after bounce)
  *
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -164,6 +164,9 @@ pongem_t *game = NULL;
 void saverPage(void);
 // 12/24 clock page with date, if specified pi metrics displayed too
 void clockPage(void);
+// warning page - not hijacking hard reset
+// does not work without physical reset on GPIO
+void warningsPage(void);
 // weather details, 12/24 clock, date, and if specified pi metrics displayed too
 void clockWeatherPage(climacell_t *cc);
 // eggs anyone...
@@ -249,6 +252,16 @@ void setupPlayMode(void) {
     }
 }
 
+bool isPlayerOnline(void) {
+    bool ol = false;
+    return (strcicmp("1", tags[CONNECTED].tagData) == 0);
+}
+
+bool isServerOnline(void) {
+    bool ol = false;
+    return (strcicmp("Yes", tags[SERVER].tagData) == 0);
+}
+
 bool acquireOptLock(void) {
 
     char buff[128] = {0};
@@ -267,6 +280,37 @@ bool acquireOptLock(void) {
         }
     }
     return ret;
+}
+
+void onlineTests(size_t timer_id, void *user_data) {
+    if (glopt) {
+        char stb[BSIZE] = {0};
+        bool notruck = glopt->pauseDisplay;
+        if (!isServerOnline()) {
+            notruck = true;
+            strcpy(stb, "LMS Server is Offline");
+        } else if (!isPlayerOnline()) {
+            notruck = true;
+            sprintf(stb, "Player \"%s\" is Offline", glopt->playerName);
+        } else {
+            notruck = false;
+        }
+        // printf("[onlineTests] %d == %d ? %s\n", notruck, glopt->pauseDisplay, stb);
+        if (notruck != glopt->pauseDisplay) {
+            if (acquireOptLock()) {
+                if (notruck) {
+                    A1Attributes *aio;
+                    aio = ((struct A1Attributes *)user_data);
+                    if (aio->eeFXActive)
+                        aio->eeFXActive = false;
+                }
+                glopt->pauseDisplay = notruck;
+                strcpy(glopt->pauseMessage, stb);
+                pthread_mutex_unlock(&glopt->update);
+                resetDisplay(1);
+            }
+        }
+    }
 }
 
 void softClockRefresh(bool rc = true) {
@@ -638,6 +682,7 @@ int main(int argc, char *argv[]) {
         .spiCS = OLED_SPI_CS0,     // SPI CS - 0: CS0, 1: CS1
         .lastModes = {0, 0},
         .pauseDisplay = false,
+        .pauseMessage = {0},
 #endif
     };
 
@@ -871,12 +916,24 @@ int main(int argc, char *argv[]) {
 
     printFontMetrics();
 
+    // setup server/player online tests
+    size_t onlineTimer;
+    onlineTimer = timer_start(2000, onlineTests, TIMER_PERIODIC, (void *)&aio);
+
 #endif
 
-    lms_t *lms = lmsDetail();
     while (true) {
-        if (!lmsopt.pauseDisplay) {
 
+#ifdef __arm__
+        if (lmsopt.pauseDisplay) {
+            warningsPage();
+            refreshDisplay();
+            if (lmsopt.sleepTime < 1)
+                setSleepTime(SLEEP_TIME_LONG);
+            askRefresh();
+            dodelay(lmsopt.sleepTime);
+        } else {
+#endif
             if (isRefreshed()) {
 
 #ifdef __arm__
@@ -921,7 +978,7 @@ int main(int argc, char *argv[]) {
                     }
                     // Threaded logic in play - DO NOT MODIFY
 #else
-                    playingPage();
+                playingPage();
 #endif
                 } else {
 #ifdef __arm__
@@ -966,10 +1023,14 @@ int main(int argc, char *argv[]) {
                 setSleepTime(SLEEP_TIME_LONG);
             dodelay(lmsopt.sleepTime);
 #else
-            dodelay(SLEEP_TIME_LONG);
+        dodelay(SLEEP_TIME_LONG);
 #endif
+
+#ifdef __arm__
         } // not paused
-    }     // main loop
+#endif
+
+    } // main loop
 
     before_exit();
     return 0;
@@ -1229,6 +1290,16 @@ void OvaTimePage(A1Attributes *aio) {
     if (EE_VINYL == aio->eeMode) {
         toneArm(pct, aio->eeFXActive);
     }
+}
+
+void warningsPage(void) {
+    if (glopt->refreshLMS) {
+        resetDisplay(1);
+        softPlayRefresh(false);
+    }
+    softClockReset(false);
+    softVisualizeRefresh(true);
+    putWarning(glopt->pauseMessage);
 }
 
 void clockWeatherPage(climacell_t *cc) {

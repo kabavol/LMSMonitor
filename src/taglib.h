@@ -31,7 +31,6 @@ typedef struct player_t {
     char playerName[BSIZE];
     char playerIP[BSIZE];
     char playerID[BSIZE];
-    bool online;
 } player_t;
 
 typedef struct lms_t {
@@ -39,7 +38,6 @@ typedef struct lms_t {
     int activePlayer;
     player_t players[10]; // max 9 players - hopefully more than sufficient
     bool refresh;
-    bool serverOnline;
     uint16_t LMSPort;
     char LMSHost[128];
     char body[BSIZE];
@@ -77,6 +75,7 @@ typedef enum tagtypes_t {
     TRACKARTIST,
     REMOTE,
     TRACKID, // unique ID!!!
+    SERVER,  // not a real tag - just using infrastructure
     MAXTAG_TYPES
 } tagtypes_t;
 
