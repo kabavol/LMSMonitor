@@ -161,7 +161,7 @@ pcp bu
 
 The first two commands takecare of therequired extension and perform a backup
 
-Theremaining commands download the monitor archive to pCP, extracts the contents, set execution permissions, and finally backup.
+The remaining commands download the monitor archive to pCP, extracts the contents, set execution permissions, and finally backup.
 
 With that you can manually start the monitor specifying the visualization you'd like to display, vu, sa, pk, st, sm or rn
 
@@ -209,7 +209,7 @@ There are currently 7 easter egg modes:
 
 Specify -E[1-7] to display eggs on track playback
 </p>
-These are just fun display mode where visualization is not possible
+These are just a fun display mode where visualization is not possible.
 
 ## Weather
 <p>

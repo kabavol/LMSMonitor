@@ -2,6 +2,7 @@
     "files.associations": {
         "stdbool.h": "c",
         "cstdbool": "c",
-        "bitset": "cpp"
+        "bitset": "cpp",
+        "typeinfo": "c"
     }
 }
