@@ -213,16 +213,22 @@ These are just a fun display mode where visualization is not possible.
 
 ## Robust Communication
 <p>
-<img width="300" align="center" src="base/robust.png">
+<img width="800" src="base/robust.png" align="center" />
 
-The monitor is robust, the LMS server or/and the player being monitored can offline orhave its connection interrupted.
+The monitor is robust.
 
-I we do lose the connection the monitor will move to a sleep mode displaying the screens shown above.
+The LMS server or/and the player being monitored can offline or have the connection interrupted.
 
-As soon as the services comes back online we seamless handle the reconnect.
+If we do lose the connection the monitor will move to a sleep mode displaying variants of the the screens shown above.
+
+As soon as the services comes back online we seamlessly handle the reconnect.
+
+If a track were playing LMS automatically restarts the track.
+
+If we bounceds the server we get a green field server, starting afresh.  If a track had been playing one would have to manually reque the track.
 
 TODO: bounce with IP change on return.
-
+</p>
 ## Weather
 <p>
 <img width="130" align="right" src="base/weatherexample.jpg">
