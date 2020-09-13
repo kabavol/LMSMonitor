@@ -44,7 +44,7 @@
 
 #include "common.h"
 #include "sliminfo.h"
-#include "tagUtils.h"
+#include "taglib.h"
 #include <sys/time.h>
 #include <time.h>
 
@@ -80,12 +80,12 @@ struct climacell_t weather;
 
 char stbl[BSIZE];
 char remTime[9];
-tag *tags;
-//bool playing = false;
+
 #define playing isTrackPlaying()
 bool softlySoftly = false;
 
 // clang-format off
+tag_t *tags;
 tagtypes_t layout[LINE_NUM][3] = {
 	{MAXTAG_TYPES, MAXTAG_TYPES, MAXTAG_TYPES},
 	{COMPOSER,     ARTIST,       MAXTAG_TYPES},
@@ -168,7 +168,6 @@ void clockPage(void);
 void clockWeatherPage(climacell_t *cc);
 // eggs anyone...
 void cassettePage(A1Attributes *aio);
-void technicSL1200Page(A1Attributes *aio);
 // generic eggs - similar layout
 void OvaTimePage(A1Attributes *aio);
 
@@ -389,6 +388,36 @@ void setNagDone(bool refresh = true) {
     }
 }
 
+// remediation tack - restart display - avoid flips and mirroring
+void generalReset(size_t timer_id, void *user_data) {
+    return;
+    if ((!playing) && (glopt)) {
+
+        // argh, has to be a better way
+        struct MonitorAttrs clopt;
+        clopt.spiDC = glopt->spiDC;
+        clopt.oledRST = glopt->oledRST;
+        clopt.spiCS = glopt->spiCS;
+        clopt.flipDisplay = glopt->flipDisplay;
+        clopt.splash = false;
+        instrument(__LINE__, __FILE__, ">> generalReset (pe-lock)");
+        if (acquireOptLock()) {
+            instrument(__LINE__, __FILE__, ">> generalReset");
+            glopt->pauseDisplay = true;
+            if (EXIT_SUCCESS == restartDisplay(clopt)) {
+                brightnessEvent();
+            } else {
+                printf("restart exception\n");
+                exit(EXIT_FAILURE);
+            }
+            clearDisplay();
+            glopt->pauseDisplay = false;
+            pthread_mutex_unlock(&glopt->update);
+            instrument(__LINE__, __FILE__, "<< generalReset");
+        }
+    }
+}
+
 void toggleVisualize(size_t timer_id, void *user_data) {
 
     instrument(__LINE__, __FILE__, "toggleVisualize");
@@ -460,9 +489,6 @@ void eggFX(size_t timer_id, void *user_data) {
                         (const limits_t){.min = 9, .max = 20},
                         (const limits_t){.min = 21, .max = 30},
                         (const limits_t){.min = 21, .max = 30});
-                    if (getVerbose() >= LL_DEBUG) {
-                        printf("Check Worms Init ....: %d\n", balls->currseq);
-                    }
                 }
                 animateInching(balls);
                 break;
@@ -611,6 +637,7 @@ int main(int argc, char *argv[]) {
         .spiDC = OLED_SPI_DC,      // SPI DC
         .spiCS = OLED_SPI_CS0,     // SPI CS - 0: CS0, 1: CS1
         .lastModes = {0, 0},
+        .pauseDisplay = false,
 #endif
     };
 
@@ -666,10 +693,12 @@ int main(int argc, char *argv[]) {
     }
 
     // throw up splash if not nixed by caller
-    if (lmsopt.splash)
+    if (lmsopt.splash) {
         splashScreen();
-    else
+        lmsopt.splash = false; // once only!
+    } else {
         displayBrightness(MAX_BRIGHTNESS);
+    }
 
 #endif
 
@@ -684,6 +713,14 @@ int main(int argc, char *argv[]) {
     sprintf(stbl, "%s %s\n", labelIt("OLED Clock Font", LABEL_WIDTH, "."),
             oled_font_str[lmsopt.clockFont]);
     putMSG(stbl, LL_QUIET);
+
+    // systematic reset - addreess roll, flip and mirror exhibits
+    size_t resetdtimer;
+    timer_initialize();
+    resetdtimer = timer_start(60 * 6 * 60 * 1000, generalReset, TIMER_PERIODIC,
+                              (void *)NULL);
+    instrument(__LINE__, __FILE__, "generalReset active");
+
 #endif
     thatMAC = playerMAC();
 
@@ -836,82 +873,87 @@ int main(int argc, char *argv[]) {
 
 #endif
 
+    lms_t *lms = lmsDetail();
     while (true) {
-        if (isRefreshed()) {
+        if (!lmsopt.pauseDisplay) {
+
+            if (isRefreshed()) {
 
 #ifdef __arm__
-            instrument(__LINE__, __FILE__, "isRefreshed");
-            if (softlySoftly) {
-                softlySoftly = false;
-                softPlayReset();
-                softClockReset(false);
-                instrument(__LINE__, __FILE__, "Softly Softly <-");
-                clearDisplay(); // refreshDisplay();
-            }
+
+                instrument(__LINE__, __FILE__, "isRefreshed");
+                if (softlySoftly) {
+                    softlySoftly = false;
+                    softPlayReset();
+                    softClockReset(false);
+                    instrument(__LINE__, __FILE__, "Softly Softly <-");
+                    clearDisplay(); // refreshDisplay();
+                }
 
 #endif
-            if (isTrackPlaying()) {
+                if (isTrackPlaying()) {
 
 #ifdef __arm__
 
-                instrument(__LINE__, __FILE__, "isPlaying");
+                    instrument(__LINE__, __FILE__, "isPlaying");
 
-                // Threaded logic in play - DO NOT MODIFY
-                if (!isVisualizeActive()) {
-                    switch (aio.eeMode) {
-                        case EE_NONE:
-                            clearScrollable(A1SCROLLER);
-                            playingPage();
-                            break;
-                        case EE_CASSETTE: cassettePage(&aio); break;
-                        case EE_VINYL:
-                        case EE_REEL2REEL:
-                        case EE_VCR:
-                        case EE_RADIO:
-                        case EE_TVTIME:
-                        case EE_PCTIME: OvaTimePage(&aio); break;
+                    // Threaded logic in play - DO NOT MODIFY
+                    if (!isVisualizeActive()) {
+                        switch (aio.eeMode) {
+                            case EE_NONE:
+                                clearScrollable(A1SCROLLER);
+                                playingPage();
+                                break;
+                            case EE_CASSETTE: cassettePage(&aio); break;
+                            case EE_VINYL:
+                            case EE_REEL2REEL:
+                            case EE_VCR:
+                            case EE_RADIO:
+                            case EE_TVTIME:
+                            case EE_PCTIME: OvaTimePage(&aio); break;
+                        }
+                        strcpy(remTime, "XXXXX");
+                        baselineClimacell(&weather, true);
+                    } else {
+                        if (strncmp(getVisMode(), VMODE_A1, 2) == 0) {
+                            allInOnePage(&aio);
+                        }
+                    }
+                    // Threaded logic in play - DO NOT MODIFY
+#else
+                    playingPage();
+#endif
+                } else {
+#ifdef __arm__
+                    instrument(__LINE__, __FILE__, "activeScroller test");
+                    if (activeScroller()) {
+                        scrollerPause();
                     }
                     strcpy(remTime, "XXXXX");
-                    baselineClimacell(&weather, true);
-                } else {
-                    if (strncmp(getVisMode(), VMODE_A1, 2) == 0) {
-                        allInOnePage(&aio);
-                    }
-                }
-                // Threaded logic in play - DO NOT MODIFY
-#else
-                playingPage();
-#endif
-            } else {
-#ifdef __arm__
-                instrument(__LINE__, __FILE__, "activeScroller test");
-                if (activeScroller()) {
-                    scrollerPause();
-                }
-                strcpy(remTime, "XXXXX");
-                instrument(__LINE__, __FILE__, "display clock test");
-                if (MON_CLOCK_OFF != lmsopt.clockMode) {
-                    if (aio.eeFXActive)
-                        aio.eeFXActive = false;
-                    aio.compound[0] = {0};
-                    if (weather.active) {
-                        clockWeatherPage(&weather);
+                    instrument(__LINE__, __FILE__, "display clock test");
+                    if (MON_CLOCK_OFF != lmsopt.clockMode) {
+                        if (aio.eeFXActive)
+                            aio.eeFXActive = false;
+                        aio.compound[0] = {0};
+                        if (weather.active) {
+                            clockWeatherPage(&weather);
+                        } else {
+                            clockPage();
+                        }
+
                     } else {
-                        clockPage();
+                        saverPage();
                     }
-                } else {
-                    saverPage();
-                }
 #endif
-            } // playing
+                } // playing
 
-            askRefresh();
+                askRefresh();
 
-        } // isRefreshed
+            } // isRefreshed
 
 #ifdef __arm__
-        if (lmsopt.nagDone)
-            refreshDisplay();
+            if (lmsopt.nagDone)
+                refreshDisplay();
 #endif
 
 #ifdef __arm__
@@ -920,14 +962,14 @@ int main(int argc, char *argv[]) {
 
 #ifdef __arm__
 
-        if (lmsopt.sleepTime < 1)
-            setSleepTime(SLEEP_TIME_LONG);
-        dodelay(lmsopt.sleepTime);
+            if (lmsopt.sleepTime < 1)
+                setSleepTime(SLEEP_TIME_LONG);
+            dodelay(lmsopt.sleepTime);
 #else
-        dodelay(SLEEP_TIME_LONG);
+            dodelay(SLEEP_TIME_LONG);
 #endif
-
-    } // main loop
+        } // not paused
+    }     // main loop
 
     before_exit();
     return 0;
@@ -955,7 +997,6 @@ void saverPage(void) {
 void clockPage(void) {
 
     char buff[255];
-
     // need to modify for 24/12 support
     DrawTime dt = {.charWidth = 25,
                    .charHeight = 44,
@@ -1024,8 +1065,8 @@ void OvaTimePage(A1Attributes *aio) {
     };
 
     char buff[BSIZE] = {0};
-    char artist[255] = {0};
-    char title[255] = {0};
+    char artist[MAXTAG_DATA] = {0};
+    char title[MAXTAG_DATA] = {0};
 
     if (glopt->refreshLMS) {
         resetDisplay(1);
@@ -1258,8 +1299,8 @@ void cassettePage(A1Attributes *aio) {
     };
 
     char buff[BSIZE] = {0};
-    char artist[255] = {0};
-    char title[255] = {0};
+    char artist[MAXTAG_DATA] = {0};
+    char title[MAXTAG_DATA] = {0};
 
     if (glopt->refreshLMS) {
         resetDisplay(1);
@@ -1366,8 +1407,8 @@ void allInOnePage(A1Attributes *aio) {
     };
 
     char buff[BSIZE] = {0};
-    char artist[255] = {0};
-    char title[255] = {0};
+    char artist[MAXTAG_DATA] = {0};
+    char title[MAXTAG_DATA] = {0};
 
     DrawTime dt = {.charWidth = 12,
                    .charHeight = 17,

@@ -33,7 +33,6 @@
 #define A1LINE_NUM 2
 #define A1SCROLLER 5
 
-bool isPlaying(void);
 bool lockOptions(void);
 bool acquireOptLock(void);
 
