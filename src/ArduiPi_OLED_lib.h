@@ -9,7 +9,10 @@
 
 07/26/2013  Charles-Henri Hallard (http://hallard.me)
             Done generic library for different OLED type
-            
+
+09/08/2020  Stuart Hunter (https://github.com/shunte88)
+            NHD1322 support
+
  Written by Charles-Henri Hallard for Fun .
  All text above must be included in any redistribution.
             
@@ -44,16 +47,18 @@
 #define SH1106_I2C_ADDRESS   0x3C 
 
 // Oled supported display
-#define OLED_ADAFRUIT_SPI_128x32  0
-#define OLED_ADAFRUIT_SPI_128x64  1
-#define OLED_ADAFRUIT_I2C_128x32  2
-#define OLED_ADAFRUIT_I2C_128x64  3
-#define OLED_SEEED_I2C_128x64     4
-#define OLED_SEEED_I2C_96x96      5
-#define OLED_SH1106_I2C_128x64    6
-#define OLED_SH1106_SPI_128x64    7
+#define OLED_ADAFRUIT_SPI_128x32 0
+#define OLED_ADAFRUIT_SPI_128x64 1
+#define OLED_ADAFRUIT_I2C_128x32 2
+#define OLED_ADAFRUIT_I2C_128x64 3
+#define OLED_SEEED_I2C_128x64 4
+#define OLED_SEEED_I2C_96x96 5
+#define OLED_SH1106_I2C_128x64 6
+#define OLED_SH1106_SPI_128x64 7
+#define OLED_NHD1322_GS_SPI_256x64 8
+#define OLED_NHD1322_MONO_SPI_256x64 9
 
-#define OLED_LAST_OLED            8 /* always last type, used in code to end array */
+#define OLED_LAST_OLED 10 /* always last type, used in code to end array */
 
 static const char * oled_type_str[] = {
     "Adafruit SPI 128x32",
@@ -64,6 +69,8 @@ static const char * oled_type_str[] = {
     "Seeed I2C 96x96",
     "SH1106 I2C 128x64",
     "SH1106 SPI 128x64"
+    "NHD1322 Grayscale SPI 256x64"
+    "NHD1322 Monochrome SPI 256x64"
 };
 
 // Arduino Compatible type

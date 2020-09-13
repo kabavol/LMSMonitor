@@ -133,7 +133,18 @@ All text above, and the splash screen must be included in any redistribution
 #define SSD1327_Set_Column_Address  0x15
 #define SSD1327_Set_Row_Address     0x75
 
-#define SSD1327_Set_Row_Address     0x75
+/*=========================================================================
+    SSD1322 Displays
+    -----------------------------------------------------------------------
+    The driver is used for 256x64 display (gray scale)
+=========================================================================*/
+#define SSD1322_Set_Display_Start_Line  0xA1
+#define SSD1322_Set_Display_Offset      0xA2
+#define SSD1322_Normal_Display      0xA4
+#define SSD1322_Set_Display_Clock_Div 0xB3
+#define SSD1322_Set_Command_Lock    0xFD
+#define SSD1322_Set_Column_Address  0x15
+#define SSD1322_Set_Row_Address     0x75
 
 /*=========================================================================
     SH1106 Displays

@@ -256,6 +256,8 @@ bool ArduiPi_OLED::oled_is_spi_proto(uint8_t OLED_TYPE)
     case OLED_ADAFRUIT_SPI_128x32:
     case OLED_ADAFRUIT_SPI_128x64:
     case OLED_SH1106_SPI_128x64:
+    case OLED_NHD1322_GS_SPI_256x64:
+    case OLED_NHD1322_MONO_SPI_256x64:
       return true;
     break;
   }
@@ -307,6 +309,15 @@ bool ArduiPi_OLED::select_oled(uint8_t OLED_TYPE, int8_t i2c_addr)
       oled_width  = 96;
       oled_height = 96;
       _i2c_addr = SEEED_I2C_ADDRESS ;
+    break;
+
+    case OLED_NHD1322_GS_SPI_256x64:
+      oled_width  = 256;
+      oled_height = 64;
+    break;
+    case OLED_NHD1322_MONO_SPI_256x64:
+      oled_width  = 256;
+      oled_height = 64;
     break;
     
     case OLED_SH1106_I2C_128x64:
@@ -374,7 +385,10 @@ bool ArduiPi_OLED::init(int8_t DC, int8_t RST, int8_t CS, uint8_t OLED_TYPE)
   bcm2835_spi_chipSelect(cs);
 
   // 16 MHz SPI bus, but Worked at 62 MHz also  
-  bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_16); 
+  //bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_16); 
+  
+  // SSD1306 has a max clock speed of 10MHz. On RPi4 core freq varies between 200-500MHz
+  bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_64);
 
   // Set the pin that will control DC as output
   bcm2835_gpio_fsel(dc, BCM2835_GPIO_FSEL_OUTP);
