@@ -24,44 +24,21 @@
 
 #define MAXTAG_DATA 255
 
+#include "common.h"
+#include "taglib.h"
 #include <stdbool.h>
-typedef struct Tag {
-    const char *name;
-    const char *displayName;
-    char *tagData;
-    bool valid;
-    bool changed;
-} tag;
-
-typedef enum {
-    ARTIST,
-    ALBUMARTIST,
-    COMPOSER,
-    CONDUCTOR,
-    ALBUM,
-    TITLE,
-    TIME,
-    DURATION,
-    REMAINING,
-    VOLUME,
-    COMPILATION,
-    YEAR,
-    SAMPLESIZE,
-    SAMPLERATE,
-    MODE,
-    PERFORMER,
-    REPEAT,
-    SHUFFLE,
-    MAXTAG_TYPES
-} tagtypes_t;
+#include <stdint.h>
 
 void closeSliminfo(void);
-tag *initSliminfo(char *playerName);
-char *playerMAC(void);
-char *getPlayerIP(void);
+tag_t *initSliminfo(char *playerName);
 void error(const char *msg);
 void askRefresh(void);
 bool isRefreshed(void);
+bool playerConnected(void);
+
+char *playerMAC(void);
+char *getPlayerIP(void);
+lms_t *lmsDetail(void);
 
 void sliminfoFinalize(void);
 

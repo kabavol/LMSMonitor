@@ -2,10 +2,7 @@
  *	sliminfo.c
  *
  *	(c) 2015 László TÓTH
- *	(c) 2020 Stuart Hunter
- *
- *	TODO:	Reconnect to server - server bounce!
- *	TODO:	Weather service
+ *	(c) 2020 Stuart Hunter - top-down rewrite
  *
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -36,32 +33,270 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "basehttp.h"
 #include "common.h"
 #include "sliminfo.h"
-#include "tagUtils.h"
 
-int LMSPort;
-char *LMSHost = NULL;
+#ifndef JSMN_STATIC
+#define JSMN_STATIC
+#endif
+#include "jsmn.h"
 
-char playerIP[BSIZE] = {0};
-char playerID[BSIZE] = {0};
-char query[BSIZE] = {0};
-char stb[BSIZE];
+lms_t lms;
+tag_t lmsTags[MAXTAG_TYPES];
 
-int sockFD = 0;
-struct sockaddr_in serv_addr;
-
-tag tagStore[MAXTAG_TYPES];
-bool refreshRequ;
 pthread_t sliminfoThread;
 
-char *getPlayerIP(void) { return (char *)playerIP; }
+void refreshed(void) { lms.refresh = false; }
 
-int discoverPlayer(char *playerName) {
+// debug usage only
+const char *whatsitJson(int typ) {
+    switch (typ) {
+        case JSMN_UNDEFINED: return "Undef"; break;
+        case JSMN_OBJECT: return "Obj"; break;
+        case JSMN_ARRAY: return "Array"; break;
+        case JSMN_STRING: return "String"; break;
+        case JSMN_PRIMITIVE: return "Primitive"; break; // number bool etc...
+        default: return "Unk?";
+    }
+    return "Unk?";
+}
 
-    char qBuffer[BSIZE];
-    char aBuffer[BSIZE];
-    int bytes;
+bool storeTagData(tag_t *st, char *value) {
+    if (0 != strcicmp(st->tagData, value)) {
+        strcpy(st->tagData, value);
+        st->changed = true;
+        st->valid = true;
+        return true;
+    }
+    return false;
+}
+
+int showme = 20;
+// decompose LMS jsonRPC response
+bool parseLMSResponse(char *jsonData) {
+
+    jsmn_parser p;
+    jsmntok_t jt[210];
+
+if(showme>0){
+printf("%s\n",jsonData);
+showme--;
+}
+    jsmn_init(&p);
+    int r = jsmn_parse(&p, jsonData, strlen(jsonData), jt,
+                       sizeof(jt) / sizeof(jt[0]));
+    if (r < 0) {
+        printf("Failed to parse JSON: %d\n", r);
+        return false;
+    }
+
+    if (r < 1 || jt[0].type != JSMN_OBJECT) {
+        printf("Object expected, %d %s?\n", r, whatsitJson(jt[0].type));
+        return false;
+    } else {
+
+        for (int i = 1; i < r; i++) {
+
+            jsmntok_t tok = jt[i];
+            uint16_t lenk = tok.end - tok.start;
+            char keyStr[lenk + 1];
+            memcpy(keyStr, &jsonData[tok.start], lenk);
+            keyStr[lenk] = '\0';
+            tok = jt[i + 1];
+            uint16_t lenv = tok.end - tok.start;
+            char valStr[lenv + 1];
+            memcpy(valStr, &jsonData[tok.start], lenv);
+            valStr[lenv] = '\0';
+
+            /*if (strncmp("result", keyStr, 6) == 0) {
+                i++;
+            } else*/
+            if (0 ==
+                strncmp(lmsTags[VOLUME].name, keyStr, lmsTags[VOLUME].keyLen)) {
+                if (storeTagData(&lmsTags[VOLUME], valStr))
+                    printf("LMS:Volume ..........: %d\n", atoi(valStr));
+            } else if (0 == strncmp(lmsTags[CONNECTED].name, keyStr,
+                                    lmsTags[CONNECTED].keyLen)) {
+                if (storeTagData(&lmsTags[CONNECTED], valStr))
+                    printf("LMS:Player Online ...: %s\n",
+                           (strncmp("0", valStr, 1) == 0) ? "No" : "Yes");
+            } else if (0 == strncmp(lmsTags[SAMPLERATE].name, keyStr,
+                                    lmsTags[SAMPLERATE].keyLen)) {
+                if (storeTagData(&lmsTags[SAMPLERATE], valStr))
+                    printf("LMS:Sample Rate .....: %2.1f\n",
+                           atof(valStr) / 1000);
+            } else if (0 == strncmp(lmsTags[SAMPLESIZE].name, keyStr,
+                                    lmsTags[SAMPLESIZE].keyLen)) {
+                if (storeTagData(&lmsTags[SAMPLESIZE], valStr))
+                    printf("LMS:Sample Size .....: %s\n", valStr);
+            } else if (0 == strncmp(lmsTags[ALBUMARTIST].name, keyStr,
+                                    lmsTags[ALBUMARTIST].keyLen)) {
+                if (storeTagData(&lmsTags[ALBUMARTIST], valStr))
+                    printf("LMS:Album Artist ....: %s\n", valStr);
+            } else if (0 == strncmp(lmsTags[ALBUM].name, keyStr,
+                                    lmsTags[ALBUM].keyLen)) {
+                if (storeTagData(&lmsTags[ALBUM], valStr))
+                    printf("LMS:Album ...........: %s\n", valStr);
+            } else if (0 == strncmp(lmsTags[COMPILATION].name, keyStr,
+                                    lmsTags[COMPILATION].keyLen)) {
+                if (storeTagData(&lmsTags[COMPILATION], valStr))
+                    printf("LMS:Compilation .....: %s\n",
+                           (strncmp("0", valStr, 1) == 0) ? "No" : "Yes");
+            } else if (0 == strncmp(lmsTags[TRACKNUM].name, keyStr,
+                                    lmsTags[TRACKNUM].keyLen)) {
+                if (storeTagData(&lmsTags[TRACKNUM], valStr))
+                    printf("LMS:Track Number ....: %s\n", valStr);
+            } else if (0 == strncmp(lmsTags[TRACKID].name, keyStr,
+                                    lmsTags[TRACKID].keyLen)) {
+                if (0 != strcmp("1", valStr))
+                    if (storeTagData(&lmsTags[TRACKID], valStr))
+                        printf("LMS:Track ID ........: %s\n", valStr);
+            } else if (0 == strncmp(lmsTags[TITLE].name, keyStr,
+                                    lmsTags[TITLE].keyLen)) {
+                if (storeTagData(&lmsTags[TITLE], valStr))
+                    printf("LMS:Title ...........: %s\n", valStr);
+            } else if (0 == strncmp(lmsTags[YEAR].name, keyStr,
+                                    lmsTags[YEAR].keyLen)) {
+                if (storeTagData(&lmsTags[YEAR], valStr))
+                    printf("LMS:Year ............: %s\n", valStr);
+            } else if (0 == strncmp(lmsTags[REMOTE].name, keyStr,
+                                    lmsTags[REMOTE].keyLen)) {
+                if (storeTagData(&lmsTags[REMOTE], valStr))
+                    printf("LMS:Remote ..........: %s\n",
+                           (0 == strncmp("0", valStr, 1)) ? "No" : "Yes");
+            } else if (0 == strncmp(lmsTags[ARTIST].name, keyStr,
+                                    lmsTags[ARTIST].keyLen)) {
+                if (storeTagData(&lmsTags[ARTIST], valStr))
+                    printf("LMS:Artist ..........: %s\n", valStr);
+            } else if (0 == strncmp(lmsTags[TRACKARTIST].name, keyStr,
+                                    lmsTags[TRACKARTIST].keyLen)) {
+                if (storeTagData(&lmsTags[TRACKARTIST], valStr))
+                    printf("LMS:Track Artist(s) .: %s\n", valStr);
+            } else if (0 == strncmp(lmsTags[DURATION].name, keyStr,
+                                    lmsTags[DURATION].keyLen)) {
+                if (storeTagData(&lmsTags[DURATION], valStr))
+                    printf("LMS:Duration ........: %s\n", valStr);
+            } else if (0 == strncmp(lmsTags[COMPOSER].name, keyStr,
+                                    lmsTags[COMPOSER].keyLen)) {
+                if (storeTagData(&lmsTags[COMPOSER], valStr))
+                    printf("LMS:Composer ........: %s\n", valStr);
+            } else if (0 == strncmp(lmsTags[CONDUCTOR].name, keyStr,
+                                    lmsTags[CONDUCTOR].keyLen)) {
+                if (storeTagData(&lmsTags[CONDUCTOR], valStr))
+                    printf("LMS:Conductor .......: %s\n", valStr);
+            } else if (0 == strncmp(lmsTags[PERFORMER].name, keyStr,
+                                    lmsTags[PERFORMER].keyLen)) {
+                if (storeTagData(&lmsTags[PERFORMER], valStr))
+                    printf("LMS:Conductor .......: %s\n", valStr);
+            } else if (0 == strncmp(lmsTags[TIME].name, keyStr,
+                                    lmsTags[TIME].keyLen)) {
+                if (storeTagData(&lmsTags[TIME], valStr))
+                    printf("LMS:Time Played .....: %s\n", valStr);
+            } else if (0 == strncmp(lmsTags[REPEAT].name, keyStr,
+                                    lmsTags[REPEAT].keyLen)) {
+                if (storeTagData(&lmsTags[REPEAT], valStr))
+                    printf("LMS:Repeat ..........: %s\n", valStr);
+            } else if (0 == strncmp(lmsTags[SHUFFLE].name, keyStr,
+                                    lmsTags[SHUFFLE].keyLen)) {
+                if (storeTagData(&lmsTags[SHUFFLE], valStr))
+                    printf("LMS:Shuffle .........: %s\n", valStr);
+            } else if (0 == strncmp(lmsTags[MODE].name, keyStr,
+                                    lmsTags[MODE].keyLen)) {
+                if (storeTagData(&lmsTags[MODE], valStr))
+                    printf("LMS:Playing .........: %s\n",
+                           (0 == strncmp("play", valStr, 4)) ? "Yes" : "No");
+            }
+        }
+    }
+
+    return true;
+}
+
+// decompose LMS jsonRPC response
+bool lookupLMSPlayer(char *jsonData, char *checkPName) {
+
+    jsmn_parser p;
+    jsmntok_t jt[120];
+    jsmn_init(&p);
+    int r = jsmn_parse(&p, jsonData, strlen(jsonData), jt,
+                       sizeof(jt) / sizeof(jt[0]));
+
+    if (r < 0) {
+        printf("Failed to parse JSON, check adequate tokens allocated: %d\n",
+               r);
+        return false;
+    }
+
+    int plk = 0;
+    lms.activePlayer = -1;
+    if (r < 1 || jt[0].type != JSMN_OBJECT) {
+        printf("Object expected, %d %s?\n", r, whatsitJson(jt[0].type));
+        return false;
+    } else {
+
+        int playerAttribs = 3;
+        for (int i = 1; (i < r); i++) {
+
+            jsmntok_t tok = jt[i];
+
+            if (0 == playerAttribs) {
+                playerAttribs = 3;
+                plk++;
+            }
+
+            uint16_t lenk = tok.end - tok.start;
+            char keyStr[lenk + 1];
+            memcpy(keyStr, &jsonData[tok.start], lenk);
+            keyStr[lenk] = '\0';
+            tok = jt[i + 1];
+            uint16_t lenv = tok.end - tok.start;
+            char valStr[lenv + 1];
+            memcpy(valStr, &jsonData[tok.start], lenv);
+            valStr[lenv] = '\0';
+
+            if (strncmp("result", keyStr, 6) == 0) {
+                i++;
+            } else if (strncmp("count", keyStr, 5) == 0) {
+                lms.playerCount = atoi(valStr); // capture, done use yet
+            } else if (strncmp("players_loop", keyStr, 12) == 0) {
+                plk = 0;
+                playerAttribs = 3;
+            } else if (strncmp("playerid", keyStr, 8) == 0) {
+                strcpy(lms.players[plk].playerID, valStr);
+                playerAttribs--;
+            } else if (strncmp("ip", keyStr, 2) == 0) {
+                char *colon;
+                if ((colon = strstr(valStr, ":")) != NULL) {
+                    int cpos;
+                    cpos = colon - valStr;
+                    valStr[cpos] = '\0';
+                }
+                strcpy(lms.players[plk].playerIP, valStr);
+                playerAttribs--;
+            } else if (strncmp("name", keyStr, 4) == 0) {
+                strcpy(lms.players[plk].playerName, valStr);
+                if (strcicmp(lms.players[plk].playerName, checkPName) == 0) {
+                    lms.activePlayer = plk;
+                }
+                playerAttribs--;
+            }
+        }
+    }
+
+    int v = getVerbose();
+    for (int p = 0; p < plk; p++) {
+        if ((0 != strlen(lms.players[p].playerName)) && (v > LL_INFO)) {
+            printf("%s%02d %20s %17s %s\n", (p == lms.activePlayer) ? "*" : " ",
+                   p, lms.players[p].playerName, lms.players[p].playerID,
+                   lms.players[p].playerIP);
+        }
+    }
+
+    return (lms.activePlayer != -1);
+}
+
+bool discoverPlayer(char *playerName) {
 
     if (playerName != NULL) {
 
@@ -69,76 +304,45 @@ int discoverPlayer(char *playerName) {
             abortMonitor("ERROR player name too long !!!");
         }
 
-        // submitting the player name no longer returns the correct ID and IP
-        // timing is such that this coincided with the 6.0.0 upgrade but not 100%
-        // retool: query players long form and loop over to find the one we want
-        sprintf(qBuffer, "players 0 99\n");
-        if (write(sockFD, qBuffer, strlen(qBuffer)) < 0) {
-            abortMonitor("ERROR writing to socket!");
-        }
-        if ((bytes = read(sockFD, aBuffer, BSIZE - 1)) < 0) {
-            abortMonitor("ERROR reading from socket!");
-        }
-        aBuffer[bytes] = 0;
+        char uri[BSIZE] = "/jsonrpc.js";
+        char jsonData[BSIZE];
 
-        int playerCount = -1;
-        sscanf(aBuffer, "%*[^A]A%d[^ ]", &playerCount);
-        if (playerCount > 0) // we have players, find our guy
-        {
-            sprintf(qBuffer, "3A%s ", playerName);
-            if (strncmp(aBuffer, qBuffer, strlen(qBuffer)) == 0) {
-                sprintf(
-                    aBuffer,
-                    "Player specified \"%s\" not found, supply corrected name!",
-                    playerName);
-                abortMonitor(aBuffer);
+        char header[BSIZE] = {0};
+        char body[BSIZE];
+
+        strcpy(header, "\r\nAccept: application/json\r\n"
+                       "Content-Type: application/json\r\n"
+                       "Connection: close");
+        // get the players collection
+        strcpy(body, "{\"id\":1,\"method\":\"slim.request\",\"params\":[\"-\",["
+                     "\"players\",\"0\",\"99\"]]}");
+
+        if (httpPost(lms.LMSHost, lms.LMSPort, uri, header, body,
+                     (char *)jsonData)) {
+            if (!isEmptyStr(jsonData)) {
+                if (!lookupLMSPlayer(jsonData, playerName))
+                    return false;
             }
-            sprintf(stb, "%s %d\n", labelIt("Player Count", LABEL_WIDTH, "."),
-                    playerCount);
-            putMSG(stb, LL_INFO);
-            char pind[15] = "playerindex%3A";
-            multi_tok_t mt = multi_tok_init();
-            char *player = multi_tok(aBuffer, &mt, pind);
-            while (player != NULL) {
-                if ((strstr(player, qBuffer) != 0) ||
-                    (strstr(replaceStr(player, " ", "%20"),
-                            replaceStr(qBuffer, " ", "%20")) != 0)) {
-
-                    if (getTag("playerid", player, aBuffer, MAXTAG_DATA))
-                        strcpy(playerID, aBuffer);
-                    if (getTag("ip", player, aBuffer, MAXTAG_DATA)) {
-                        int tl;
-                        char *pport;
-                        if ((pport = strstr(aBuffer, ":")) != NULL) {
-                            tl = pport - aBuffer;
-                        } else {
-                            tl = strlen(aBuffer);
-                        }
-                        strncpy(playerIP, aBuffer, tl);
-                    }
-                    break;
-                }
-                player = multi_tok(NULL, &mt, pind);
-            }
+        } else {
+            return false;
         }
-
-    } else {
-        return -1;
+        char stb[BSIZE];
+        sprintf(stb, "%s %s\n%s %s\n%s %s\n",
+                labelIt("Player Name", LABEL_WIDTH, "."),
+                lms.players[lms.activePlayer].playerName,
+                labelIt("Player ID", LABEL_WIDTH, "."),
+                lms.players[lms.activePlayer].playerID,
+                labelIt("Player IP", LABEL_WIDTH, "."),
+                lms.players[lms.activePlayer].playerIP);
+        putMSG(stb, LL_INFO);
     }
 
-    sprintf(stb, "%s %s\n%s %s\n%s %s\n",
-            labelIt("Player Name", LABEL_WIDTH, "."), playerName,
-            labelIt("Player ID", LABEL_WIDTH, "."), playerID,
-            labelIt("Player IP", LABEL_WIDTH, "."), playerIP);
-    putMSG(stb, LL_INFO);
-
-    return 0;
+    return true;
 }
 
-int setStaticServer(void) {
-    LMSPort = 9090;
-    LMSHost = NULL; // autodiscovery
-    return 0;
+void setStaticServer(void) {
+    lms.LMSPort = 9090;
+    lms.LMSHost[0] = '\0'; // autodiscovery
 }
 
 /*
@@ -155,17 +359,18 @@ in_addr_t getServerAddress(void) {
     char *buf;
     struct pollfd pollinfo;
 
-    if (LMSHost != NULL) {
+    if (strlen(lms.LMSHost) != 0) {
         // Static server address
         memset(&s, 0, sizeof(s));
-        inet_pton(AF_INET, LMSHost, &(s.sin_addr));
+        inet_pton(AF_INET, (char *)lms.LMSHost, &(s.sin_addr));
 
     } else {
+
         // Discover server address
-        int disc_sock = socket(AF_INET, SOCK_DGRAM, 0);
+        int dscvrLMS = socket(AF_INET, SOCK_DGRAM, 0);
 
         socklen_t enable = 1;
-        setsockopt(disc_sock, SOL_SOCKET, SO_BROADCAST, (const void *)&enable,
+        setsockopt(dscvrLMS, SOL_SOCKET, SO_BROADCAST, (const void *)&enable,
                    sizeof(enable));
 
         buf = (char *)"e";
@@ -175,14 +380,15 @@ in_addr_t getServerAddress(void) {
         d.sin_port = htons(PORT);
         d.sin_addr.s_addr = htonl(INADDR_BROADCAST);
 
-        pollinfo.fd = disc_sock;
+        pollinfo.fd = dscvrLMS;
         pollinfo.events = POLLIN;
 
         do {
-            putMSG("Sending LMS Discovery ...\n", LL_INFO);
+
+            putMSG("LMS Discovery ........\n", LL_INFO);
             memset(&s, 0, sizeof(s));
 
-            if (sendto(disc_sock, buf, 1, 0, (struct sockaddr *)&d, sizeof(d)) <
+            if (sendto(dscvrLMS, buf, 1, 0, (struct sockaddr *)&d, sizeof(d)) <
                 0) {
                 putMSG("Error sending disovery\n", LL_INFO);
             }
@@ -190,212 +396,241 @@ in_addr_t getServerAddress(void) {
             if (poll(&pollinfo, 1, 5000) == 1) {
                 char readbuf[10];
                 socklen_t slen = sizeof(s);
-                recvfrom(disc_sock, readbuf, 10, 0, (struct sockaddr *)&s,
+                recvfrom(dscvrLMS, readbuf, 10, 0, (struct sockaddr *)&s,
                          &slen);
-                sprintf(stb, "LMS (Server) responded:\n%s %s:%d\n",
-                        labelIt("Server IP", LABEL_WIDTH, "."),
-                        inet_ntoa(s.sin_addr), ntohs(s.sin_port));
+                strcpy(lms.LMSHost, inet_ntoa(s.sin_addr));
+                char stb[BSIZE];
+                sprintf(stb, "LMS server response .:\n%s %s:%d\n",
+                        labelIt("Server IP", LABEL_WIDTH, "."), lms.LMSHost,
+                        ntohs(s.sin_port));
                 putMSG(stb, LL_INFO);
             }
 
         } while (s.sin_addr.s_addr == 0);
 
-        close(disc_sock);
+        close(dscvrLMS);
     }
 
     return s.sin_addr.s_addr;
 }
 
-char *playerMAC(void) { return playerID; }
-void askRefresh(void) { refreshRequ = true; }
-bool isRefreshed(void) { return !refreshRequ; }
-void refreshed(void) { refreshRequ = false; }
+// not a ping as such, and only tests that the telnet client is listening
+// it does expose the server IP however, simplified and its a keeper
+bool pingServer(void) {
 
-int connectServer(void) {
     int sfd;
-
-    if (setStaticServer() < 0) {
-        abortMonitor("Failed to find LMS server!");
-    }
-
     if ((sfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        abortMonitor("Failed to opening socket!");
+        abortMonitor("Failed on opening socket!");
     }
 
-    memset(&serv_addr, 0, sizeof(serv_addr));
+    struct sockaddr_in test_serv_addr;
+    memset(&test_serv_addr, 0, sizeof(test_serv_addr));
 
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = getServerAddress();
-    serv_addr.sin_port = htons(LMSPort);
-
-    if (connect(sfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-        fprintf(stderr, "No such host: %s\n", inet_ntoa(serv_addr.sin_addr));
+    test_serv_addr.sin_family = AF_INET;
+    test_serv_addr.sin_addr.s_addr = getServerAddress();
+    test_serv_addr.sin_port = htons(lms.LMSPort);
+    strcpy(lms.LMSHost, inet_ntoa(test_serv_addr.sin_addr));
+    // validate and verify
+    if (connect(sfd, (struct sockaddr *)&test_serv_addr,
+                sizeof(test_serv_addr)) < 0) {
+        fprintf(stderr, "No such host: %s\n",
+                inet_ntoa(test_serv_addr.sin_addr));
         close(sfd);
-        return -1;
+        return false;
     }
-
-    return sfd;
+    close(sfd);
+    return true;
 }
 
 void closeSliminfo(void) {
-    if (sockFD > 0) {
-        close(sockFD);
-    }
     for (int i = 0; i < MAXTAG_TYPES; i++) {
-        if (tagStore[i].tagData != NULL) {
-            free(tagStore[i].tagData);
+        if (lmsTags[i].tagData != NULL) {
+            free(lmsTags[i].tagData);
         }
     }
     pthread_cancel(sliminfoThread);
     pthread_join(sliminfoThread, NULL);
 }
 
-tag *initTagStore(void) {
+tag_t *initTags(void) {
 
-    tagStore[SAMPLESIZE].name = "samplesize";
-    tagStore[SAMPLERATE].name = "samplerate";
-    tagStore[TIME].name = "time";
-    tagStore[DURATION].name = "duration";
-    tagStore[REMAINING].name = "remaining";
-    tagStore[VOLUME].name = "mixer%20volume";
-    tagStore[TITLE].name = "title";
-    tagStore[ALBUM].name = "album";
-    tagStore[YEAR].name = "year";
-    tagStore[ARTIST].name = "artist";
-    tagStore[ALBUMARTIST].name = "albumartist";
-    tagStore[COMPOSER].name = "composer";
-    tagStore[CONDUCTOR].name = "conductor";
-    tagStore[MODE].name = "mode";
-    tagStore[PERFORMER].name = "performer";
-    tagStore[COMPILATION].name = "compilation";
-    tagStore[REPEAT].name =
-        "playlist%20repeat"; //	0 no repeat, 1 repeat song, 2 repeat playlist.
-    tagStore[SHUFFLE].name =
-        "playlist%20shuffle"; //	0 no shuffle, 1 shuffle songs, 2 shuffle albums.
+    lmsTags[ALBUMARTIST].name = "albumartist";
+    lmsTags[ALBUM].name = "album";
+    lmsTags[ARTIST].name = "artist";
+    lmsTags[COMPILATION].name = "compilation";
+    lmsTags[COMPOSER].name = "composer";
+    lmsTags[CONDUCTOR].name = "conductor";
+    lmsTags[CONNECTED].name = "player_connected";
+    lmsTags[DURATION].name = "duration";
+    lmsTags[MODE].name = "mode";
+    lmsTags[PERFORMER].name = "performer";
+    lmsTags[REMAINING].name = "remaining";
+    lmsTags[REMOTE].name = "remote";
+    lmsTags[REPEAT].name = "playlist repeat";
+    lmsTags[SAMPLERATE].name = "samplerate";
+    lmsTags[SAMPLESIZE].name = "samplesize";
+    lmsTags[SHUFFLE].name = "playlist shuffle";
+    lmsTags[TIME].name = "time";
+    lmsTags[TITLE].name = "title";
+    lmsTags[TRACKARTIST].name = "trackartist";
+    lmsTags[TRACKID].name = "id";
+    lmsTags[TRACKNUM].name = "tracknum";
+    lmsTags[VOLUME].name = "mixer volume";
+    lmsTags[YEAR].name = "year";
 
     for (int i = 0; i < MAXTAG_TYPES; i++) {
-        if ((tagStore[i].tagData =
-                 (char *)malloc(MAXTAG_DATA * sizeof(char))) == NULL) {
+        if ((lmsTags[i].tagData = (char *)malloc(MAXTAG_DATA * sizeof(char))) ==
+            NULL) {
             closeSliminfo();
             return NULL;
         } else {
-            strcpy(tagStore[i].tagData, "");
-            tagStore[i].displayName = "";
-            tagStore[i].valid = false;
-            tagStore[i].changed = false;
+            strcpy(lmsTags[i].tagData, "");
+            lmsTags[i].keyLen = strlen(lmsTags[i].name);
+            lmsTags[i].valid = false;
+            lmsTags[i].changed = false;
         }
     }
-    return tagStore;
+
+    return lmsTags;
+}
+
+bool getTagBool(tag_t *tag) {
+
+    if (tag == NULL) {
+        return false;
+    }
+    if (!tag->valid) {
+        return false;
+    }
+    return ((strcmp("1", tag->tagData) == 0) ||
+            (strcmp("Y", tag->tagData) == 0));
+}
+
+long getMinute(tag_t *tag) {
+
+    if ((tag == NULL) || (!tag->valid)) {
+        return 0;
+    }
+    // these are actually double?!?
+    return strtol(tag->tagData, NULL, 10);
 }
 
 void *serverPolling(void *x_voidptr) {
 
     char variousArtist[BSIZE] = "Various Artists"; // not locale agnostic
     char buffer[BSIZE];
-    char dbuffer[BSIZE];
-    char tagData[BSIZE];
-    int rbytes;
+    char uri[BSIZE] = "/jsonrpc.js";
+    char jsonData[BSIZE];
+    char header[BSIZE] = {0};
+
+    strcpy(header, "\r\nAccept: application/json\r\n"
+                   "Content-Type: application/json\r\n"
+                   "Connection: close");
 
     while (true) {
 
-        if (!isRefreshed()) {
+        if ((lms.refresh) && (httpPost(lms.LMSHost, lms.LMSPort, uri, header,
+                                       lms.body, (char *)jsonData))) {
+            if (!isEmptyStr(jsonData)) {
+                if (parseLMSResponse(jsonData)) {
 
-            if (write(sockFD, query, strlen(query)) < 0) {
-                abortMonitor("ERROR writing to socket");
-            }
-            if ((rbytes = read(sockFD, buffer, BSIZE - 1)) < 0) {
-                abortMonitor("ERROR reading from socket");
-            }
-            buffer[rbytes] = 0;
+                    long pTime = getMinute(&lmsTags[TIME]);
+                    long dTime = getMinute(&lmsTags[DURATION]);
 
-            // works well but incurs good chunk of re-write
-            //(?P<name>[^:]*):?( ?(?P<value>.*))?
-
-            for (int i = 0; i < MAXTAG_TYPES; i++) {
-
-                if ((getTag((char *)tagStore[i].name, buffer, tagData,
-                            BSIZE)) != NULL) {
-                    if ((i != REMAINING) &&
-                        (strcmp(tagData, tagStore[i].tagData) != 0)) {
-                        strncpy(tagStore[i].tagData, tagData, MAXTAG_DATA);
-                        tagStore[i].changed = true;
+                    if (pTime && dTime) {
+                        snprintf(buffer, MAXTAG_DATA, "%ld", (dTime - pTime));
+                        storeTagData(&lmsTags[REMAINING], buffer);
                     }
-                    tagStore[i].valid = true;
-                } else {
-                    tagStore[i].valid = false;
+
+                    // Fix Various Artists
+                    if (getTagBool(&lmsTags[COMPILATION])) {
+                        if (strcmp(variousArtist,
+                                   lmsTags[ALBUMARTIST].tagData) != 0) {
+                            strncpy(lmsTags[ALBUMARTIST].tagData, variousArtist,
+                                    MAXTAG_DATA);
+                            lmsTags[ALBUMARTIST].valid = true;
+                            lmsTags[ALBUMARTIST].changed = true;
+                        }
+                    }
+
+                    if (isEmptyStr(lmsTags[ALBUMARTIST].tagData)) {
+                        if (isEmptyStr(lmsTags[CONDUCTOR].tagData)) {
+                            strncpy(lmsTags[ALBUMARTIST].tagData,
+                                    lmsTags[ARTIST].tagData, MAXTAG_DATA);
+                            lmsTags[ALBUMARTIST].valid = true;
+                            lmsTags[ALBUMARTIST].changed = true;
+                        } else {
+                            strncpy(lmsTags[ALBUMARTIST].tagData,
+                                    lmsTags[CONDUCTOR].tagData, MAXTAG_DATA);
+                            lmsTags[ALBUMARTIST].valid = true;
+                            lmsTags[ALBUMARTIST].changed = true;
+                        }
+                    } else if (strcicmp(variousArtist,
+                                        lmsTags[ALBUMARTIST].tagData) == 0) {
+                        if (!isEmptyStr(lmsTags[ARTIST].tagData)) {
+                            strncpy(lmsTags[ALBUMARTIST].tagData,
+                                    lmsTags[ARTIST].tagData, MAXTAG_DATA);
+                        } else if (!isEmptyStr(lmsTags[PERFORMER].tagData)) {
+                            strncpy(lmsTags[ALBUMARTIST].tagData,
+                                    lmsTags[PERFORMER].tagData, MAXTAG_DATA);
+                        }
+                        lmsTags[ALBUMARTIST].valid = true;
+                        lmsTags[ALBUMARTIST].changed = true;
+                    }
+
+                    if (isEmptyStr(lmsTags[ALBUMARTIST].tagData)) {
+                        if (!isEmptyStr(lmsTags[ARTIST].tagData)) {
+                            strncpy(lmsTags[ALBUMARTIST].tagData,
+                                    lmsTags[ARTIST].tagData, MAXTAG_DATA);
+                        } else if (!isEmptyStr(lmsTags[PERFORMER].tagData)) {
+                            strncpy(lmsTags[ALBUMARTIST].tagData,
+                                    lmsTags[PERFORMER].tagData, MAXTAG_DATA);
+                        }
+                        lmsTags[ALBUMARTIST].valid = true;
+                        lmsTags[ALBUMARTIST].changed = true;
+                    }
+                    // need valid checks - surely?
+                    if (isEmptyStr(lmsTags[ARTIST].tagData)) {
+                        if (!isEmptyStr(lmsTags[PERFORMER].tagData)) {
+                            strncpy(lmsTags[ARTIST].tagData,
+                                    lmsTags[PERFORMER].tagData, MAXTAG_DATA);
+                        }
+                        lmsTags[ARTIST].valid = true;
+                        lmsTags[ARTIST].changed = true;
+                    }
+
                 }
             }
-
-            long pTime = getMinute(&tagStore[TIME]);
-            long dTime = getMinute(&tagStore[DURATION]);
-
-            if (pTime && dTime) {
-                snprintf(tagData, MAXTAG_DATA, "%ld", (dTime - pTime));
-                if (strcmp(tagData, tagStore[REMAINING].tagData) != 0) {
-                    strncpy(tagStore[REMAINING].tagData, tagData, MAXTAG_DATA);
-                    tagStore[REMAINING].valid = true;
-                    tagStore[REMAINING].changed = true;
-                }
-            }
-
-            // Fix Various Artists
-            if (getTagBool(&tagStore[COMPILATION])) {
-                if (strcmp(variousArtist, tagStore[ALBUMARTIST].tagData) != 0) {
-                    strncpy(tagStore[ALBUMARTIST].tagData, variousArtist,
-                            MAXTAG_DATA);
-                    tagStore[ALBUMARTIST].valid = true;
-                    tagStore[ALBUMARTIST].changed = true;
-                }
-            }
-
-            if (isEmptyStr(tagStore[ALBUMARTIST].tagData)) {
-                if (isEmptyStr(tagStore[CONDUCTOR]
-                                   .tagData)) { // override for conductor
-                    strncpy(tagStore[ALBUMARTIST].tagData,
-                            tagStore[ARTIST].tagData, MAXTAG_DATA);
-                    tagStore[ALBUMARTIST].valid = true;
-                    tagStore[ALBUMARTIST].changed = true;
-                } else {
-                    strncpy(tagStore[ALBUMARTIST].tagData,
-                            tagStore[CONDUCTOR].tagData, MAXTAG_DATA);
-                    tagStore[ALBUMARTIST].valid = true;
-                    tagStore[ALBUMARTIST].changed = true;
-                }
-            } else if (strcmp(variousArtist, tagStore[ALBUMARTIST].tagData) ==
-                       0) {
-                strncpy(tagStore[ALBUMARTIST].tagData, tagStore[ARTIST].tagData,
-                        MAXTAG_DATA);
-                tagStore[ALBUMARTIST].valid = true;
-                tagStore[ALBUMARTIST].changed = true;
-            }
-
-            if (isEmptyStr(tagStore[ALBUMARTIST].tagData)) {
-                strncpy(tagStore[ALBUMARTIST].tagData, tagStore[ARTIST].tagData,
-                        MAXTAG_DATA);
-                tagStore[ALBUMARTIST].valid = true;
-                tagStore[ALBUMARTIST].changed = true;
-            }
-
-            refreshed();
-            sleep(1);
-
-        } // !isRefreshed
-
-    } // while
+        } else {
+            lms.serverOnline = false;
+        }
+        refreshed();
+        sleep(1);
+    }
 
     return NULL;
 }
 
-tag *initSliminfo(char *playerName) {
-    if (setStaticServer() < 0) {
+tag_t *initSliminfo(char *playerName) {
+
+    // working with telnet client (just for the "ping")
+    setStaticServer();
+
+    if (!pingServer()) {
+        printf("Could not connect [pingServer]\n");
         return NULL;
     }
-    if ((sockFD = connectServer()) < 0) {
+
+    lms.LMSPort = 9000; // now working with JsonRPC
+    if (!discoverPlayer(playerName)) {
+        printf("Could not find player \"%s\" [discoverPlayer]\n", playerName);
         return NULL;
     }
-    if (discoverPlayer(playerName) < 0) {
-        return NULL;
-    }
+
+    sprintf(lms.body,
+            "{\"id\":1,\"method\":\"slim.request\",\"params\":[\"%s\",["
+            "\"status\",\"-\",1,\"tags:aAlCITytrdxNB\"]]}",
+            lms.players[lms.activePlayer].playerID);
 
     /*
     ARTIST = "a"
@@ -437,16 +672,13 @@ tag *initSliminfo(char *playerName) {
     ALBUM_REPLAY_GAIN = "X"
     YEAR = "y"
     REPLAY_GAIN = "Y"
+    */
 
-
-*/
-
-    sprintf(query, "%s status - 1 tags:aAlCITytrdxB\n", playerID);
-    int x = 0;
-
-    if (initTagStore() != NULL) {
+    if (initTags() != NULL) {
         askRefresh();
-        if (pthread_create(&sliminfoThread, NULL, serverPolling, &x) != 0) {
+        int foo = 0;
+        if (pthread_create(&sliminfoThread, NULL, serverPolling, &foo) != 0) {
+            printf(">>>>>>> No Polling <<<<<<<\n");
             closeSliminfo();
             abortMonitor("Failed to create sliminfo thread!");
         }
@@ -454,7 +686,19 @@ tag *initSliminfo(char *playerName) {
         return NULL;
     }
 
-    return tagStore;
+    return lmsTags;
 }
+
+char *getPlayerIP(void) {
+    return (char *)lms.players[lms.activePlayer].playerIP;
+}
+char *playerMAC(void) { return lms.players[lms.activePlayer].playerID; }
+
+bool playerConnected(void) {
+    return (0 != strcmp(lmsTags[CONNECTED].tagData, "0"));
+}
+void askRefresh(void) { lms.refresh = true; }
+bool isRefreshed(void) { return !lms.refresh; }
+lms_t *lmsDetail(void) { return &lms; }
 
 void sliminfoFinalize(void) { closeSliminfo(); }
