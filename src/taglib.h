@@ -29,9 +29,9 @@
 
 typedef struct player_t {
     char playerName[128];
-    char playerIP[40];
-    char playerID[30];
-    char modelName[32];
+    char playerIP[50];
+    char playerID[50];
+    char modelName[50];
 } player_t;
 
 /*
@@ -64,6 +64,7 @@ typedef struct lms_t {
 
 typedef struct tag_t {
     const char *name;
+    const char *lmstag;
     int8_t keyLen;
     char *tagData;
     bool valid;
@@ -71,30 +72,37 @@ typedef struct tag_t {
 } tag_t;
 
 typedef enum tagtypes_t {
-    ARTIST,
+    ALBUM,
     ALBUMARTIST,
+    ALBUMID,
+    ARTIST,
+    ARTISTROLE,
+    BITRATE,
+    COMPILATION,
     COMPOSER,
     CONDUCTOR,
-    ALBUM,
-    TITLE,
-    TIME,
+    CONNECTED,
+    DISC,
+    DISCCOUNT,
     DURATION,
-    REMAINING,
-    VOLUME,
-    COMPILATION,
-    YEAR,
-    SAMPLESIZE,
-    SAMPLERATE,
     MODE,
     PERFORMER,
-    REPEAT,
-    SHUFFLE,
-    CONNECTED,
-    TRACKNUM,
-    TRACKARTIST,
+    REMAINING,
     REMOTE,
-    TRACKID, // unique ID!!!
+    REMOTETITLE,
+    REPEAT,
+    SAMPLERATE,
+    SAMPLESIZE,
     SERVER,  // not a real tag - just using infrastructure
+    SHUFFLE,
+    TIME,
+    TITLE,
+    TRACKARTIST,
+    TRACKCOUNT,
+    TRACKID, // unique ID!!!
+    TRACKNUM,
+    VOLUME,
+    YEAR,
     MAXTAG_TYPES
 } tagtypes_t;
 

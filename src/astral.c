@@ -447,38 +447,52 @@ void brightnessEvent(void) {
     }
 }
 
-void parseISP(char *data, struct isp_locale_t *isp) {
+void parseISP(char *jsonData, struct isp_locale_t *isp) {
 
+    int v = getVerbose();
     jsmn_parser p;
-    jsmntok_t jt[40]; // Expect no more than 40 tokens
+    jsmntok_t jt[200];
 
     jsmn_init(&p);
-    int r = jsmn_parse(&p, data, strlen(data), jt, sizeof(jt) / sizeof(jt[0]));
+    int r = jsmn_parse(&p, jsonData, strlen(jsonData), jt, sizeof(jt) / sizeof(jt[0]));
 
     if (r < 0) {
+        printf("[parseISP] Failed to parse JSON, check adequate tokens "
+               "allocated: %d\n",
+               r);
+        if (v > LL_DEBUG) {
+            printf("%s\n", jsonData);
+        }
         return;
     }
 
     // Ensure the top-level element is an object
     if (r < 1 || jt[0].type != JSMN_OBJECT) {
+        printf("[parseISP] Failed to parse JSON, non \"payload\", check "
+               "adequate tokens "
+               "allocated: %d\n",
+               r);
+        if (v > LL_DEBUG) {
+            printf("%s\n", jsonData);
+        }
         return;
     }
 
-    char test[BUFSIZ];
+    char test[BSIZE];
     int done = 3;
     // Loop over all keys of the root object
     for (int i = 1; ((done > 0) || (i < r)); i++) {
         sprintf(test, "%.*s", jt[i + 1].end - jt[i + 1].start,
-                data + jt[i + 1].start);
-        if (jsonEq(data, &jt[i], "lon") == 0) {
+                jsonData + jt[i + 1].start);
+        if (jsonEq(jsonData, &jt[i], "lon") == 0) {
             isp->coords.Longitude = strtod(test, NULL);
             i++;
             done--;
-        } else if (jsonEq(data, &jt[i], "lat") == 0) {
+        } else if (jsonEq(jsonData, &jt[i], "lat") == 0) {
             isp->coords.Latitude = strtod(test, NULL);
             i++;
             done--;
-        } else if (jsonEq(data, &jt[i], "timezone") == 0) {
+        } else if (jsonEq(jsonData, &jt[i], "timezone") == 0) {
             strcpy(isp->Timezone, test);
             i++;
             done--;
@@ -494,7 +508,7 @@ bool getLocation(void) {
     char host[BSIZE] = "bot.whatismyipaddress.com";
     char uri[BSIZE] = "/";
     char header[1] = "";
-    char lookupIP[20] = {0};
+    char lookupIP[28] = {0};
     char stb[BSIZE] = {0};
 
     if (httpGet(host, port, uri, header, (char *)lookupIP)) {
@@ -508,11 +522,10 @@ bool getLocation(void) {
             // now for provider details, inclusive lat/lon
             strcpy(host, "ip-api.com");
             sprintf(uri, "/json/%s", lookupIP);
-
-            char jsonData[4096] = {0};
+            strcpy(header, "");
+            char jsonData[BSIZE] = {0};
 
             if (httpGet(host, port, uri, header, (char *)jsonData)) {
-
                 // parse/decompose and map json
                 parseISP(jsonData, &isp_locale);
 
@@ -560,7 +573,9 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
     int r = jsmn_parse(&p, jsonData, strlen(jsonData), jt,
                        sizeof(jt) / sizeof(jt[0]));
     if (r < 0) {
-        printf("Failed to parse JSON\nheck enough tokens allocated [parseClimacell]: %d\n", r);
+        printf("Failed to parse JSON\nheck enough tokens allocated "
+               "[parseClimacell]: %d\n",
+               r);
         return false;
     }
 
@@ -910,4 +925,3 @@ bool updClimacell(climacell_t *climacell) {
 
     return true;
 }
-

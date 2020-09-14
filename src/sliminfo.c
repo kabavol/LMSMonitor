@@ -75,14 +75,21 @@ bool storeTagData(tag_t *st, char *value) {
 // decompose LMS jsonRPC response
 bool parseLMSResponse(char *jsonData) {
 
+    int v = getVerbose();
+
     jsmn_parser p;
-    jsmntok_t jt[210];
+    jsmntok_t jt[300];
 
     jsmn_init(&p);
     int r = jsmn_parse(&p, jsonData, strlen(jsonData), jt,
                        sizeof(jt) / sizeof(jt[0]));
     if (r < 0) {
-        printf("Failed to parse JSON: %d\n", r);
+        printf("[parseLMSResponse] Failed to parse JSON, check adequate tokens "
+               "allocated: %d\n",
+               r);
+        if (v > LL_DEBUG) {
+            printf("%s\n", jsonData);
+        }
         return false;
     }
 
@@ -129,6 +136,10 @@ bool parseLMSResponse(char *jsonData) {
                                     lmsTags[ALBUMARTIST].keyLen)) {
                 if (storeTagData(&lmsTags[ALBUMARTIST], valStr))
                     printf("LMS:Album Artist ....: %s\n", valStr);
+            } else if (0 == strncmp(lmsTags[ALBUMID].name, keyStr,
+                                    lmsTags[ALBUMID].keyLen)) {
+                if (storeTagData(&lmsTags[ALBUMID], valStr))
+                    printf("LMS:Album ID ........: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[ALBUM].name, keyStr,
                                     lmsTags[ALBUM].keyLen)) {
                 if (storeTagData(&lmsTags[ALBUM], valStr))
@@ -211,15 +222,22 @@ bool parseLMSResponse(char *jsonData) {
 // decompose LMS jsonRPC response
 bool lookupLMSPlayer(char *jsonData, char *checkPName) {
 
+    int v = getVerbose();
+
     jsmn_parser p;
-    jsmntok_t jt[120];
+    jsmntok_t jt[300];
+
     jsmn_init(&p);
     int r = jsmn_parse(&p, jsonData, strlen(jsonData), jt,
                        sizeof(jt) / sizeof(jt[0]));
 
     if (r < 0) {
-        printf("Failed to parse JSON, check adequate tokens allocated: %d\n",
+        printf("[lookupLMSPlayer] Failed to parse JSON, check adequate tokens "
+               "allocated: %d\n",
                r);
+        if (v > LL_DEBUG) {
+            printf("%s\n", jsonData);
+        }
         return false;
     }
 
@@ -265,7 +283,6 @@ bool lookupLMSPlayer(char *jsonData, char *checkPName) {
                 strncpy(lms.players[plk].modelName, valStr, 29);
                 playerAttribs--;
             } else if (strncmp("ip", keyStr, 2) == 0) {
-                printf("%s\n",valStr);
                 char *colon;
                 if ((colon = strstr(valStr, ":")) != NULL) {
                     int cpos;
@@ -284,7 +301,6 @@ bool lookupLMSPlayer(char *jsonData, char *checkPName) {
         }
     }
 
-    int v = getVerbose();
     for (int p = 0; p < plk; p++) {
         if ((0 != strlen(lms.players[p].playerName)) && (v > LL_INFO)) {
             printf("%s%02d %29s %20s %17s %s\n",
@@ -336,8 +352,9 @@ bool discoverPlayer(char *playerName) {
                 labelIt("Player IP", LABEL_WIDTH, "."),
                 lms.players[lms.activePlayer].playerIP);
         putMSG(stb, LL_INFO);
+    } else {
+        return false;
     }
-
     return true;
 }
 
@@ -391,7 +408,8 @@ in_addr_t getServerAddress(void) {
 
             if (sendto(dscvrLMS, buf, 1, 0, (struct sockaddr *)&d, sizeof(d)) <
                 0) {
-                putMSG("Error sending disovery\n", LL_INFO);
+                putMSG("LMS server response .: Error\nError sending disovery\n",
+                       LL_INFO);
             }
 
             if (poll(&pollinfo, 1, 5000) == 1) {
@@ -401,7 +419,7 @@ in_addr_t getServerAddress(void) {
                          &slen);
                 strcpy(lms.LMSHost, inet_ntoa(s.sin_addr));
                 char stb[BSIZE];
-                sprintf(stb, "LMS server response .:\n%s %s:%d\n",
+                sprintf(stb, "LMS server response .: Ok\n%s %s:%d\n",
                         labelIt("Server IP", LABEL_WIDTH, "."), lms.LMSHost,
                         ntohs(s.sin_port));
                 putMSG(stb, LL_INFO);
@@ -453,43 +471,61 @@ void closeSliminfo(void) {
     pthread_join(sliminfoThread, NULL);
 }
 
+void populateTag(int tagidx, const char *name, const char *lmstag) {
+    lmsTags[tagidx].name = name;
+    lmsTags[tagidx].lmstag = lmstag;
+}
+
 tag_t *initTags(void) {
 
-    lmsTags[ALBUMARTIST].name = "albumartist";
-    lmsTags[ALBUM].name = "album";
-    lmsTags[ARTIST].name = "artist";
-    lmsTags[COMPILATION].name = "compilation";
-    lmsTags[COMPOSER].name = "composer";
-    lmsTags[CONDUCTOR].name = "conductor";
-    lmsTags[CONNECTED].name = "player_connected";
-    lmsTags[DURATION].name = "duration";
-    lmsTags[MODE].name = "mode";
-    lmsTags[PERFORMER].name = "performer";
-    lmsTags[REMAINING].name = "remaining";
-    lmsTags[REMOTE].name = "remote";
-    lmsTags[REPEAT].name = "playlist repeat";
-    lmsTags[SAMPLERATE].name = "samplerate";
-    lmsTags[SAMPLESIZE].name = "samplesize";
-    lmsTags[SERVER].name = "not_a_real_server_tag";
-    lmsTags[SHUFFLE].name = "playlist shuffle";
-    lmsTags[TIME].name = "time";
-    lmsTags[TITLE].name = "title";
-    lmsTags[TRACKARTIST].name = "trackartist";
-    lmsTags[TRACKID].name = "id";
-    lmsTags[TRACKNUM].name = "tracknum";
-    lmsTags[VOLUME].name = "mixer volume";
-    lmsTags[YEAR].name = "year";
+    populateTag(ALBUM, "album", "l");
+    populateTag(ALBUMARTIST, "albumartist", "K");
+    populateTag(ALBUMID, "album_id", "e");
+    populateTag(ARTIST, "artist", "a");
+    populateTag(ARTISTROLE, "artistrole", "A");
+    populateTag(BITRATE, "bitrate", "r");
+    populateTag(COMPILATION, "compilation", "C");
+    populateTag(COMPOSER, "composer", "c");
+    populateTag(CONNECTED, "player_connected", "k");
+    populateTag(CONDUCTOR, "conductor", "");
+    populateTag(DISC, "disc", "i");
+    populateTag(DISCCOUNT, "disccount", "q");
+    populateTag(DURATION, "duration", "d");
+    populateTag(DURATION, "duration", "d");
+    populateTag(MODE, "mode", "");
+    populateTag(PERFORMER, "performer", "");
+    populateTag(REMAINING, "remaining", "");
+    populateTag(REMOTE, "remote", "x");
+    populateTag(REMOTETITLE, "remote_title", "N");
+    populateTag(REPEAT, "playlist repeat", "");
+    populateTag(SAMPLERATE, "samplerate", "T");
+    populateTag(SAMPLESIZE, "samplesize", "I");
+    populateTag(SERVER, "not_real_server_not_real", "");
+    populateTag(SHUFFLE, "playlist shuffle", "");
+    populateTag(TIME, "time", "");
+    populateTag(TITLE, "title", "");
+    populateTag(TRACKARTIST, "trackartist", "");
+    populateTag(TRACKID, "id", "");
+    populateTag(TRACKCOUNT, "tracks", "z");
+    populateTag(TRACKNUM, "tracknum", "");
+    populateTag(VOLUME, "mixer volume", "");
+    populateTag(YEAR, "year", "y");
 
-    for (int i = 0; i < MAXTAG_TYPES; i++) {
-        if ((lmsTags[i].tagData = (char *)malloc(MAXTAG_DATA * sizeof(char))) ==
-            NULL) {
+    char filler[20] = {0};
+    for (int ti = 0; ti < MAXTAG_TYPES; ti++) {
+        if ((lmsTags[ti].tagData =
+                 (char *)malloc(MAXTAG_DATA * sizeof(char))) == NULL) {
             closeSliminfo();
             return NULL;
         } else {
-            strcpy(lmsTags[i].tagData, "");
-            lmsTags[i].keyLen = strlen(lmsTags[i].name);
-            lmsTags[i].valid = false;
-            lmsTags[i].changed = false;
+            if (lmsTags[ti].name) {
+                lmsTags[ti].keyLen = strlen(lmsTags[ti].name);
+                lmsTags[ti].valid = false;
+                lmsTags[ti].changed = false;
+            } else {
+                sprintf(filler, "scrach_tag_%02d", ti);
+                populateTag(ti, filler, "");
+            }
         }
     }
 
@@ -626,6 +662,7 @@ void *serverPolling(void *x_voidptr) {
 
 tag_t *initSliminfo(char *playerName) {
 
+    //int v = getVerbose();
     // working with telnet client (just for the "ping")
     setStaticServer();
 
@@ -640,54 +677,17 @@ tag_t *initSliminfo(char *playerName) {
         return NULL;
     }
 
-    sprintf(lms.body,
-            "{\"id\":1,\"method\":\"slim.request\",\"params\":[\"%s\",["
-            "\"status\",\"-\",1,\"tags:aAlCITytrdxNB\"]]}",
-            lms.players[lms.activePlayer].playerID);
-
-    /*
-    ARTIST = "a"
-    ARTIST_ROLE = "A"
-    BUTTONS = "B"
-    COVERID = "c"
-    COMPILATION = "C"
-    DURATION = "d"
-    ALBUM_ID = "e"
-    FILESIZE = "f"
-    GENRE = "g"
-    GENRE_LIST = "G"
-    DISC = "i"
-    SAMPLESIZE = "I"
-    COVERART = "j"
-    ARTWORK_TRACK_ID = "J"
-    COMMENT = "k"
-    ARTWORK_URL = "K"
-    ALBUM = "l"
-    INFO_LINK = "L"
-    BPM = "m"
-    MUSICMAGIC_MIXABLE = "M"
-    MODIFICATION_TIME = "n"
-    REMOTE_TITLE = "N"
-    CONTENT_TYPE = "o"
-    GENRE_ID = "p"
-    GENRE_ID_LIST = "P"
-    DISC_COUNT = "q"
-    BITRATE = "r"
-    RATING = "R"
-    ARTIST_ID = "s"
-    ARTIST_ROLE_IDS = "S"
-    TRACK_NUMBER = "t"
-    SAMPLERATE = "T"
-    URL = "u"
-    TAG_VERSION = "v"
-    LYRICS = "w"
-    REMOTE = "x"
-    ALBUM_REPLAY_GAIN = "X"
-    YEAR = "y"
-    REPLAY_GAIN = "Y"
-    */
-
     if (initTags() != NULL) {
+        char tagc[MAXTAG_TYPES] = {0};
+        for (int ti = 0; ti < MAXTAG_TYPES; ti++) {
+            if (0 != strcmp("", lmsTags[ti].lmstag))
+                strcat(tagc, lmsTags[ti].lmstag);
+        }
+        //if (v > LL_DEBUG) {printf("\naAlCITytrdxNB\n%s\n\n", tagc);}
+        sprintf(lms.body,
+                "{\"id\":1,\"method\":\"slim.request\",\"params\":[\"%s\",["
+                "\"status\",\"-\",1,\"tags:%s\"]]}",
+                lms.players[lms.activePlayer].playerID, tagc);
         askRefresh();
         int foo = 0;
         if (pthread_create(&sliminfoThread, NULL, serverPolling, &foo) != 0) {
