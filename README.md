@@ -229,6 +229,7 @@ If we bounceds the server we get a green field server, starting afresh.  If a tr
 
 TODO: bounce with IP change on return.
 </p>
+
 ## Weather
 <p>
 <img width="130" align="right" src="base/weatherexample.jpg">
