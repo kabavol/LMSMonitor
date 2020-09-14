@@ -225,7 +225,7 @@ As soon as the services comes back online we seamlessly handle the reconnect.
 
 If a track were playing LMS automatically restarts the track.
 
-If we bounceds the server we get a green field server, starting afresh.  If a track had been playing one would have to manually reque the track.
+If we bounceds the server we get a green field server, starting afresh.  If a track had been playing one would have to manually requeue the track.
 
 TODO: bounce with IP change on return.
 </p>
