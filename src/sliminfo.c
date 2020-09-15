@@ -363,12 +363,8 @@ void setStaticServer(void) {
     lms.LMSHost[0] = '\0'; // autodiscovery
 }
 
-/*
- * LMS server discover
- *
- * code from: https://code.google.com/p/squeezelite/source/browse/slimproto.c
- *
- */
+// retool - thanks to @gregex for nixing hardcoded port
+// and providing eJSON prototype - direct retrofit 
 in_addr_t getServerAddress(void) {
 #define PORT 3483
 
@@ -391,7 +387,7 @@ in_addr_t getServerAddress(void) {
         setsockopt(dscvrLMS, SOL_SOCKET, SO_BROADCAST, (const void *)&enable,
                    sizeof(enable));
 
-        buf = (char *)"e";
+        buf = (char *)"eJSON"; // looking for jsonRPC rather than telnet 
 
         memset(&d, 0, sizeof(d));
         d.sin_family = AF_INET;
@@ -406,17 +402,39 @@ in_addr_t getServerAddress(void) {
             putMSG("LMS Discovery ........\n", LL_INFO);
             memset(&s, 0, sizeof(s));
 
-            if (sendto(dscvrLMS, buf, 1, 0, (struct sockaddr *)&d, sizeof(d)) <
+            if (sendto(dscvrLMS, buf, 6, 0, (struct sockaddr *)&d, sizeof(d)) <
                 0) {
                 putMSG("LMS server response .: Error\nError sending disovery\n",
                        LL_INFO);
             }
 
             if (poll(&pollinfo, 1, 5000) == 1) {
-                char readbuf[10];
+
+                char readbuf[128];
                 socklen_t slen = sizeof(s);
-                recvfrom(dscvrLMS, readbuf, 10, 0, (struct sockaddr *)&s,
-                         &slen);
+                ssize_t read_bytes = 0;
+                lms.LMSPort = 9000; // default fallback
+
+                readbuf[0] = '\0';
+                read_bytes = recvfrom(dscvrLMS, readbuf, sizeof(readbuf), 0, (struct sockaddr *)&s, &slen);
+
+                if (read_bytes == 0 || readbuf[0] != 'E')
+                {
+                    abortMonitor("ERROR: invalid discovery response!");
+                }
+                else if (read_bytes < 5 || strncmp(readbuf, "EJSON", 5) != 0)
+                {
+                    abortMonitor("ERROR: unexpected discovery response!");
+                }
+                else
+                {
+                    char portbuf[6];
+                    memset(&portbuf, 0, sizeof(portbuf));
+                    for (int i = 6, j = 0 ; i < read_bytes && j < sizeof(portbuf) - 1; ++i, ++j) {
+                        portbuf[j] = readbuf[i]; // assumes we're reading digits
+                    }
+                    lms.LMSPort = atol(portbuf); // overflow is possible
+                }
                 strcpy(lms.LMSHost, inet_ntoa(s.sin_addr));
                 char stb[BSIZE];
                 sprintf(stb, "LMS server response .: Ok\n%s %s:%d\n",
@@ -671,7 +689,7 @@ tag_t *initSliminfo(char *playerName) {
         return NULL;
     }
 
-    lms.LMSPort = 9000; // now working with JsonRPC
+    ////////////////lms.LMSPort = 9000; // now working with JsonRPC
     if (!discoverPlayer(playerName)) {
         printf("Could not find player \"%s\" [discoverPlayer]\n", playerName);
         return NULL;
@@ -683,7 +701,7 @@ tag_t *initSliminfo(char *playerName) {
             if (0 != strcmp("", lmsTags[ti].lmstag))
                 strcat(tagc, lmsTags[ti].lmstag);
         }
-        //if (v > LL_DEBUG) {printf("\naAlCITytrdxNB\n%s\n\n", tagc);}
+
         sprintf(lms.body,
                 "{\"id\":1,\"method\":\"slim.request\",\"params\":[\"%s\",["
                 "\"status\",\"-\",1,\"tags:%s\"]]}",

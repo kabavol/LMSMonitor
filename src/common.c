@@ -184,12 +184,6 @@ void strupr(char *s) {
     }
 }
 
-int piVersion(void) {
-    int ret = 2;
-    ////cat /sys/firmware/devicetree/base/model
-    return ret;
-}
-
 void sinisterRotate(char *rm) {
     int n = strlen(rm);
     uint8_t temp = rm[0];

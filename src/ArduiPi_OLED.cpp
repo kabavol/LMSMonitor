@@ -366,6 +366,7 @@ bool ArduiPi_OLED::select_oled(uint8_t OLED_TYPE, int8_t i2c_addr)
   
 }
 
+#include "pivers.h"
 // initializer for SPI - we indicate the pins used and OLED type
 //
 bool ArduiPi_OLED::init(int8_t DC, int8_t RST, int8_t CS, uint8_t OLED_TYPE) 
@@ -384,11 +385,15 @@ bool ArduiPi_OLED::init(int8_t DC, int8_t RST, int8_t CS, uint8_t OLED_TYPE)
   bcm2835_spi_setDataMode(BCM2835_SPI_MODE0);                
   bcm2835_spi_chipSelect(cs);
 
-  // 16 MHz SPI bus, but Worked at 62 MHz also  
-  //bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_16); 
-  
-  // SSD1306 has a max clock speed of 10MHz. On RPi4 core freq varies between 200-500MHz
-  bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_64);
+  pi_vers_t *pv = piVersion();
+
+  if (pv->revision < 0xa03111) {
+    // 16 MHz SPI bus, but Worked at 62 MHz also  
+    bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_16); 
+  }else{
+    // SSD1306 has a max clock speed of 10MHz. On RPi4 core freq varies between 200-500MHz
+    bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_64);
+  }
 
   // Set the pin that will control DC as output
   bcm2835_gpio_fsel(dc, BCM2835_GPIO_FSEL_OUTP);

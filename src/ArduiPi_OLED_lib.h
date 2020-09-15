@@ -68,8 +68,8 @@ static const char * oled_type_str[] = {
     "Seeed I2C 128x64",
     "Seeed I2C 96x96",
     "SH1106 I2C 128x64",
-    "SH1106 SPI 128x64"
-    "NHD1322 Grayscale SPI 256x64"
+    "SH1106 SPI 128x64",
+    "NHD1322 Grayscale SPI 256x64",
     "NHD1322 Monochrome SPI 256x64"
 };
 

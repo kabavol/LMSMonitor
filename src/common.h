@@ -29,7 +29,7 @@
 #define BSIZE 4096
 
 #define APPNAME "LMSMonitor"
-#define VERSION "0.4.55"
+#define VERSION "0.4.56"
 #define APPSIG APPNAME " " VERSION
 
 #define LABEL_WIDTH 22
@@ -64,8 +64,6 @@ multi_tok_t multi_tok_init();
 void strupr(char *s);
 // handy - tho' should check POSIX
 int strcicmp(char const *a, char const *b);
-
-int piVersion(void);
 
 bool debugActive(void);
 

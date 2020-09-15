@@ -71,7 +71,9 @@
 #include "cnnxn.h"
 #include "lmsmonitor.h"
 #include "oledimg.h"
+#include "pivers.h"
 // clang-format on
+
 struct MonitorAttrs *glopt;
 struct climacell_t weather;
 #endif
@@ -759,6 +761,10 @@ int main(int argc, char *argv[]) {
     signature(argv[0]);
 
 #ifdef __arm__
+    pi_vers_t *pv = piVersion();
+    sprintf(stbl, "%s %s\n", labelIt("Platform", LABEL_WIDTH, "."),
+            pv->model);
+    putMSG(stbl, LL_QUIET);
     sprintf(stbl, "%s %s\n", labelIt("Verbosity", LABEL_WIDTH, "."),
             getVerboseStr());
     putMSG(stbl, LL_QUIET);
@@ -925,7 +931,7 @@ int main(int argc, char *argv[]) {
 
     printFontMetrics();
 
-/*
+    /*
     // TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST
     // TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST
     // TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST
@@ -1358,7 +1364,7 @@ void warningsPage(void) {
 
     setLastTime(buff, dt);
 
-/*
+    /*
     strftime(buff, sizeof(buff), "%A", &loctm);
     putTinyTextToRight(pin, 34, 10, buff);
 
