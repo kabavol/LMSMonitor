@@ -37,7 +37,6 @@ and LMS based audio device.
   -F, -I, --flip, --invert     Invert the display - if display mounted upside
                                down
   -k, --metrics                Show CPU load and temperature (clock mode)
-  -K, --spi_speed=SPI_SPEED    SPI transmission speed (default 15k)
   -l, -i, --log-level=LEVEL, --info=LEVEL
                                Log Level
   -m, --meter=MODES            Meter modes, if visualization on specify one or
@@ -225,9 +224,10 @@ As soon as the services comes back online we seamlessly handle the reconnect.
 
 If a track were playing LMS automatically restarts the track.
 
-If we bounceds the server we get a green field server, starting afresh.  If a track had been playing one would have to manually requeue the track.
+If we bounced the server we get a green field session, starting afresh.  If a track had been playing one would have to manually requeue the track.
 
 TODO: bounce with IP change on return.
+
 </p>
 
 ## Weather
@@ -249,7 +249,7 @@ Once you have an key you'll simply pass it to LMSMonitor, thus
 ```bash
 /mnt/mmcblk0p2/tce/gomonitor rn --weather "apikey[,units]"
 ```
-Use the weather argument to pass the key and optionally the units you prefer.  By default units will be <b>us</b>
+Use the weather argument to pass the key and optionally the units you prefer.  By default units will be <b>us</b> for Fahreheit, for Centigrade specify <b>si</b>.
 
 As with the brightness control the monitor will automatically determin your location via your ISP; ifyou find this gives inaccurate current weather conditions you can specify your latitude and longitude via thecommand line.
 
