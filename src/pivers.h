@@ -67,7 +67,7 @@ typedef struct pi_vers_t {
     char model[40];
 } pi_vers_t;
 
-void ltrim(char *src);
+void ltrim(char *s);
 void trim(char *s);
 pi_vers_t *piVersion(void);
 

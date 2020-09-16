@@ -53,13 +53,13 @@ void refreshed(void) { lms.refresh = false; }
 const char *whatsitJson(int typ) {
     switch (typ) {
         case JSMN_UNDEFINED: return "Undef"; break;
-        case JSMN_OBJECT: return "Obj"; break;
+        case JSMN_OBJECT: return "Object"; break;
         case JSMN_ARRAY: return "Array"; break;
         case JSMN_STRING: return "String"; break;
         case JSMN_PRIMITIVE: return "Primitive"; break; // number bool etc...
-        default: return "Unk?";
+        default: return "Unknown?";
     }
-    return "Unk?";
+    return "Unknown?";
 }
 
 bool storeTagData(tag_t *st, char *value) {
@@ -166,6 +166,10 @@ bool parseLMSResponse(char *jsonData) {
                                     lmsTags[YEAR].keyLen)) {
                 if (storeTagData(&lmsTags[YEAR], valStr))
                     printf("LMS:Year ............: %s\n", valStr);
+            } else if (0 == strncmp(lmsTags[REMOTETITLE].name, keyStr,
+                                    lmsTags[REMOTETITLE].keyLen)) {
+                if (storeTagData(&lmsTags[REMOTETITLE], valStr))
+                    printf("LMS:Remote Title ....: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[REMOTE].name, keyStr,
                                     lmsTags[REMOTE].keyLen)) {
                 if (storeTagData(&lmsTags[REMOTE], valStr))
@@ -225,7 +229,7 @@ bool lookupLMSPlayer(char *jsonData, char *checkPName) {
     int v = getVerbose();
 
     jsmn_parser p;
-    jsmntok_t jt[300];
+    jsmntok_t jt[128+(43*20)]; // upto 20 players
 
     jsmn_init(&p);
     int r = jsmn_parse(&p, jsonData, strlen(jsonData), jt,

@@ -99,7 +99,6 @@ static struct argp_option options[] = {
      "I2C/SPI reset GPIO number, if needed (defaults 25)"},
     {"spi_dc", 'D', "SPI_DC", 0, "SPI DC GPIO number (defaults 24)"},
     {"spi_cs", 'C', "SPI_CS", 0, "SPI CS number (defaults 0)"},
-    {"spi_speed", 'K', "SPI_SPEED", 0, "SPI transmission speed (default 15k)"},
     {"egg", 'E', "EGGNUM", 0, "Easter Eggs (see repo for details)"},
     {"log-level", 'l', "LEVEL", 0, "Log Level"},
     {"info", 'i', 0, OPTION_ALIAS},
@@ -139,8 +138,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 } else {
                     setOledType(test);
                 }
-            }else{
-                printf("WARNING: null argument? Sspecify OLED parameter as -o[number] or --oled=[number]\n");
+            } else {
+                printf("WARNING: null argument? Sspecify OLED parameter as "
+                       "-o[number] or --oled=[number]\n");
             }
             break;
         case 'a':
@@ -155,8 +155,14 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             break;
         case 'b': arguments->lmsopt->astral = true; break;
         case 'm':
-            setVisList(arg);
-            arguments->lmsopt->meterMode = true;
+            if (0 != strcicmp("na", arg)) {
+                arguments->lmsopt->visualize = true;
+                setVisList(arg);
+                arguments->lmsopt->meterMode = true;
+            } else {
+                arguments->lmsopt->visualize = false;
+                arguments->lmsopt->meterMode = false;
+            }
             break;
 #ifdef SSE_VIZDATA
         case 'p': sscanf(arg, "%d", &opt.port); break;

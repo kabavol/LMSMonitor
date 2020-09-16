@@ -203,7 +203,7 @@ There are currently 7 easter egg modes:
 - 3 Open Reel To Reel, pure fantasy. Reels rotate, minor animation.
 - 4 VCR with flashing 12:00 AM clock! No additional animation - the clock is annoying enough.
 - 5 An old bakelite radio. Minor animation, radio changes station as track progresses.
-- 6 An old analog TV in all its 5x4 glory... and worms??
+- 6 An old analog TV in all its 5x4 glory... VHF or UHF... no it's worms?!?
 - 7 A crusty oldIBM PS/2 clone... playing pong! Equally matched "AI" players make for an uneventful game!
 
 Specify -E[1-7] to display eggs on track playback

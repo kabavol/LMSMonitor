@@ -62,6 +62,8 @@ multi_tok_t multi_tok_init();
 #include <ctype.h>
 // missing under linux
 void strupr(char *s);
+void strltrim(char *s);
+void strtrim(char *s);
 // handy - tho' should check POSIX
 int strcicmp(char const *a, char const *b);
 

@@ -184,6 +184,29 @@ void strupr(char *s) {
     }
 }
 
+void strltrim(char *s) {
+    char *d;
+    for (d = s; *s == ' '; s++) {
+        ;
+    }
+    if (d == s)
+        return;
+    while ((*d++ = *s++)) {
+        ;
+    }
+    return;
+}
+
+void strtrim(char *s) {
+    char *p = s;
+    int l = strlen(p);
+    while (isspace(p[l - 1]))
+        p[--l] = 0;
+    while (*p && isspace(*p))
+        ++p, --l;
+    memmove(s, p, l + 1);
+}
+
 void sinisterRotate(char *rm) {
     int n = strlen(rm);
     uint8_t temp = rm[0];

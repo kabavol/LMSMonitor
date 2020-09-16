@@ -20,14 +20,14 @@
 
 #include "pivers.h"
 
-void ltrim(char *src) {
-    char *dst;
-    for (dst = src; *src == ' '; src++) {
+void ltrim(char *s) {
+    char *d;
+    for (d = s; *s == ' '; s++) {
         ;
     }
-    if (dst == src)
+    if (d == s)
         return;
-    while ((*dst++ = *src++)) {
+    while ((*d++ = *s++)) {
         ;
     }
     return;

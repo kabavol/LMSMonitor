@@ -107,8 +107,10 @@ void decodeKV(char *jsonData, ccdatum_t *datum, int i, int j, jsmntok_t jt[]) {
         // nibble so fits detail view
         if (strncmp(valStr, "in/hr", 5) == 0)
             strcpy(valStr, "in");
-        if (strncmp(valStr, "cm/hr", 5) == 0)
+        else if (strncmp(valStr, "cm/hr", 5) == 0)
             strcpy(valStr, "cm");
+        else if (strncmp(valStr, "mm/hr", 5) == 0)
+            strcpy(valStr, "mm");
 
         if (strncmp("value", keyStr, 5) == 0) {
             if (strcmp(testdatum.sdatum, valStr) != 0) {

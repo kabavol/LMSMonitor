@@ -762,8 +762,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef __arm__
     pi_vers_t *pv = piVersion();
-    sprintf(stbl, "%s %s\n", labelIt("Platform", LABEL_WIDTH, "."),
-            pv->model);
+    sprintf(stbl, "%s %s\n", labelIt("Platform", LABEL_WIDTH, "."), pv->model);
     putMSG(stbl, LL_QUIET);
     sprintf(stbl, "%s %s\n", labelIt("Verbosity", LABEL_WIDTH, "."),
             getVerboseStr());
@@ -803,13 +802,22 @@ int main(int argc, char *argv[]) {
         baselineClimacell(&weather, true);
         // if string contains comma split for api key and units
         if (strstr(lmsopt.weather, ",") != NULL) {
-            char a[128], u[3];
-            sscanf(lmsopt.weather, "%s,%s", &a, &u);
+            char a[200];
+            strcpy(a, lmsopt.weather);
+            char *u = strstr(a, ",") + 1;
+            int z = strlen(a) - (strlen(u) + 1);
+            a[z] = '\0';
+            strtrim(u);
             strncpy(weather.Apikey, a, 127);
             strncpy(weather.units, u, 2);
+            sprintf(stbl, "%s %s\n",
+                    labelIt("Temperature Units", LABEL_WIDTH, "."),
+                    (strcicmp("us", u) == 0) ? "Imperial" : "Metric");
+            putMSG(stbl, LL_INFO);
         } else {
             strncpy(weather.Apikey, lmsopt.weather, 127);
         }
+        strtrim(weather.Apikey);
         if ((0 == weather.coords.Latitude) && (0 != lmsopt.locale.Latitude))
             weather.coords.Latitude = lmsopt.locale.Latitude;
         if ((0 == weather.coords.Longitude) && (0 != lmsopt.locale.Longitude))
