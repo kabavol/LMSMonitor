@@ -25,6 +25,7 @@
 #include <netinet/in.h>
 #include <poll.h>
 #include <pthread.h>
+#include <regex.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -111,9 +112,6 @@ bool parseLMSResponse(char *jsonData) {
             memcpy(valStr, &jsonData[tok.start], lenv);
             valStr[lenv] = '\0';
 
-            /*if (strncmp("result", keyStr, 6) == 0) {
-                i++;
-            } else*/
             if (0 ==
                 strncmp(lmsTags[VOLUME].name, keyStr, lmsTags[VOLUME].keyLen)) {
                 if (storeTagData(&lmsTags[VOLUME], valStr))
@@ -223,97 +221,224 @@ bool parseLMSResponse(char *jsonData) {
     return true;
 }
 
+// we got "difficult" json - use tokenizer and regex parse hacks
+#define kvplayer                                                               \
+    ",\"(bestwork|playerid|ip|modelname|name|worstework)\":\"([^\"]*)"
+bool remediateLkpMSPlayer(char *jsonData, char *checkPName, int posCPN = 0) {
+
+    instrument(__LINE__, __FILE__, __FUNCTION__);
+    if (posCPN > 0) {
+
+        int v = getVerbose();
+        char stb[BSIZE];
+
+        char cpn[30] = {0};
+
+        sprintf(cpn, "\"%s\"", checkPName);
+
+        int trip = 4;
+        char *in = jsonData;
+        char *token;
+        char *nibbler = "{]";
+        token = strstr(in, "players_loop");
+        in = token + 12 + 2; // quote colon
+        token = strtok(in, nibbler);
+
+        int retval = 0;
+        regex_t re;
+        regmatch_t rm[3];
+        if (regcomp(&re, kvplayer, REG_EXTENDED | REG_ICASE | REG_NOTBOL) !=
+            0) {
+            fprintf(stderr, "Failed to compile regex '%s'\n", kvplayer);
+            return false;
+        }
+
+        while (token != NULL) {
+
+            if ((trip > 0) && (0 != strstr(token, (char *)cpn))) {
+
+                instrument(__LINE__, __FILE__,
+                           "remediateLkpMSPlayer tokenized");
+                if (v > LL_INFO) {
+                    sprintf(stb, "(%03ld) %s\n", (long)strlen(token), token);
+                    putMSG(stb, LL_INFO);
+                }
+                char keyStr[30];
+                char valStr[128];
+
+                // if a tag is in pos 0 it can be skipped!!!
+                sprintf(stb, "pad-%s-pad", token);
+                strcpy(token, stb);
+                while ((trip > 0) &&
+                       ((retval = regexec(&re, token, 4, rm, 0)) == 0)) {
+
+                    sprintf(keyStr, "%.*s", (int)(rm[1].rm_eo - rm[1].rm_so),
+                            token + rm[1].rm_so);
+                    sprintf(valStr, "%.*s", (int)(rm[2].rm_eo - rm[2].rm_so),
+                            token + rm[2].rm_so);
+
+                    token +=
+                        rm[2].rm_so + ((int)(rm[2].rm_eo - rm[2].rm_so)) - 4;
+
+                    if (strncmp("playerid", keyStr, 8) == 0) {
+                        strncpy(lms.players[0].playerID, valStr, 17);
+                        trip--;
+                    } else if (strncmp("modelname", keyStr, 9) == 0) {
+                        strncpy(lms.players[0].modelName, valStr, 29);
+                        trip--;
+                    } else if (strncmp("ip", keyStr, 2) == 0) {
+                        char *colon;
+                        if ((colon = strstr(valStr, ":")) != NULL) {
+                            int cpos;
+                            cpos = colon - valStr;
+                            valStr[cpos] = '\0';
+                        }
+                        strncpy(lms.players[0].playerIP, valStr, 27);
+                        trip--;
+                    } else if (strncmp("name", keyStr, 4) == 0) {
+                        strncpy(lms.players[0].playerName, valStr, 127);
+                        lms.activePlayer = 0;
+                        trip--;
+                    }
+
+                    /////token += rm[2].rm_so + ((int)(rm[2].rm_eo - rm[2].rm_so));
+                }
+            }
+            token = strtok(NULL, nibbler);
+        }
+    }
+    return (lms.activePlayer != -1);
+}
+
 // decompose LMS jsonRPC response
 bool lookupLMSPlayer(char *jsonData, char *checkPName) {
 
-    int v = getVerbose();
+    int npos = strpos(jsonData, checkPName);
+    char stb[BSIZE];
+    sprintf(stb, "%s %s\n", labelIt("Player Found", LABEL_WIDTH, "."),
+            (-1 != npos) ? "Yes" : "No");
+    putMSG(stb, LL_INFO);
 
-    jsmn_parser p;
-    jsmntok_t jt[128+(43*20)]; // upto 20 players
+    // quick test and remediation tack
+    if (-1 != npos) {
 
-    jsmn_init(&p);
-    int r = jsmn_parse(&p, jsonData, strlen(jsonData), jt,
-                       sizeof(jt) / sizeof(jt[0]));
+        int v = getVerbose();
 
-    if (r < 0) {
-        printf("[lookupLMSPlayer] Failed to parse JSON, check adequate tokens "
-               "allocated: %d\n",
-               r);
-        if (v > LL_DEBUG) {
-            printf("%s\n", jsonData);
+        int playerCount = 0;
+        char *qndcnt = strstr(jsonData, "\"count\":") + 8;
+        playerCount = atoi(qndcnt);
+
+        if (0 == playerCount) {
+            sprintf(stb, "%s %s\n", labelIt("Player Count", LABEL_WIDTH, "."),
+                    "Indeterminate");
         }
-        return false;
-    }
+        if (playerCount < 3) { // hack for "good" allocation
+            playerCount = 3;
+        } else {
+            sprintf(stb, "%s %d\n", labelIt("Player Count", LABEL_WIDTH, "."),
+                    playerCount);
+        }
+        putMSG(stb, LL_INFO);
 
-    const int trip = 4;
-    int plk = 0;
-    lms.activePlayer = -1;
-    if (r < 1 || jt[0].type != JSMN_OBJECT) {
-        printf("Object expected, %d %s?\n", r, whatsitJson(jt[0].type));
-        return false;
+        jsmn_parser p;
+        jsmntok_t jt[40 + (45 * playerCount)];
+
+        jsmn_init(&p);
+        int r = jsmn_parse(&p, jsonData, strlen(jsonData), jt,
+                           sizeof(jt) / sizeof(jt[0]));
+
+        if (r < 0) {
+            printf("[lookupLMSPlayer] Failed to parse JSON, check "
+                   "adequate tokens "
+                   "allocated: %d\n",
+                   r);
+            if (v > LL_INFO) {
+                printf("\npayload: %s\nlength: %ld\nallocated: %d\n", jsonData,
+                       (long)strlen(jsonData),
+                       (int)(sizeof(jt) / sizeof(jt[0])));
+            }
+
+            // attempt remediation tack
+            return remediateLkpMSPlayer(jsonData, checkPName, npos);
+        }
+
+        const int trip = 4;
+        int plk = 0;
+        lms.activePlayer = -1;
+        if (r < 1 || jt[0].type != JSMN_OBJECT) {
+            if (v > LL_INFO) {
+                printf("Object expected, %d %s?\n", r, whatsitJson(jt[0].type));
+                printf("\npayload: %s\nlength: %ld\nallocated: %d\n", jsonData,
+                       (long)strlen(jsonData),
+                       (int)(sizeof(jt) / sizeof(jt[0])));
+            }
+            return false;
+        } else {
+
+            int playerAttribs = trip;
+            for (int i = 1; (i < r); i++) {
+
+                jsmntok_t tok = jt[i];
+
+                if (0 == playerAttribs) {
+                    playerAttribs = trip;
+                    plk++;
+                }
+
+                uint16_t lenk = tok.end - tok.start;
+                char keyStr[lenk + 1];
+                memcpy(keyStr, &jsonData[tok.start], lenk);
+                keyStr[lenk] = '\0';
+                tok = jt[i + 1];
+                uint16_t lenv = tok.end - tok.start;
+                char valStr[lenv + 1];
+                memcpy(valStr, &jsonData[tok.start], lenv);
+                valStr[lenv] = '\0';
+
+                if (strncmp("result", keyStr, 6) == 0) {
+                    i++;
+                } else if (strncmp("count", keyStr, 5) == 0) {
+                    lms.playerCount = atoi(valStr); // capture, done use yet
+                } else if (strncmp("players_loop", keyStr, 12) == 0) {
+                    plk = 0;
+                    playerAttribs = trip;
+                } else if (strncmp("playerid", keyStr, 8) == 0) {
+                    strncpy(lms.players[plk].playerID, valStr, 17);
+                    playerAttribs--;
+                } else if (strncmp("modelname", keyStr, 9) == 0) {
+                    strncpy(lms.players[plk].modelName, valStr, 29);
+                    playerAttribs--;
+                } else if (strncmp("ip", keyStr, 2) == 0) {
+                    char *colon;
+                    if ((colon = strstr(valStr, ":")) != NULL) {
+                        int cpos;
+                        cpos = colon - valStr;
+                        valStr[cpos] = '\0';
+                    }
+                    strncpy(lms.players[plk].playerIP, valStr, 27);
+                    playerAttribs--;
+                } else if (strncmp("name", keyStr, 4) == 0) {
+                    strncpy(lms.players[plk].playerName, valStr, 127);
+                    if (strcicmp(lms.players[plk].playerName, checkPName) ==
+                        0) {
+                        lms.activePlayer = plk;
+                    }
+                    playerAttribs--;
+                }
+            }
+        }
+
+        for (int p = 0; p < plk; p++) {
+            if ((0 != strlen(lms.players[p].playerName)) && (v > LL_INFO)) {
+                printf("%s%02d %29s %20s %17s %s\n",
+                       (p == lms.activePlayer) ? "*" : " ", p,
+                       lms.players[p].modelName, lms.players[p].playerName,
+                       lms.players[p].playerID, lms.players[p].playerIP);
+            }
+        }
     } else {
-
-        int playerAttribs = trip;
-        for (int i = 1; (i < r); i++) {
-
-            jsmntok_t tok = jt[i];
-
-            if (0 == playerAttribs) {
-                playerAttribs = trip;
-                plk++;
-            }
-
-            uint16_t lenk = tok.end - tok.start;
-            char keyStr[lenk + 1];
-            memcpy(keyStr, &jsonData[tok.start], lenk);
-            keyStr[lenk] = '\0';
-            tok = jt[i + 1];
-            uint16_t lenv = tok.end - tok.start;
-            char valStr[lenv + 1];
-            memcpy(valStr, &jsonData[tok.start], lenv);
-            valStr[lenv] = '\0';
-
-            if (strncmp("result", keyStr, 6) == 0) {
-                i++;
-            } else if (strncmp("count", keyStr, 5) == 0) {
-                lms.playerCount = atoi(valStr); // capture, done use yet
-            } else if (strncmp("players_loop", keyStr, 12) == 0) {
-                plk = 0;
-                playerAttribs = trip;
-            } else if (strncmp("playerid", keyStr, 8) == 0) {
-                strncpy(lms.players[plk].playerID, valStr, 17);
-                playerAttribs--;
-            } else if (strncmp("modelname", keyStr, 9) == 0) {
-                strncpy(lms.players[plk].modelName, valStr, 29);
-                playerAttribs--;
-            } else if (strncmp("ip", keyStr, 2) == 0) {
-                char *colon;
-                if ((colon = strstr(valStr, ":")) != NULL) {
-                    int cpos;
-                    cpos = colon - valStr;
-                    valStr[cpos] = '\0';
-                }
-                strncpy(lms.players[plk].playerIP, valStr, 27);
-                playerAttribs--;
-            } else if (strncmp("name", keyStr, 4) == 0) {
-                strncpy(lms.players[plk].playerName, valStr, 127);
-                if (strcicmp(lms.players[plk].playerName, checkPName) == 0) {
-                    lms.activePlayer = plk;
-                }
-                playerAttribs--;
-            }
-        }
+        abortMonitor("ERROR specified player name was not found !!!");
     }
-
-    for (int p = 0; p < plk; p++) {
-        if ((0 != strlen(lms.players[p].playerName)) && (v > LL_INFO)) {
-            printf("%s%02d %29s %20s %17s %s\n",
-                   (p == lms.activePlayer) ? "*" : " ", p,
-                   lms.players[p].modelName, lms.players[p].playerName,
-                   lms.players[p].playerID, lms.players[p].playerIP);
-        }
-    }
-
     return (lms.activePlayer != -1);
 }
 
@@ -368,7 +493,7 @@ void setStaticServer(void) {
 }
 
 // retool - thanks to @gregex for nixing hardcoded port
-// and providing eJSON prototype - direct retrofit 
+// and providing eJSON prototype - direct retrofit
 in_addr_t getServerAddress(void) {
 #define PORT 3483
 
@@ -391,7 +516,7 @@ in_addr_t getServerAddress(void) {
         setsockopt(dscvrLMS, SOL_SOCKET, SO_BROADCAST, (const void *)&enable,
                    sizeof(enable));
 
-        buf = (char *)"eJSON"; // looking for jsonRPC rather than telnet 
+        buf = (char *)"eJSON"; // looking for jsonRPC rather than telnet
 
         memset(&d, 0, sizeof(d));
         d.sin_family = AF_INET;
@@ -408,7 +533,8 @@ in_addr_t getServerAddress(void) {
 
             if (sendto(dscvrLMS, buf, 6, 0, (struct sockaddr *)&d, sizeof(d)) <
                 0) {
-                putMSG("LMS server response .: Error\nError sending disovery\n",
+                putMSG("LMS server response .: Error\nError sending "
+                       "disovery\n",
                        LL_INFO);
             }
 
@@ -420,21 +546,19 @@ in_addr_t getServerAddress(void) {
                 lms.LMSPort = 9000; // default fallback
 
                 readbuf[0] = '\0';
-                read_bytes = recvfrom(dscvrLMS, readbuf, sizeof(readbuf), 0, (struct sockaddr *)&s, &slen);
+                read_bytes = recvfrom(dscvrLMS, readbuf, sizeof(readbuf), 0,
+                                      (struct sockaddr *)&s, &slen);
 
-                if (read_bytes == 0 || readbuf[0] != 'E')
-                {
+                if (read_bytes == 0 || readbuf[0] != 'E') {
                     abortMonitor("ERROR: invalid discovery response!");
-                }
-                else if (read_bytes < 5 || strncmp(readbuf, "EJSON", 5) != 0)
-                {
+                } else if (read_bytes < 5 ||
+                           strncmp(readbuf, "EJSON", 5) != 0) {
                     abortMonitor("ERROR: unexpected discovery response!");
-                }
-                else
-                {
+                } else {
                     char portbuf[6];
                     memset(&portbuf, 0, sizeof(portbuf));
-                    for (int i = 6, j = 0 ; i < read_bytes && j < sizeof(portbuf) - 1; ++i, ++j) {
+                    for (int i = 6, j = 0;
+                         i < read_bytes && j < sizeof(portbuf) - 1; ++i, ++j) {
                         portbuf[j] = readbuf[i]; // assumes we're reading digits
                     }
                     lms.LMSPort = atol(portbuf); // overflow is possible

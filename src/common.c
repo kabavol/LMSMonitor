@@ -207,6 +207,13 @@ void strtrim(char *s) {
     memmove(s, p, l + 1);
 }
 
+int strpos(char *haystack, char *needle) {
+    char *p = strstr(haystack, needle);
+    if (p)
+        return p - haystack;
+    return -1;
+}
+
 void sinisterRotate(char *rm) {
     int n = strlen(rm);
     uint8_t temp = rm[0];
@@ -284,3 +291,4 @@ int strcicmp(char const *a, char const *b) {
             return d;
     }
 }
+

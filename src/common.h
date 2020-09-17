@@ -27,9 +27,10 @@
 #include <stdint.h>
 
 #define BSIZE 4096
+#define BSIZE8 8192
 
 #define APPNAME "LMSMonitor"
-#define VERSION "0.4.56"
+#define VERSION "0.4.57"
 #define APPSIG APPNAME " " VERSION
 
 #define LABEL_WIDTH 22
@@ -64,6 +65,7 @@ multi_tok_t multi_tok_init();
 void strupr(char *s);
 void strltrim(char *s);
 void strtrim(char *s);
+int strpos(char *haystack, char *needle);
 // handy - tho' should check POSIX
 int strcicmp(char const *a, char const *b);
 
