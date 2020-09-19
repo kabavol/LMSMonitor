@@ -242,13 +242,14 @@ bool baseHTTPRequest(enum Method method, char *host, uint16_t port, char *uri,
         fprintf(stderr, "ERROR reading from socket!");
         return false;
     }
-    buffer[nbytes_total] = 0;
 
     close(sockFD);
 
     if (nbytes_total == -1) {
         fprintf(stderr, "error: bad request - %s\n", host);
         return false;
+    }else{
+        buffer[nbytes_total] = '\0';
     }
 
     char *retdata = strstr(buffer, "200 OK");

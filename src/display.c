@@ -291,13 +291,13 @@ Pin	Symbole	Niveau	Function
     if ((OLED_ADAFRUIT_SPI_128x64 == oledType) ||
         (OLED_SH1106_SPI_128x64 == oledType)) {
         sprintf(stb, "%s %s\n", labelIt("OLED Mode", LABEL_WIDTH, "."), "SPI");
-        putMSG(stb, LL_QUIET);
+        putMSG(stb, LL_DEBUG);
         if (!display.init(dopts.spiDC, dopts.oledRST, dopts.spiCS, oledType)) {
             return EXIT_FAILURE;
         }
     } else {
         sprintf(stb, "%s %s\n", labelIt("OLED Mode", LABEL_WIDTH, "."), "IIC");
-        putMSG(stb, LL_QUIET);
+        putMSG(stb, LL_DEBUG);
         if (0 != oledAddress) {
             if (!display.init(dopts.oledRST, oledType, oledAddress)) {
                 return EXIT_FAILURE;

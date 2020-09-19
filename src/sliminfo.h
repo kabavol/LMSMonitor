@@ -44,4 +44,6 @@ lms_t *lmsDetail(void);
 
 void sliminfoFinalize(void);
 
+#define kvplayer ",\"(t0a1g2|playerid|ip|modelname|name|t3a4g5)\":\"([^\"]*)"
+
 #endif

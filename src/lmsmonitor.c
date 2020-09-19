@@ -581,12 +581,15 @@ void checkWeather(size_t timer_id, void *user_data) {
     instrument(__LINE__, __FILE__, "checkWeather");
     climacell_t *cc;
     cc = ((struct climacell_t *)user_data);
-    if (getVerbose() >= LL_DEBUG) {
+    int v = getVerbose();
+    if (v >= LL_DEBUG) {
         printf("Check Latitude ......: %8.4f\n", cc->coords.Latitude);
         printf("Check Longitude .....: %8.4f\n", cc->coords.Longitude);
     }
     updClimacell(cc);
-    printf("Current Conditions ..: %s\n", cc->current.text);
+    if (v >= LL_DEBUG) {
+        printf("Current Conditions ..: %s\n", cc->current.text);
+    }
 }
 
 void cycleVisualize(size_t timer_id, void *user_data) {
@@ -763,15 +766,15 @@ int main(int argc, char *argv[]) {
 #ifdef __arm__
     pi_vers_t *pv = piVersion();
     sprintf(stbl, "%s %s\n", labelIt("Platform", LABEL_WIDTH, "."), pv->model);
-    putMSG(stbl, LL_QUIET);
+    putMSG(stbl, LL_DEBUG);
     sprintf(stbl, "%s %s\n", labelIt("Verbosity", LABEL_WIDTH, "."),
             getVerboseStr());
-    putMSG(stbl, LL_QUIET);
+    putMSG(stbl, LL_DEBUG);
     printOledSetup();    // feedback and "debug"
     printScrollerMode(); // feedback and "debug"
     sprintf(stbl, "%s %s\n", labelIt("OLED Clock Font", LABEL_WIDTH, "."),
             oled_font_str[lmsopt.clockFont]);
-    putMSG(stbl, LL_QUIET);
+    putMSG(stbl, LL_DEBUG);
 
     // systematic reset - addreess roll, flip and mirror exhibits
     size_t resetdtimer;

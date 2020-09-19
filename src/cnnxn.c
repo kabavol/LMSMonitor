@@ -27,7 +27,7 @@ void showConnect(void) {
     putTextToCenter(ypos, hostbuffer);
 
     sprintf(stbl, "%s %s\n", labelIt("Hostname", LABEL_WIDTH, "."), hostbuffer);
-    putMSG(stbl, LL_QUIET);
+    putMSG(stbl, LL_DEBUG);
 
     struct ifaddrs *ifaddr, *ifa;
     int family, s;
@@ -53,10 +53,10 @@ void showConnect(void) {
             }
             sprintf(stbl, "%s %s\n", labelIt("Interface", LABEL_WIDTH, "."),
                     ifa->ifa_name);
-            putMSG(stbl, LL_QUIET);
+            putMSG(stbl, LL_DEBUG);
             sprintf(stbl, "%s %s\n", labelIt("Address", LABEL_WIDTH, "."),
                     host);
-            putMSG(stbl, LL_QUIET);
+            putMSG(stbl, LL_DEBUG);
             int icon = ((strstr(ifa->ifa_name, "wlan") == NULL) ? 1 : 0);
             ypos += 16;
             putIFDetail(icon, xpos, ypos, host);
