@@ -792,6 +792,7 @@ int main(int argc, char *argv[]) {
     }
 
 #ifdef __arm__
+
     // setup brightness event (sunrise/sunset)
     if ((lmsopt.astral) && (initAstral())) {
         size_t astraltimer;

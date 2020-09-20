@@ -514,7 +514,6 @@ bool getLocation(void) {
     char stb[BSIZE] = {0};
 
     if (httpGet(host, port, uri, header, (char *)lookupIP)) {
-
         if (!isEmptyStr(lookupIP)) {
 
             sprintf(stb, "%s %s\n", labelIt("Provider IP", LABEL_WIDTH, "."),
@@ -527,7 +526,7 @@ bool getLocation(void) {
             strcpy(header, "");
             char jsonData[BSIZE] = {0};
 
-            if (httpGet(host, port, uri, header, (char *)jsonData)) {
+            if (httpGetNR(host, port, uri, header, (char *)jsonData)) {
                 // parse/decompose and map json
                 parseISP(jsonData, &isp_locale);
 

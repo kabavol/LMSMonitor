@@ -40,7 +40,7 @@
 
 struct Request *parse_request(const char *raw) {
     struct Request *req = NULL;
-    req = malloc(sizeof(struct Request));
+    req = (Request*)malloc(sizeof(struct Request));
     if (!req) {
         return NULL;
     }
@@ -61,7 +61,7 @@ struct Request *parse_request(const char *raw) {
 
     // Request-URI
     size_t url_len = strcspn(raw, " ");
-    req->url = malloc(url_len + 1);
+    req->url = (char *)malloc(url_len + 1);
     if (!req->url) {
         free_request(req);
         return NULL;
@@ -72,7 +72,7 @@ struct Request *parse_request(const char *raw) {
 
     // HTTP-Version
     size_t ver_len = strcspn(raw, "\r\n");
-    req->version = malloc(ver_len + 1);
+    req->version = (char *)malloc(ver_len + 1);
     if (!req->version) {
         free_request(req);
         return NULL;
@@ -84,7 +84,7 @@ struct Request *parse_request(const char *raw) {
     struct Header *header = NULL, *last = NULL;
     while (raw[0] != '\r' || raw[1] != '\n') {
         last = header;
-        header = malloc(sizeof(Header));
+        header = (Header*)malloc(sizeof(Header));
         if (!header) {
             free_request(req);
             return NULL;
@@ -92,7 +92,7 @@ struct Request *parse_request(const char *raw) {
 
         // name
         size_t name_len = strcspn(raw, ":");
-        header->name = malloc(name_len + 1);
+        header->name = (char *)malloc(name_len + 1);
         if (!header->name) {
             free_request(req);
             return NULL;
@@ -106,7 +106,7 @@ struct Request *parse_request(const char *raw) {
 
         // value
         size_t value_len = strcspn(raw, "\r\n");
-        header->value = malloc(value_len + 1);
+        header->value = (char *)malloc(value_len + 1);
         if (!header->value) {
             free_request(req);
             return NULL;
@@ -122,7 +122,7 @@ struct Request *parse_request(const char *raw) {
     raw += 2; // move past <CR><LF>
 
     size_t body_len = strlen(raw);
-    req->body = malloc(body_len + 1);
+    req->body = (char *)malloc(body_len + 1);
     if (!req->body) {
         free_request(req);
         return NULL;
@@ -173,8 +173,16 @@ bool baseHTTPRequest(enum Method method, char *host, uint16_t port, char *uri,
     int sockFD;
     struct hostent *hostent;
     struct sockaddr_in sockaddr_in;
-    ssize_t req_len, nbytes_total;
+    ssize_t req_len = 0;
+    ssize_t total_size = 0;
+    ssize_t read_size = 0;
 
+    ssize_t seed = 4096;
+    char *ret;
+    if ((ret = (char *)malloc(seed * sizeof(char))) == NULL) {
+        return false;
+    }
+    ret[0] = 0;
     int datalen = strlen(data);
 
     // use own header
@@ -191,6 +199,121 @@ bool baseHTTPRequest(enum Method method, char *host, uint16_t port, char *uri,
 
     req_len = snprintf(request, MAX_REQUEST_LEN, request_template,
                        (char *)httpMethodString(method), uri, host, hdr, data);
+    if (req_len >= MAX_REQUEST_LEN) {
+        fprintf(stderr, "[baseHTTPRequest] request length overrun: %ld\n",
+                (long)req_len);
+        return false;
+    }
+
+    // open the socket.
+    protoent = getprotobyname("tcp");
+    if (protoent == NULL) {
+        fprintf(stderr, "[baseHTTPRequest] error on getprotobyname(\"tcp\")\n");
+        return false;
+    }
+    sockFD = socket(AF_INET, SOCK_STREAM, protoent->p_proto);
+    if (sockFD == -1) {
+        fprintf(stderr, "[baseHTTPRequest] bad socket descriptor\n");
+        //if (ret) free(ret);
+        return false;
+    }
+
+    // flesh the address
+    hostent = gethostbyname(host);
+    if (hostent == NULL) {
+        fprintf(stderr, "[baseHTTPRequest] error: gethostbyname(\"%s\")\n",
+                host);
+        //if (ret) free(ret);
+        return false;
+    }
+    in_addr = inet_addr(inet_ntoa(*(struct in_addr *)*(hostent->h_addr_list)));
+    if (in_addr == (in_addr_t)-1) {
+        fprintf(stderr, "[baseHTTPRequest] error: inet_addr(\"%s\")\n",
+                *(hostent->h_addr_list));
+        //if (ret) free(ret);
+        return false;
+    }
+    sockaddr_in.sin_addr.s_addr = in_addr;
+    sockaddr_in.sin_family = AF_INET;
+    sockaddr_in.sin_port = htons(port);
+
+    // And connect ...
+    if (connect(sockFD, (struct sockaddr *)&sockaddr_in, sizeof(sockaddr_in)) ==
+        -1) {
+        fprintf(stderr, "[baseHTTPRequest] error: connect - %s\n", host);
+        //if (ret) free(ret);
+        return false;
+    }
+
+    // Send HTTP request.
+    if (write(sockFD, request, strlen(request)) < 0) {
+        fprintf(stderr, "[baseHTTPRequest] error: writing to socket!");
+        //if (ret) free(ret);
+        return false;
+    }
+
+    bool redone = false;
+    while ((read_size = recv(sockFD, buffer, BUFSIZ-1, 0))) {
+        if (read_size > seed) {
+        printf("%ld > %ld?\n",read_size, seed);
+            redone = true;
+            ret = (char *)realloc(ret, read_size + total_size);
+            if (response == NULL) {
+                printf("[baseHTTPRequest] error: realloc failed");
+            }
+            seed = 0;
+        }
+        memcpy(ret + total_size, buffer, read_size);
+        total_size += read_size;
+    }
+
+    if (redone) {
+        ret = (char *)realloc(ret, total_size + 1);
+    }
+    *(ret + total_size) = '\0';
+
+    close(sockFD);
+
+    ret = strstr(ret, "200 OK");
+    if (ret == NULL) {
+        response[0] = '\0';
+        if (ret)
+            free(ret);
+        return false;
+    } else {
+        ret += 7;
+    }
+    // should slurp content length here
+    ret = strstr(ret, "\r\n\r\n");
+    if (ret != NULL) {
+        ret += 4;
+        strcpy(response, ret);
+    } else {
+        if (ret)
+            free(ret);
+        return false;
+    }
+
+    return true;
+}
+
+bool baseHTTPRequestNR(enum Method method, char *host, uint16_t port, char *uri,
+                     char *header, char *response) {
+
+char buffer[BUFSIZ];
+    enum CONSTEXPR { MAX_REQUEST_LEN = 1024 };
+    char request[MAX_REQUEST_LEN];
+
+    char request_template[] = "%s %s HTTP/1.1\r\nHost: %s%s\r\n\r\n";
+    struct protoent *protoent;
+    in_addr_t in_addr;
+    int sockFD;
+    struct hostent *hostent;
+    struct sockaddr_in sockaddr_in;
+    ssize_t req_len, nbytes_total;
+
+    req_len = snprintf(request, MAX_REQUEST_LEN, request_template,
+                       (char *)httpMethodString(method), uri, host, header);
     if (req_len >= MAX_REQUEST_LEN) {
         fprintf(stderr, "request length overrun: %ld\n", (long)req_len);
         printf("%s\n", request);
@@ -265,12 +388,16 @@ bool baseHTTPRequest(enum Method method, char *host, uint16_t port, char *uri,
     } else
         return false;
 
-    return true;
-}
+    return true;}
 
 bool httpGet(char *host, uint16_t port, char *uri, char *header,
              char *response) {
     return baseHTTPRequest(GET, host, port, uri, header, "", response);
+}
+
+bool httpGetNR(char *host, uint16_t port, char *uri, char *header,
+             char *response) {
+    return baseHTTPRequestNR(GET, host, port, uri, header, response);
 }
 
 bool httpPost(char *host, uint16_t port, char *uri, char *header, char *data,

@@ -49,6 +49,7 @@ typedef struct Request {
 const char* httpMethodString(enum Method method);
 
 bool httpGet(char *host, uint16_t port, char *uri, char *header, char *response);
+bool httpGetNR(char *host, uint16_t port, char *uri, char *header, char *response);
 bool httpPost(char *host, uint16_t port, char *uri, char *header, char *data, char *response);
 
 struct Request *parse_request(const char *raw);

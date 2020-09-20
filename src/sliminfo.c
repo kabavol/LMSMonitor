@@ -96,6 +96,9 @@ bool parseLMSResponse(char *jsonData) {
 
     if (r < 1 || jt[0].type != JSMN_OBJECT) {
         printf("Object expected, %d %s?\n", r, whatsitJson(jt[0].type));
+        if (v > LL_DEBUG) {
+            printf("payload\n%s\n", jsonData);
+        }
         return false;
     } else {
 
@@ -115,105 +118,130 @@ bool parseLMSResponse(char *jsonData) {
             if (0 ==
                 strncmp(lmsTags[VOLUME].name, keyStr, lmsTags[VOLUME].keyLen)) {
                 if (storeTagData(&lmsTags[VOLUME], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Volume ..........: %d\n", atoi(valStr));
+                    if (v > LL_DEBUG)
+                        printf("LMS:Volume ..........: %d\n", atoi(valStr));
             } else if (0 == strncmp(lmsTags[CONNECTED].name, keyStr,
                                     lmsTags[CONNECTED].keyLen)) {
                 if (storeTagData(&lmsTags[CONNECTED], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Player Online ...: %s\n",
-                           (strncmp("0", valStr, 1) == 0) ? "No" : "Yes");
+                    if (v > LL_DEBUG)
+                        printf("LMS:Player Online ...: %s\n",
+                               (strncmp("0", valStr, 1) == 0) ? "No" : "Yes");
             } else if (0 == strncmp(lmsTags[SAMPLERATE].name, keyStr,
                                     lmsTags[SAMPLERATE].keyLen)) {
                 if (storeTagData(&lmsTags[SAMPLERATE], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Sample Rate .....: %2.1f\n",
-                           atof(valStr) / 1000);
+                    if (v > LL_DEBUG)
+                        printf("LMS:Sample Rate .....: %2.1f\n",
+                               atof(valStr) / 1000);
             } else if (0 == strncmp(lmsTags[SAMPLESIZE].name, keyStr,
                                     lmsTags[SAMPLESIZE].keyLen)) {
                 if (storeTagData(&lmsTags[SAMPLESIZE], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Sample Size .....: %s\n", valStr);
+                    if (v > LL_DEBUG)
+                        printf("LMS:Sample Size .....: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[ALBUMARTIST].name, keyStr,
                                     lmsTags[ALBUMARTIST].keyLen)) {
                 if (storeTagData(&lmsTags[ALBUMARTIST], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Album Artist ....: %s\n", valStr);
+                    if (v > LL_DEBUG)
+                        printf("LMS:Album Artist ....: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[ALBUMID].name, keyStr,
                                     lmsTags[ALBUMID].keyLen)) {
                 if (storeTagData(&lmsTags[ALBUMID], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Album ID ........: %s\n", valStr);
+                    if (v > LL_DEBUG)
+                        printf("LMS:Album ID ........: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[ALBUM].name, keyStr,
                                     lmsTags[ALBUM].keyLen)) {
                 if (storeTagData(&lmsTags[ALBUM], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Album ...........: %s\n", valStr);
+                    if (v > LL_DEBUG)
+                        printf("LMS:Album ...........: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[COMPILATION].name, keyStr,
                                     lmsTags[COMPILATION].keyLen)) {
                 if (storeTagData(&lmsTags[COMPILATION], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Compilation .....: %s\n",
-                           (strncmp("0", valStr, 1) == 0) ? "No" : "Yes");
+                    if (v > LL_DEBUG)
+                        printf("LMS:Compilation .....: %s\n",
+                               (strncmp("0", valStr, 1) == 0) ? "No" : "Yes");
             } else if (0 == strncmp(lmsTags[TRACKNUM].name, keyStr,
                                     lmsTags[TRACKNUM].keyLen)) {
                 if (storeTagData(&lmsTags[TRACKNUM], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Track Number ....: %s\n", valStr);
+                    if (v > LL_DEBUG)
+                        printf("LMS:Track Number ....: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[TRACKID].name, keyStr,
                                     lmsTags[TRACKID].keyLen)) {
                 if (0 != strcmp("1", valStr))
                     if (storeTagData(&lmsTags[TRACKID], valStr))
-                        if(v>LL_DEBUG) printf("LMS:Track ID ........: %s\n", valStr);
+                        if (v > LL_DEBUG)
+                            printf("LMS:Track ID ........: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[TITLE].name, keyStr,
                                     lmsTags[TITLE].keyLen)) {
                 if (storeTagData(&lmsTags[TITLE], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Title ...........: %s\n", valStr);
+                    if (v > LL_DEBUG)
+                        printf("LMS:Title ...........: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[YEAR].name, keyStr,
                                     lmsTags[YEAR].keyLen)) {
                 if (storeTagData(&lmsTags[YEAR], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Year ............: %s\n", valStr);
+                    if (v > LL_DEBUG)
+                        printf("LMS:Year ............: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[REMOTETITLE].name, keyStr,
                                     lmsTags[REMOTETITLE].keyLen)) {
                 if (storeTagData(&lmsTags[REMOTETITLE], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Remote Title ....: %s\n", valStr);
+                    if (v > LL_DEBUG)
+                        printf("LMS:Remote Title ....: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[REMOTE].name, keyStr,
                                     lmsTags[REMOTE].keyLen)) {
                 if (storeTagData(&lmsTags[REMOTE], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Remote ..........: %s\n",
-                           (0 == strncmp("0", valStr, 1)) ? "No" : "Yes");
+                    if (v > LL_DEBUG)
+                        printf("LMS:Remote ..........: %s\n",
+                               (0 == strncmp("0", valStr, 1)) ? "No" : "Yes");
             } else if (0 == strncmp(lmsTags[ARTIST].name, keyStr,
                                     lmsTags[ARTIST].keyLen)) {
                 if (storeTagData(&lmsTags[ARTIST], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Artist ..........: %s\n", valStr);
+                    if (v > LL_DEBUG)
+                        printf("LMS:Artist ..........: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[TRACKARTIST].name, keyStr,
                                     lmsTags[TRACKARTIST].keyLen)) {
                 if (storeTagData(&lmsTags[TRACKARTIST], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Track Artist(s) .: %s\n", valStr);
+                    if (v > LL_DEBUG)
+                        printf("LMS:Track Artist(s) .: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[DURATION].name, keyStr,
                                     lmsTags[DURATION].keyLen)) {
                 if (storeTagData(&lmsTags[DURATION], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Duration ........: %s\n", valStr);
+                    if (v > LL_DEBUG)
+                        printf("LMS:Duration ........: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[COMPOSER].name, keyStr,
                                     lmsTags[COMPOSER].keyLen)) {
                 if (storeTagData(&lmsTags[COMPOSER], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Composer ........: %s\n", valStr);
+                    if (v > LL_DEBUG)
+                        printf("LMS:Composer ........: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[CONDUCTOR].name, keyStr,
                                     lmsTags[CONDUCTOR].keyLen)) {
                 if (storeTagData(&lmsTags[CONDUCTOR], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Conductor .......: %s\n", valStr);
+                    if (v > LL_DEBUG)
+                        printf("LMS:Conductor .......: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[PERFORMER].name, keyStr,
                                     lmsTags[PERFORMER].keyLen)) {
                 if (storeTagData(&lmsTags[PERFORMER], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Conductor .......: %s\n", valStr);
+                    if (v > LL_DEBUG)
+                        printf("LMS:Conductor .......: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[TIME].name, keyStr,
                                     lmsTags[TIME].keyLen)) {
                 if (storeTagData(&lmsTags[TIME], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Time Played .....: %s\n", valStr);
+                    if (v > LL_DEBUG)
+                        printf("LMS:Time Played .....: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[REPEAT].name, keyStr,
                                     lmsTags[REPEAT].keyLen)) {
                 if (storeTagData(&lmsTags[REPEAT], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Repeat ..........: %s\n", valStr);
+                    if (v > LL_DEBUG)
+                        printf("LMS:Repeat ..........: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[SHUFFLE].name, keyStr,
                                     lmsTags[SHUFFLE].keyLen)) {
                 if (storeTagData(&lmsTags[SHUFFLE], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Shuffle .........: %s\n", valStr);
+                    if (v > LL_DEBUG)
+                        printf("LMS:Shuffle .........: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[MODE].name, keyStr,
                                     lmsTags[MODE].keyLen)) {
                 if (storeTagData(&lmsTags[MODE], valStr))
-                    if(v>LL_DEBUG) printf("LMS:Playing .........: %s\n",
-                           (0 == strncmp("play", valStr, 4)) ? "Yes" : "No");
+                    if (v > LL_DEBUG)
+                        printf("LMS:Playing .........: %s\n",
+                               (0 == strncmp("play", valStr, 4)) ? "Yes"
+                                                                 : "No");
             }
         }
     }
@@ -228,10 +256,9 @@ bool remediateLkpMSPlayer(char *jsonData, char *checkPName, int posCPN = 0) {
     if (posCPN > 0) {
 
         int v = getVerbose();
-        char stb[BUFSIZ];
+        char stb[BSIZE];
 
-        char cpn[32] = {0};
-
+        char cpn[50] = {0};
         sprintf(cpn, "\"%s\"", checkPName);
 
         int trip = 4;
@@ -298,7 +325,6 @@ bool remediateLkpMSPlayer(char *jsonData, char *checkPName, int posCPN = 0) {
                         lms.activePlayer = 0;
                         trip--;
                     }
-
                 }
             }
             token = strtok(NULL, nibbler);
@@ -310,7 +336,10 @@ bool remediateLkpMSPlayer(char *jsonData, char *checkPName, int posCPN = 0) {
 // decompose LMS jsonRPC response
 bool lookupLMSPlayer(char *jsonData, char *checkPName) {
 
-    int npos = strpos(jsonData, checkPName);
+    char cpn[50] = {0};
+    sprintf(cpn, "\"%s\"", checkPName);
+
+    int npos = strpos(jsonData, cpn);
     char stb[BSIZE];
     sprintf(stb, "%s %s\n", labelIt("Player Found", LABEL_WIDTH, "."),
             (-1 != npos) ? "Yes" : "No");
@@ -338,7 +367,7 @@ bool lookupLMSPlayer(char *jsonData, char *checkPName) {
         putMSG(stb, LL_INFO);
 
         jsmn_parser p;
-        jsmntok_t jt[40 + (45 * playerCount)];
+        jsmntok_t jt[50 + (45 * playerCount)];
 
         jsmn_init(&p);
         int r = jsmn_parse(&p, jsonData, strlen(jsonData), jt,
@@ -350,24 +379,25 @@ bool lookupLMSPlayer(char *jsonData, char *checkPName) {
                    "allocated: %d\n",
                    r);
             if (v > LL_INFO) {
-                printf("\nPayload ....: %s\nLength .....: %ld\nAllocated ..: %d\n", jsonData,
-                       (long)strlen(jsonData),
-                       (int)(sizeof(jt) / sizeof(jt[0])));
+                printf(
+                    "\nPayload ....: %s\nLength .....: %ld\nAllocated ..: %d\n",
+                    jsonData, (long)strlen(jsonData),
+                    (int)(sizeof(jt) / sizeof(jt[0])));
             }
 
             // attempt remediation tack
             return remediateLkpMSPlayer(jsonData, checkPName, npos);
         }
-
         const int trip = 4;
         int plk = 0;
         lms.activePlayer = -1;
         if (r < 1 || jt[0].type != JSMN_OBJECT) {
             if (v > LL_INFO) {
                 printf("Object expected, %d %s?\n", r, whatsitJson(jt[0].type));
-                printf("\nPayload ....: %s\nLength .....: %ld\nAllocated ..: %d\n", jsonData,
-                       (long)strlen(jsonData),
-                       (int)(sizeof(jt) / sizeof(jt[0])));
+                printf(
+                    "\nPayload ....: %s\nLength .....: %ld\nAllocated ..: %d\n",
+                    jsonData, (long)strlen(jsonData),
+                    (int)(sizeof(jt) / sizeof(jt[0])));
             }
             return false;
         } else {
@@ -380,6 +410,8 @@ bool lookupLMSPlayer(char *jsonData, char *checkPName) {
                 if (0 == playerAttribs) {
                     playerAttribs = trip;
                     plk++;
+                    if (plk >= playerCount)
+                        break;
                 }
 
                 uint16_t lenk = tok.end - tok.start;
@@ -396,15 +428,25 @@ bool lookupLMSPlayer(char *jsonData, char *checkPName) {
                     i++;
                 } else if (strncmp("count", keyStr, 5) == 0) {
                     lms.playerCount = atoi(valStr); // capture, done use yet
+                    i++;
                 } else if (strncmp("players_loop", keyStr, 12) == 0) {
                     plk = 0;
                     playerAttribs = trip;
                 } else if (strncmp("playerid", keyStr, 8) == 0) {
                     strncpy(lms.players[plk].playerID, valStr, 17);
+
+#if 0 
+printf("%02d %s\n",plk, lms.players[plk].playerID);
+#endif
                     playerAttribs--;
+                    i++;
                 } else if (strncmp("modelname", keyStr, 9) == 0) {
                     strncpy(lms.players[plk].modelName, valStr, 29);
+#if 0 
+printf("%02d %s\n",plk, lms.players[plk].modelName);
+#endif
                     playerAttribs--;
+                    i++;
                 } else if (strncmp("ip", keyStr, 2) == 0) {
                     char *colon;
                     if ((colon = strstr(valStr, ":")) != NULL) {
@@ -413,14 +455,22 @@ bool lookupLMSPlayer(char *jsonData, char *checkPName) {
                         valStr[cpos] = '\0';
                     }
                     strncpy(lms.players[plk].playerIP, valStr, 27);
+#if 0 
+printf("%02d %s\n",plk, lms.players[plk].playerIP);
+#endif
                     playerAttribs--;
+                    i++;
                 } else if (strncmp("name", keyStr, 4) == 0) {
                     strncpy(lms.players[plk].playerName, valStr, 127);
                     if (strcicmp(lms.players[plk].playerName, checkPName) ==
                         0) {
                         lms.activePlayer = plk;
                     }
+#if 0 
+printf("%02d %s\n",plk, lms.players[plk].playerName);
+#endif
                     playerAttribs--;
+                    i++;
                 }
             }
         }
@@ -463,13 +513,16 @@ bool discoverPlayer(char *playerName) {
         if (httpPost(lms.LMSHost, lms.LMSPort, uri, header, body,
                      (char *)jsonData)) {
             if (!isEmptyStr(jsonData)) {
-                if (!lookupLMSPlayer(jsonData, playerName))
+                if (!lookupLMSPlayer(jsonData, playerName)) {
+                    printf("what???\n");
                     return false;
+                }
             }
         } else {
             return false;
         }
-        char stb[BSIZE];
+
+        char stb[BSIZE] = {0};
         sprintf(stb, "%s %s\n%s %s\n%s %s\n",
                 labelIt("Player Name", LABEL_WIDTH, "."),
                 lms.players[lms.activePlayer].playerName,
@@ -478,9 +531,11 @@ bool discoverPlayer(char *playerName) {
                 labelIt("Player IP", LABEL_WIDTH, "."),
                 lms.players[lms.activePlayer].playerIP);
         putMSG(stb, LL_INFO);
+
     } else {
         return false;
     }
+
     return true;
 }
 
@@ -715,6 +770,9 @@ void *serverPolling(void *x_voidptr) {
             if (httpPost(lms.LMSHost, lms.LMSPort, uri, header, lms.body,
                          (char *)jsonData)) {
                 if (!isEmptyStr(jsonData)) {
+#if 0
+                    printf("[serverPolling]%s\n", jsonData);
+#endif
                     if (parseLMSResponse(jsonData)) {
 
                         long pTime = getMinute(&lmsTags[TIME]);
@@ -814,7 +872,6 @@ tag_t *initSliminfo(char *playerName) {
         return NULL;
     }
 
-    ////////////////lms.LMSPort = 9000; // now working with JsonRPC
     if (!discoverPlayer(playerName)) {
         printf("Could not find player \"%s\" [discoverPlayer]\n", playerName);
         return NULL;
@@ -826,11 +883,13 @@ tag_t *initSliminfo(char *playerName) {
             if (0 != strcmp("", lmsTags[ti].lmstag))
                 strcat(tagc, lmsTags[ti].lmstag);
         }
-
         sprintf(lms.body,
                 "{\"id\":1,\"method\":\"slim.request\",\"params\":[\"%s\",["
                 "\"status\",\"-\",1,\"tags:%s\"]]}",
                 lms.players[lms.activePlayer].playerID, tagc);
+#if 0
+printf("%s\n",lms.body);
+#endif
         askRefresh();
         int foo = 0;
         if (pthread_create(&sliminfoThread, NULL, serverPolling, &foo) != 0) {
@@ -841,7 +900,6 @@ tag_t *initSliminfo(char *playerName) {
     } else {
         return NULL;
     }
-
     return lmsTags;
 }
 

@@ -113,11 +113,7 @@ void abortMonitor(const char *msg) {
     exit(1);
 }
 
-bool isEmptyStr(const char *s) {
-    if ((s == NULL) || (s[0] == '\0'))
-        return true;
-    return false;
-}
+bool isEmptyStr(const char *s) { return ((s == NULL) || (s[0] == '\0')); }
 
 char *replaceStr(const char *s, const char *find, const char *replace) {
     char *result;
@@ -291,4 +287,3 @@ int strcicmp(char const *a, char const *b) {
             return d;
     }
 }
-

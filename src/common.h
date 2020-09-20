@@ -27,10 +27,10 @@
 #include <stdint.h>
 
 #define BSIZE 4096
-#define BSIZE8 8192
+#define BSIZE8 BUFSIZ
 
 #define APPNAME "LMSMonitor"
-#define VERSION "0.4.57"
+#define VERSION "0.4.58"
 #define APPSIG APPNAME " " VERSION
 
 #define LABEL_WIDTH 22
