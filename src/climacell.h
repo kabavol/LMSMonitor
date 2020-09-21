@@ -48,6 +48,9 @@ typedef struct ccdatum_t {
     double fdatum;
     char units[128];
     bool changed;
+    const char *key;
+    const char *lbl;
+    int lenk;
 } ccdatum_t;
 
 // climacell free tier :: 1000 calls per day

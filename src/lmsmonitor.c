@@ -829,6 +829,7 @@ int main(int argc, char *argv[]) {
         weather.refreshed = false;
         weather.active = false;
 
+        baselineClimacell(&weather, true);
         if (updClimacell(&weather)) {
             weather.active = true;
             size_t climacelltimer;

@@ -11,8 +11,10 @@ OLED information display control program for [piCorePlayer](https://www.picorepl
 - Remaining time can now be displayed rather than total time
 - Audio attributes, volume, sample depth, and sample rate are shown
 - A retro clock is displayed when the audio paused/stopped.
+- Alternatively you can display current weatherr and time.
 - Automatically sets the brightness of the display at dawn and dusk.
 - Multiple audio visualization modes are supported
+- If monitoring from a separate device animations can be displated as the track plays
 
 ### Options
 ```bash
@@ -90,7 +92,7 @@ OLED Clock Fonts:
 ### Screen-snaps
 The following images were captured by dumping the display on refresh; it's a tad blocky but the actual screen animations are buttery smooth.
 
-See the videos in the base folder, scrolling text is smooth and the visualizer modes very kinetic.
+See the videos in the base folder for the monitor in the wild, scrolling text is smooth and the visualizer modes very kinetic.
 
 <img width="300" src="base/demo.gif" align="center" />
 
@@ -98,6 +100,10 @@ These font examples were captured using an OLED on a flatbed scanner, the final 
 Font examples are 0, at 14:04, through 12, at 13:10. The fonts are in the sequence described in the usage output.
 
 <img width="300" src="base/fonts.gif" align="center" />
+
+Since capturing these images I've refined the technique, image of the fonts in higher resolution
+
+<img width="400" src="base/master01-shot.jpg" align="center" />
 
 ### Visualizer Modes
 
@@ -138,15 +144,15 @@ From the main web form click on Extensions button in the *Additional functions* 
 
 On the page displayed select *i2c-tools-dev.tcz* from the dropdown and install
 
+If your using asupported SPI device you won't needthe I2C tools.
+
 Alternatively use the following instructions 
 
 ## pCP Install
 
 SSH to your pCP device.
 
-cd to the /mnt/mmcblk0p2/tce folder
-
-and, then type:
+and, then type (copy and paste):
 
 ```bash
 tce-load -i i2c-tools.tcz
@@ -158,7 +164,7 @@ chmod +xX gomonitor
 pcp bu
 ```
 
-The first two commands takecare of therequired extension and perform a backup
+The first two commands take care of the required extension and perform a backup.  Again if your device is SPI you won't need those two steps.
 
 The remaining commands download the monitor archive to pCP, extracts the contents, set execution permissions, and finally backup.
 
@@ -188,7 +194,7 @@ Additional supported commands may also be specified, here we request a specific 
 /mnt/mmcblk0p2/tce/gomonitor vu,sa,pk,st -o6 -x 0x3c -db
 ```
 
-the visualization parameter must always be specified first
+the visualization parameter <b>must</b> always be specified first
 
 ## Easter Eggs
 <p>
@@ -198,13 +204,13 @@ There are several "easter egg" modes provided for those setups that cannot proce
 That said theres nothing stopping you using them as your main visualization.
 
 There are currently 7 easter egg modes:
-- 1 Compact Cassette, as visually correct as possible given the OLED limitations.  Hubs turn and the tape window shows the track "progress"
-- 2 Technics SL-1200, as visually correct as possible given the OLED limitations.  Tone arm traverses platter to indicate progress.
-- 3 Open Reel To Reel, pure fantasy. Reels rotate, minor animation.
-- 4 VCR with flashing 12:00 AM clock! No additional animation - the clock is annoying enough.
-- 5 An old bakelite radio. Minor animation, radio changes station as track progresses.
-- 6 An old analog TV in all its 5x4 glory... VHF or UHF... no it's worms?!?
-- 7 A crusty oldIBM PS/2 clone... playing pong! Equally matched "AI" players make for an uneventful game!
+- <b>[1]</b> Compact Cassette, as visually correct as possible given the OLED limitations.  Hubs turn and the tape window shows the track "progress"
+- <b>[2]</b> Technics SL-1200, as visually correct as possible given the OLED limitations.  Tone arm traverses platter to indicate progress.
+- <b>[3]</b> Open Reel To Reel, pure fantasy. Reels rotate, minor animation.
+- <b>[4]</b> VCR with flashing 12:00 AM clock! No additional animation - the clock is annoying enough.
+- <b>[5]</b> An old bakelite radio. Minor animation, radio changes station as track progresses.
+- <b>[6]</b> An old analog TV in all its 5x4 glory... VHF or UHF... no it's worms?!?
+- <b>[7]</b> A crusty oldIBM PS/2 clone... playing pong! Equally matched "AI" players make for an uneventful game!
 
 Specify -E[1-7] to display eggs on track playback
 </p>
@@ -294,9 +300,11 @@ This also specifies random visualization, further customization to your liking c
 - DONE! All-In-One display, clock, track details and downmix visualizer in one 
 - DONE! Reconnect to player/server, after reboot or offlined
 - DONE! Weather: climacell incorporation
+- Green field IP change on server bounce: TBD
 - Audiophonics EVO-SABRE Balanced DAC 2x ES9038Q2M support: TBD
 - Dual OLED visualizer mode: TBD
 - 128 x 128 OLED support: TBD
+- 16 x 2 OLED support - RASPI-MINI V1: TBD
 - Color 128 x 128 color TFT support: TBD
 
 ## Like The App - Git The Shirt

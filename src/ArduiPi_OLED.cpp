@@ -529,10 +529,50 @@ void ArduiPi_OLED::begin( void )
     chargepump = 0x14; 
     precharge  = 0xF1;
   }
-  
-  if (oled_type == OLED_SEEED_I2C_96x96 )
-    sendCommand(SSD1327_Set_Command_Lock, 0x12); // Unlock OLED driver IC MCU interface from entering command. i.e: Accept commands
-  
+
+  if (oled_type == OLED_NHD1322_GS_SPI_256x64) {
+
+      sendCommand(0xFD, 0x12);       // Unlock IC
+      sendCommand(0xAE);             // Display off
+      sendCommand(0xB3, 0x91);       // Display divide clockratio/freq
+      sendCommand(0xCA, 0x3F);       // Set MUX ratio
+      sendCommand(0xA2, 0x00);       // Display offset
+      sendCommand(0xAB, 0x01);       // Display offset
+      sendCommand(0xA0, 0x16, 0x11); // Set remap & dual COM Line
+      sendCommand(0xC7, 0x0F);       // Master contrast (reset)
+      sendCommand(0xC1, 0x9F);       // Set contrast current
+      sendCommand(0xB1, 0xF2);       // Set default greyscale table
+      sendCommand(0xBB, 0x1F);       // Pre-charge voltage
+      sendCommand(0xB4, 0xA0, 0xFD); // Display enhancement A (External VSL)
+      sendCommand(0xBE, 0x04);       // Set VcomH
+      sendCommand(0xA6);             // Normal display (reset)
+      sendCommand(0xAF);             // Exit partial display
+  } else if (oled_type == OLED_NHD1322_MONO_SPI_256x64) {
+    
+      sendCommand(0xFD, 0x12);       // Unlock IC
+      sendCommand(0xA4);             // Display off (all pixels off)
+      sendCommand(0xB3, 0xF2);       // Display divide clockratio/freq
+      sendCommand(0xCA, 0x3F);       // Set MUX ratio
+      sendCommand(0xA2, 0x00);       // Display offset
+      sendCommand(0xA1, 0x00);       // Display start Line
+      sendCommand(0xA0, 0x14, 0x11); // Set remap & dual COM Line
+      sendCommand(0xB5, 0x00);       // Set GPIO (disabled)
+      sendCommand(0xAB, 0x01);       // Function select (internal Vdd)
+      sendCommand(0xB4, 0xA0, 0xFD); // Display enhancement A (External VSL)
+      sendCommand(0xC7, 0x0F);       // Master contrast (reset)
+      sendCommand(0xB9);             // Set default greyscale table
+      sendCommand(0xB1, 0xF0);       // Phase length
+      sendCommand(0xD1, 0x82, 0x20); // Display enhancement B (reset)
+      sendCommand(0xBB, 0x0D);       // Pre-charge voltage
+      sendCommand(0xB6, 0x08);       // 2nd precharge period
+      sendCommand(0xBE, 0x00);       // Set VcomH
+      sendCommand(0xA6);             // Normal display (reset)
+      sendCommand(0xA9);             // Exit partial display
+  } else if (oled_type == OLED_SEEED_I2C_96x96)
+      sendCommand(
+          SSD1327_Set_Command_Lock,
+          0x12); // Unlock OLED driver IC MCU interface from entering command. i.e: Accept commands
+
   sendCommand(SSD_Display_Off);                    
   sendCommand(SSD_Set_Muliplex_Ratio, multiplex); 
   

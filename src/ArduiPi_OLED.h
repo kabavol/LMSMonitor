@@ -34,6 +34,7 @@ All text above, and the splash screen must be included in any redistribution
 #define BLACK 0
 #define WHITE 1
 
+// need grayscale too
 
 /*=========================================================================
     SSDxxxx Common Displays
