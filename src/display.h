@@ -92,6 +92,7 @@ typedef struct Scroller {
     int hilimit;
     bool forward;
     int scrollMode;
+    bool priorstate;
     pthread_t scrollThread;
     pthread_mutex_t scrollox;
     void *(*scrollMe)(void *input);
@@ -147,16 +148,19 @@ void displayBrightness(int bright, bool flip=false);
 void putWeatherTemp(int x, int y, climacell_t *cc);
 void putWeatherIcon(int x, int y, climacell_t *cc);
 
-void scrollerPause(void);
+void scrollerFreeze(void);
+void scrollerThaw(void);
 void *scrollLine(void *input); // threadable
 void scrollerInit(void);
 void clearScrollable(int line);
 bool putScrollable(int y, char *buff);
 void scrollerFinalize(void);
-void setScrollActive(int line, bool active);
+void setScrollActive(int line, bool active, bool save=false);
 void setScrollPosition(int line, int ypos);
 bool activeScroller(void);
 bool isScrollerActive(int line);
+bool frozenScroller(void);
+bool isScrollerFrozen(int line);
 
 void resetDisplay(int fontSize);
 int restartDisplay(struct MonitorAttrs dopts);

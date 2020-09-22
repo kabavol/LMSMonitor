@@ -46,6 +46,7 @@ typedef struct audio_t {
     int8_t audioIcon;
     int8_t repeat;
     int8_t shuffle;
+    char volstr[9];
 } audio_t;
 
 typedef struct point_t {

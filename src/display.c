@@ -67,6 +67,7 @@ uint16_t _tt_char_height = 6;
 bool isFlipped = false;
 int scrollMode = SCROLL_MODE_CYLON;
 sme scroll[MAX_LINES];
+bool smestate[MAX_LINES];
 
 int maxCharacter(void) { return (int)(maxXPixel() / _char_width); }
 int maxLine(void) { return (int)(maxYPixel() / _char_height); }
@@ -240,7 +241,7 @@ void displayBrightness(int bright, bool flip) {
 // remediation for bogus flips and mirror exhibits
 int restartDisplay(struct MonitorAttrs dopts) {
     // needs a hard reset !!!!
-    scrollerPause();
+    scrollerFreeze();
     clearDisplay();
     closeDisplay();
     int ret = initDisplay(dopts);
@@ -1239,6 +1240,7 @@ void baselineScroller(Scroller *s) {
         sm = random() % SCROLL_MODE_MAX;
     }
     s->active = false;
+    s->priorstate = false;
     s->initialized = true;
     s->nystagma = true;
     s->lolimit = 1000;
@@ -1388,8 +1390,21 @@ void *scrollLine(void *input) {
     }
 }
 
-void setScrollActive(int line, bool active) {
+void setScrollThawed(int line) {
     if (acquireLock(line)) {
+        scroll[line].active = scroll[line].priorstate;
+        scroll[line].priorstate = false;
+        pthread_mutex_unlock(&scroll[line].scrollox);
+    }
+}
+
+void setScrollActive(int line, bool active, bool save = false) {
+    if (acquireLock(line)) {
+        if (save) {
+            scroll[line].priorstate = scroll[line].active;
+        } else {
+            scroll[line].priorstate = false;
+        }
         if (active != scroll[line].active) {
             scroll[line].active = active;
         }
@@ -1397,10 +1412,20 @@ void setScrollActive(int line, bool active) {
     }
 }
 
-void scrollerPause(void) {
+void scrollerFreeze(void) {
     if (activeScroller()) {
         for (int line = 0; line < maxLine(); line++) {
-            setScrollActive(line, false);
+            setScrollActive(line, false, true);
+        }
+    }
+}
+
+void scrollerThaw(void) {
+    if (frozenScroller()) {
+        for (int line = 0; line < maxLine(); line++) {
+            if (isScrollerFrozen(line)) {
+                setScrollThawed(line);
+            }
         }
     }
 }
@@ -1440,8 +1465,7 @@ void scrollerInit(void) {
 bool isScrollerActive(int line) {
     bool ret = false;
     if (acquireLock(line)) {
-        if (scroll[line].active)
-            ret = true;
+        ret = scroll[line].active;
         pthread_mutex_unlock(&scroll[line].scrollox);
     }
     return ret;
@@ -1451,6 +1475,25 @@ bool activeScroller(void) {
     bool ret = false;
     for (int line = 0; line < maxLine(); line++) {
         ret = isScrollerActive(line);
+        if (ret)
+            break;
+    }
+    return ret;
+}
+
+bool isScrollerFrozen(int line) {
+    bool ret = false;
+    if (acquireLock(line)) {
+        ret = scroll[line].priorstate;
+        pthread_mutex_unlock(&scroll[line].scrollox);
+    }
+    return ret;
+}
+
+bool frozenScroller(void) {
+    bool ret = false;
+    for (int line = 0; line < maxLine(); line++) {
+        ret = isScrollerFrozen(line);
         if (ret)
             break;
     }
@@ -1714,7 +1757,7 @@ void putTinyTextToRight(int y, int r, int w, char *buff) {
 
     if (0 == w)
         w = tlen;
-    if (tlen > w) { // assumes monospaced - we're not!
+    if (tlen > w) {    // assumes monospaced - we're not!
         buff[w] = {0}; // simple chop - safe!
     }
     tlen = strlen(buff);

@@ -101,9 +101,9 @@ Font examples are 0, at 14:04, through 12, at 13:10. The fonts are in the sequen
 
 <img width="300" src="base/fonts.gif" align="center" />
 
-Since capturing these images I've refined the technique, image of the fonts in higher resolution
+Since capturing these images I've refined the technique, image of the fonts in better resolution
 
-<img width="400" src="base/master01-shot.jpg" align="center" />
+<img width="600" src="base/master01-shot.jpg" align="center" />
 
 ### Visualizer Modes
 

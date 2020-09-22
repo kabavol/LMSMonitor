@@ -106,7 +106,7 @@ void before_exit(void) {
         freed = true;
         closeSliminfo();
 #ifdef __arm__
-        scrollerPause();
+        scrollerFreeze();
         clearDisplay();
         closeDisplay();
         freeClockFont();
@@ -161,6 +161,8 @@ void playingPage(void);
 inching_t *balls = NULL;
 pongem_t *game = NULL;
 
+// base functionalit - update status only
+void updStatusPage(void);
 // if no driver params specified saverPage is displayed
 // subsequent track playback displays details deactivating saver
 void saverPage(void);
@@ -313,7 +315,7 @@ void onlineTests(size_t timer_id, void *user_data) {
                     if (glopt->visualize)
                         deactivateVisualizer();
                     if (activeScroller())
-                        scrollerPause();
+                        scrollerFreeze();
                 }
                 glopt->pauseDisplay = notruck;
                 strcpy(glopt->pauseMessage, stb);
@@ -486,7 +488,7 @@ void toggleVisualize(size_t timer_id, void *user_data) {
             } else {
                 instrument(__LINE__, __FILE__, "scroller pause");
                 if (activeScroller()) {
-                    scrollerPause();
+                    scrollerFreeze();
                 }
                 instrument(__LINE__, __FILE__, "activate Visualize");
                 activateVisualizer();
@@ -623,15 +625,23 @@ void cycleVisualize(size_t timer_id, void *user_data) {
     }
 }
 
-void sampleDetails(audio_t *audio) {
+void sampleDetails(audio_t *audio, bool freeze=false) {
     audio->samplerate = tags[SAMPLERATE].valid
                             ? strtof(tags[SAMPLERATE].tagData, NULL) / 1000
                             : 44.1;
     audio->samplesize = tags[SAMPLESIZE].valid
                             ? strtol(tags[SAMPLESIZE].tagData, NULL, 10)
                             : 16;
+
     audio->volume =
-        tags[VOLUME].valid ? strtol(tags[VOLUME].tagData, NULL, 10) : 0;
+        ((tags[VOLUME].valid)||(freeze)) ? strtol(tags[VOLUME].tagData, NULL, 10) : 0;
+
+    // display helper
+    if (0 == audio->volume)
+        strcpy(audio->volstr, "  mute ");
+    else
+        sprintf(audio->volstr, "  %d%%  ", audio->volume);
+
     audio->repeat =
         tags[REPEAT].valid ? strtol(tags[REPEAT].tagData, NULL, 10) : 0;
     audio->shuffle =
@@ -1032,7 +1042,7 @@ int main(int argc, char *argv[]) {
 #ifdef __arm__
                     instrument(__LINE__, __FILE__, "activeScroller test");
                     if (activeScroller()) {
-                        scrollerPause();
+                        scrollerFreeze();
                     }
                     strcpy(remTime, "XXXXX");
                     instrument(__LINE__, __FILE__, "display clock test");
@@ -1098,6 +1108,8 @@ void saverPage(void) {
         nagSaverNotes();
         setSleepTime(SLEEP_TIME_SAVER);
         softPlayReset();
+    } else {
+        updStatusPage();
     }
 }
 #endif
@@ -1596,11 +1608,7 @@ void allInOnePage(A1Attributes *aio) {
     // check softly -> paint a rectangle to cover visualization
 
     if (audioDetail.volume != glopt->lastVolume) {
-        if (0 == audioDetail.volume)
-            strncpy(buff, "  mute", 32);
-        else
-            sprintf(buff, "  %d%%  ", audioDetail.volume);
-        putVolume((0 != audioDetail.volume), buff);
+        putVolume((0 != audioDetail.volume), audioDetail.volstr);
         setLastVolume(audioDetail.volume);
     }
 
@@ -1681,6 +1689,48 @@ void allInOnePage(A1Attributes *aio) {
         softClockReset(false);
 }
 
+void updStatusPage(void) {
+
+    uint16_t pTime, dTime, rTime;
+    char buff[BSIZE] = {0};
+
+    audio_t audioDetail = {.volume = -1,
+                           .volstr = {0}};
+
+    sampleDetails(&audioDetail, true);
+
+    putVolume((0 != audioDetail.volume), audioDetail.volstr);
+
+    pTime = (tags[TIME].valid) ? strtol(tags[TIME].tagData, NULL, 10) : 0;
+    dTime =
+        (tags[DURATION].valid) ? strtol(tags[DURATION].tagData, NULL, 10) : 0;
+    rTime =
+        (tags[REMAINING].valid) ? strtol(tags[REMAINING].tagData, NULL, 10) : 0;
+
+    sprintf(buff, "%02d:%02d", pTime / 60, pTime % 60);
+    int tlen = strlen(buff);
+    clearLine(56);
+    putText(1, 56, buff);
+
+    // this is limited to sub hour programing - a stream may be 1+ hours
+    if (glopt->remaining)
+        sprintf(buff, "-%02d:%02d", rTime / 60, rTime % 60);
+    else
+        sprintf(buff, "%02d:%02d", dTime / 60, dTime % 60);
+
+    int dlen = strlen(buff);
+    putText(maxXPixel() - (dlen * charWidth()) - 1, 56, buff);
+
+    sprintf(buff, "%s", (tags[MODE].valid) ? tags[MODE].tagData : "");
+    int mlen = strlen(buff);
+    putText(((maxXPixel() - ((tlen + mlen + dlen) * charWidth())) / 2) +
+                (tlen * charWidth()),
+            56, buff);
+
+    scrollerThaw();
+    setSleepTime(SLEEP_TIME_SHORT);
+}
+
 #endif
 
 void playingPage(void) {
@@ -1711,7 +1761,7 @@ void playingPage(void) {
 
     if ((glopt->visualize) && (isVisualizeActive())) {
         if (activeScroller()) {
-            scrollerPause();
+            scrollerFreeze();
         }
         if (glopt->refreshViz) {
             clearDisplay();
@@ -1734,11 +1784,7 @@ void playingPage(void) {
         softVisualizeRefresh(true);
 
         if (audioDetail.volume != glopt->lastVolume) {
-            if (0 == audioDetail.volume)
-                strncpy(buff, "  mute", 32);
-            else
-                sprintf(buff, "  %d%% ", audioDetail.volume);
-            putVolume((0 != audioDetail.volume), buff);
+            putVolume((0 != audioDetail.volume), audioDetail.volstr);
             setLastVolume(audioDetail.volume);
         }
 
