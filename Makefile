@@ -2,9 +2,9 @@
 
 TARGET = ./bin/lmsmonitor
 TARGETSSE = ./bin/lmsmonitor-sse
-LIBS =  -lpthread -lrt -L./lib -lwiringPi
+
 # need https support so ssl and crypto added
-LIBS =  -lpthread -lrt -L./lib -li2c -lssl -lcrypto
+LIBS =  -pthread -lrt -L./lib -li2c -lssl -lcrypto
 
 CC = g++
 
