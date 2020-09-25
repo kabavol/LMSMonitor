@@ -97,23 +97,29 @@ void baselineClimacell(climacell_t *climacell, bool changed) {
 
     climacell->current.changed = changed;
 
+    baseCCDatum(&climacell->lat, changed, "lat", "weather:Latitude");
+    baseCCDatum(&climacell->lon, changed, "lon", "weather:Longitude");
     baseCCDatum(&climacell->temp, changed, "temp", "weather:Temperature");
+    baseCCDatum(&climacell->sunrise, changed, "sunrise", "weather:Sunrise");
+    baseCCDatum(&climacell->sunset, changed, "sunset", "weather:Sunset");
     baseCCDatum(&climacell->feels_like, changed, "feels_like",
                 "weather:Feels Like");
     baseCCDatum(&climacell->wind_speed, changed, "wind_speed",
                 "weather:Wind Speed");
     baseCCDatum(&climacell->baro_pressure, changed, "baro_pressure",
                 "weather:Pressure");
-    baseCCDatum(&climacell->humidity, changed, "humidity",
-                "weather:Humidity");
+    baseCCDatum(&climacell->humidity, changed, "humidity", "weather:Humidity");
     baseCCDatum(&climacell->visibility, changed, "visibility",
                 "weather:Visibility");
     baseCCDatum(&climacell->wind_direction, changed, "wind_direction",
                 "weather:Wind Dir");
     baseCCDatum(&climacell->precipitation, changed, "precipitation",
                 "weather:Precip");
+    baseCCDatum(&climacell->precipitation_type, changed, "precipitation_type",
+                "weather:Precip Type");
     baseCCDatum(&climacell->weather_code, changed, "weather_code",
-                "weather:Code");
+                "weather:Conditions");
+
     // don't need change functionality but key/label are useful
     baseCCDatum(&climacell->observation_time, changed, "observation_time",
                 "weather:Time");
@@ -625,8 +631,11 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
         return false;
     }
 
-    int done = 14;
-    char lblit[32] = {0};
+#if 0
+printf("\n%s\n",jsonData);
+#endif
+
+    int done = 15;
 
     // Loop over all keys of the root object
     for (int i = 1; ((done > 0) && (i < r)); i++) {
@@ -636,7 +645,7 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
         char keyStr[lenk + 1];
         memcpy(keyStr, &jsonData[tok.start], lenk);
         keyStr[lenk] = '\0';
-        sprintf(lblit, "weather:%s", keyStr);
+
         tok = jt[i + 1];
         uint16_t lenv = tok.end - tok.start;
         char valStr[lenv + 1];
@@ -645,17 +654,20 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
 
         ccdatum_t tstd;
 
-        if (strncmp("lat", keyStr, 3) == 0) {
+        if (strncmp(climacell->lat.key, keyStr, climacell->lat.lenk) == 0) {
             climacell->coords.Latitude = strtod(valStr, NULL);
             if (getVerbose() >= LL_DEBUG)
-                printf("%s %8.4f\n", labelIt(lblit, LABEL_WIDTH, "."),
+                printf("%s %8.4f\n",
+                       labelIt(climacell->lat.lbl, LABEL_WIDTH, "."),
                        climacell->coords.Latitude);
             done--;
             i++;
-        } else if (strncmp("lon", keyStr, 3) == 0) {
+        } else if (strncmp(climacell->lon.key, keyStr, climacell->lon.lenk) ==
+                   0) {
             climacell->coords.Longitude = strtod(valStr, NULL);
             if (getVerbose() >= LL_DEBUG)
-                printf("%s %8.4f\n", labelIt(lblit, LABEL_WIDTH, "."),
+                printf("%s %8.4f\n",
+                       labelIt(climacell->lon.lbl, LABEL_WIDTH, "."),
                        climacell->coords.Longitude);
             done--;
             i++;
@@ -672,6 +684,35 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
                 }
                 done--;
                 i += 4; // close the group
+            }
+        } else if (strncmp(climacell->sunrise.key, keyStr,
+                           climacell->sunrise.lenk) == 0) {
+            i++;
+            if (jt[i].type == JSMN_OBJECT) {
+                decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
+                if (copyCCDatum(&climacell->sunrise, &tstd)) {
+                    if (getVerbose() >= LL_DEBUG)
+                        printf(
+                            "%s %s\n",
+                            labelIt(climacell->sunrise.lbl, LABEL_WIDTH, "."),
+                            climacell->sunrise.sdatum);
+                }
+                done--;
+                i += 2; // close the group
+            }
+        } else if (strncmp(climacell->sunset.key, keyStr,
+                           climacell->sunset.lenk) == 0) {
+            i++;
+            if (jt[i].type == JSMN_OBJECT) {
+                decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
+                if (copyCCDatum(&climacell->sunset, &tstd)) {
+                    if (getVerbose() >= LL_DEBUG)
+                        printf("%s %s\n",
+                               labelIt(climacell->sunset.lbl, LABEL_WIDTH, "."),
+                               climacell->sunset.sdatum);
+                }
+                done--;
+                i += 2; // close the group
             }
         } else if (strncmp(climacell->feels_like.key, keyStr,
                            climacell->feels_like.lenk) == 0) {
@@ -773,6 +814,20 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
                 done--;
                 i += 4; // close the group
             }
+        } else if (strncmp(climacell->precipitation_type.key, keyStr,
+                           climacell->precipitation_type.lenk) == 0) {
+            i++;
+            if (jt[i].type == JSMN_OBJECT) {
+                decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
+                if (copyCCDatum(&climacell->precipitation_type, &tstd)) {
+                    if (getVerbose() >= LL_DEBUG)
+                        printf("%s %s\n",
+                               labelIt(climacell->precipitation_type.lbl, LABEL_WIDTH, "."),
+                               climacell->precipitation_type.sdatum);
+                }
+                done--;
+                i += 2; // close the group
+            }
         } else if (strncmp(climacell->precipitation.key, keyStr,
                            climacell->precipitation.lenk) == 0) {
             i++;
@@ -789,14 +844,6 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
                 done--;
                 i += 4; // close the group
             }
-        } else if (strncmp("sunrise", keyStr, 7) == 0) {
-            // skip
-            done--;
-            i += 3;
-        } else if (strncmp("sunset", keyStr, 6) == 0) {
-            // skip
-            done--;
-            i += 3;
         } else if (strncmp(climacell->weather_code.key, keyStr,
                            climacell->weather_code.lenk) == 0) {
             i++;
@@ -830,6 +877,7 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
                            labelIt(climacell->observation_time.lbl, LABEL_WIDTH,
                                    "."),
                            climacell->observation_time.sdatum);
+                done--;
                 break; // always final kv
             }
         } else {
@@ -857,8 +905,9 @@ bool updClimacell(climacell_t *climacell) {
     if (isEmptyStr(climacell->fields)) {
         strcpy(climacell->fields,
                "temp,feels_like,baro_pressure,visibility,humidity,"
-               "precipitation,"
-               "wind_speed,wind_direction,sunrise,sunset,weather_code");
+               "precipitation,precipitation_type,"
+               "wind_speed,wind_direction,wind_gust,"
+               "sunrise,sunset,weather_code");
     }
     if (isEmptyStr(climacell->units)) {
         strcpy(climacell->units, "us");

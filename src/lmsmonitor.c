@@ -180,7 +180,16 @@ void OvaTimePage(A1Attributes *aio);
 
 #endif
 
+void get_mac_simple(const char *interface, char *mac) {
+    // not so simple - wired or not and potential for alternate interface names
+    FILE *fp;
+    fp = fopen("/sys/class/net/eth0/address", "r");
+    fscanf(fp, "%s", mac);
+    fclose(fp);
+}
+
 static char *get_mac_address() {
+
     struct ifconf ifc;
     struct ifreq *ifr, *ifend;
     struct ifreq ifreqi;
@@ -202,25 +211,24 @@ static char *get_mac_address() {
         // Loop through interfaces.
         for (ifr = ifc.ifc_req; ifr < ifend; ifr++) {
             if (ifr->ifr_addr.sa_family == AF_INET) {
+                if (0 == strcmp("lo", ifr->ifr_name))
+                    continue;
                 strncpy(ifreqi.ifr_name, ifr->ifr_name,
                         sizeof(ifreqi.ifr_name));
                 if (ioctl(sd, SIOCGIFHWADDR, &ifreqi) == 0) {
                     memcpy(mac, ifreqi.ifr_hwaddr.sa_data, 6);
-                    // Leave on first valid address.
+                    // Leave on first valid address, skipped loopback so we're good
                     if (mac[0] + mac[1] + mac[2] != 0)
-                        ifr = ifend;
+                        break; //ifr = ifend;
                 }
             }
         }
     }
 
     close(sd);
-
     char *macaddr = (char *)malloc(18);
-
     snprintf(macaddr, 18, "%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1],
              mac[2], mac[3], mac[4], mac[5]);
-
     return macaddr;
 }
 
@@ -625,7 +633,7 @@ void cycleVisualize(size_t timer_id, void *user_data) {
     }
 }
 
-void sampleDetails(audio_t *audio, bool freeze=false) {
+void sampleDetails(audio_t *audio, bool freeze = false) {
     audio->samplerate = tags[SAMPLERATE].valid
                             ? strtof(tags[SAMPLERATE].tagData, NULL) / 1000
                             : 44.1;
@@ -633,8 +641,9 @@ void sampleDetails(audio_t *audio, bool freeze=false) {
                             ? strtol(tags[SAMPLESIZE].tagData, NULL, 10)
                             : 16;
 
-    audio->volume =
-        ((tags[VOLUME].valid)||(freeze)) ? strtol(tags[VOLUME].tagData, NULL, 10) : 0;
+    audio->volume = ((tags[VOLUME].valid) || (freeze))
+                        ? strtol(tags[VOLUME].tagData, NULL, 10)
+                        : 0;
 
     // display helper
     if (0 == audio->volume)
@@ -727,7 +736,8 @@ int main(int argc, char *argv[]) {
 #endif
 
     char *thatMAC = NULL;
-    char *thisMAC = get_mac_address();
+    char thisMAC[18];
+    strcpy(thisMAC, get_mac_address());
 
 #ifdef __arm__
 #ifdef SSE_VIZDATA
@@ -794,7 +804,6 @@ int main(int argc, char *argv[]) {
     instrument(__LINE__, __FILE__, "generalReset active");
 
 #endif
-    thatMAC = getPlayerMAC();
 
     // init here - splash delay mucks the refresh flagging
     if ((tags = initSliminfo(lmsopt.playerName)) == NULL) {
@@ -848,12 +857,11 @@ int main(int argc, char *argv[]) {
                                          TIMER_PERIODIC, (void *)&weather);
         }
     }
-#endif
-
-#ifdef __arm__
 
     // init for visualize mechanism here
-    if (strcmp(thatMAC, thisMAC) != 0) {
+    // case insensitive compare - JSON lookup can be unpredictable case
+    thatMAC = getPlayerMAC();
+    if (strcicmp(thatMAC, thisMAC) != 0) {
         if (lmsopt.visualize) {
 #ifdef SSE_VIZDATA
             // go SSE for visualizer
@@ -1694,8 +1702,7 @@ void updStatusPage(void) {
     uint16_t pTime, dTime, rTime;
     char buff[BSIZE] = {0};
 
-    audio_t audioDetail = {.volume = -1,
-                           .volstr = {0}};
+    audio_t audioDetail = {.volume = -1, .volstr = {0}};
 
     sampleDetails(&audioDetail, true);
 

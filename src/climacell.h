@@ -74,7 +74,12 @@ typedef struct climacell_t {
     ccdatum_t visibility;
     ccdatum_t wind_direction;
     ccdatum_t precipitation;
+    ccdatum_t precipitation_type;
     ccdatum_t weather_code;
+    ccdatum_t sunrise;
+    ccdatum_t sunset;
+    ccdatum_t lat;
+    ccdatum_t lon;
     ccdatum_t observation_time;
 } climacell_t;
 

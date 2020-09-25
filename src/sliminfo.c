@@ -188,8 +188,9 @@ bool parseLMSResponse(char *jsonData) {
                                     lmsTags[REMOTE].keyLen)) {
                 if (storeTagData(&lmsTags[REMOTE], valStr))
                     if (v > LL_DEBUG)
-                        printf("LMS:Remote ..........: %s\n",
-                               (0 == strncmp("0", valStr, 1)) ? "No" : "Yes");
+                        printf("LMS:Remote ..........: %s %s\n",
+                               (0 == strncmp("0", valStr, 1)) ? "No" : "Yes",
+                               valStr);
             } else if (0 == strncmp(lmsTags[ARTIST].name, keyStr,
                                     lmsTags[ARTIST].keyLen)) {
                 if (storeTagData(&lmsTags[ARTIST], valStr))
@@ -359,6 +360,8 @@ bool lookupLMSPlayer(char *jsonData, char *checkPName) {
                     "Indeterminate");
         }
         if (playerCount < 3) { // hack for "good" allocation
+            printf("hack\n");
+
             playerCount = 3;
         } else {
             sprintf(stb, "%s %d\n", labelIt("Player Count", LABEL_WIDTH, "."),
@@ -434,17 +437,10 @@ bool lookupLMSPlayer(char *jsonData, char *checkPName) {
                     playerAttribs = trip;
                 } else if (strncmp("playerid", keyStr, 8) == 0) {
                     strncpy(lms.players[plk].playerID, valStr, 17);
-
-#if 0 
-printf("%02d %s\n",plk, lms.players[plk].playerID);
-#endif
                     playerAttribs--;
                     i++;
                 } else if (strncmp("modelname", keyStr, 9) == 0) {
                     strncpy(lms.players[plk].modelName, valStr, 29);
-#if 0 
-printf("%02d %s\n",plk, lms.players[plk].modelName);
-#endif
                     playerAttribs--;
                     i++;
                 } else if (strncmp("ip", keyStr, 2) == 0) {
@@ -455,9 +451,6 @@ printf("%02d %s\n",plk, lms.players[plk].modelName);
                         valStr[cpos] = '\0';
                     }
                     strncpy(lms.players[plk].playerIP, valStr, 27);
-#if 0 
-printf("%02d %s\n",plk, lms.players[plk].playerIP);
-#endif
                     playerAttribs--;
                     i++;
                 } else if (strncmp("name", keyStr, 4) == 0) {
@@ -466,9 +459,6 @@ printf("%02d %s\n",plk, lms.players[plk].playerIP);
                         0) {
                         lms.activePlayer = plk;
                     }
-#if 0 
-printf("%02d %s\n",plk, lms.players[plk].playerName);
-#endif
                     playerAttribs--;
                     i++;
                 }
