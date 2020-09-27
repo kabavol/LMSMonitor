@@ -57,6 +57,7 @@ typedef struct lms_t {
     int activePlayer;
     player_t players[10]; // max 9 players - hopefully more than sufficient
     bool refresh;
+    bool ready;
     uint16_t LMSPort;
     char LMSHost[128];
     char body[BSIZE];

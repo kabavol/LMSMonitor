@@ -3,6 +3,7 @@
         "stdbool.h": "c",
         "cstdbool": "c",
         "bitset": "cpp",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "*.tcc": "c"
     }
 }

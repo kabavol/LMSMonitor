@@ -34,11 +34,13 @@
 
 #include "climacell.h"
 
-////#include "slimJSON.h"
+typedef enum solarTime { AS_CALC=0, AS_WEATHER=1 } solarTime;
 
 typedef struct isp_locale_t {
     time_t sunrise;
     time_t sunset;
+    enum solarTime soltime;
+    double tzOff;
     int daybright;
     int nightbright;
     coord_t coords;

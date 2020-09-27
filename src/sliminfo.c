@@ -504,7 +504,6 @@ bool discoverPlayer(char *playerName) {
                      (char *)jsonData)) {
             if (!isEmptyStr(jsonData)) {
                 if (!lookupLMSPlayer(jsonData, playerName)) {
-                    printf("what???\n");
                     return false;
                 }
             }
@@ -525,7 +524,6 @@ bool discoverPlayer(char *playerName) {
     } else {
         return false;
     }
-
     return true;
 }
 
@@ -760,9 +758,6 @@ void *serverPolling(void *x_voidptr) {
             if (httpPost(lms.LMSHost, lms.LMSPort, uri, header, lms.body,
                          (char *)jsonData)) {
                 if (!isEmptyStr(jsonData)) {
-#if 0
-                    printf("[serverPolling]%s\n", jsonData);
-#endif
                     if (parseLMSResponse(jsonData)) {
 
                         long pTime = getMinute(&lmsTags[TIME]);
@@ -853,7 +848,8 @@ void *serverPolling(void *x_voidptr) {
 
 tag_t *initSliminfo(char *playerName) {
 
-    //int v = getVerbose();
+    lms.ready = false;
+
     // working with telnet client (just for the "ping")
     setStaticServer();
 
@@ -867,6 +863,8 @@ tag_t *initSliminfo(char *playerName) {
         return NULL;
     }
 
+    lms.ready = true;
+
     if (initTags() != NULL) {
         char tagc[MAXTAG_TYPES] = {0};
         for (int ti = 0; ti < MAXTAG_TYPES; ti++) {
@@ -877,9 +875,6 @@ tag_t *initSliminfo(char *playerName) {
                 "{\"id\":1,\"method\":\"slim.request\",\"params\":[\"%s\",["
                 "\"status\",\"-\",1,\"tags:%s\"]]}",
                 lms.players[lms.activePlayer].playerID, tagc);
-#if 0
-printf("%s\n",lms.body);
-#endif
         askRefresh();
         int foo = 0;
         if (pthread_create(&sliminfoThread, NULL, serverPolling, &foo) != 0) {
@@ -893,12 +888,22 @@ printf("%s\n",lms.body);
     return lmsTags;
 }
 
+// not thread safe!!!!!!
+void waitLMSReady(void) {
+    while (!lms.ready) {
+        usleep(50000);
+    }
+}
 char *getPlayerIP(void) {
+    waitLMSReady();
     return (char *)lms.players[lms.activePlayer].playerIP;
 }
 char *getPlayerID(void) { return lms.players[lms.activePlayer].playerID; }
 char *getPlayerMAC(void) { return getPlayerID(); }
-char *getModelName(void) { return lms.players[lms.activePlayer].modelName; }
+char *getModelName(void) {
+    waitLMSReady();
+    return lms.players[lms.activePlayer].modelName;
+}
 
 bool playerConnected(void) {
     return (0 != strcmp(lmsTags[CONNECTED].tagData, "0"));

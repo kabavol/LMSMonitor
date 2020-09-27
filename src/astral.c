@@ -68,6 +68,42 @@ static int jsonEq(const char *json, jsmntok_t *tok, const char *s) {
 bool daymode = true;
 isp_locale_t isp_locale;
 
+void initTimezone(void) {
+    time_t now = time(NULL);
+    struct tm loctm = *localtime(&now);
+    isp_locale.tzOff = (double)loctm.tm_gmtoff;
+}
+
+time_t parse8601(char *dstr) {
+    int y, M, d, h, m;
+    float s;
+    sscanf(dstr, "%d-%d-%dT%d:%d:%fZ", &y, &M, &d, &h, &m, &s);
+    struct tm time;
+    time.tm_year = y - 1900;
+    time.tm_mon = M - 1;
+    time.tm_mday = d;
+    time.tm_hour = h;
+    time.tm_min = m;
+    time.tm_sec = (int)s;
+    return mktime(&time);
+}
+
+void weatherSetAstral(climacell_t *climacell) {
+    if (AS_WEATHER != isp_locale.soltime) {
+        initTimezone();
+    }
+    //printf("rise: %s, set: %s\n", climacell->sunrise.sdatum,
+    //       climacell->sunset.sdatum);
+    isp_locale.sunrise =
+        parse8601(climacell->sunrise.sdatum) + isp_locale.tzOff;
+    isp_locale.sunset = parse8601(climacell->sunset.sdatum) + isp_locale.tzOff;
+    isp_locale.soltime = AS_WEATHER;
+
+    //printf(" rise: %s", ctime(&isp_locale.sunrise));
+    //printf(" set: %s mode: %d\n offset: %d\n", ctime(&isp_locale.sunset),
+    //       (int)isp_locale.soltime, (int)isp_locale.tzOff);
+}
+
 void baseCCDatum(ccdatum_t *datum, bool changed, const char *key,
                  const char *lbl) {
     datum->changed = changed;
@@ -414,57 +450,56 @@ double calcSunsetUTC(double JD, double latitude, double longitude) {
 
 void brightnessEvent(void) {
 
-    time_t now;
-    time(&now);
-    struct tm loctm = *localtime(&now);
-
-    // capture for comparison
-    time_t testsec = mktime(localtime(&now));
-
+    time_t testsec = time(NULL);
+    struct tm loctm = *localtime(&testsec);
     bool is_am = (loctm.tm_hour < 12);
 
-    // zero time to midnight
-    loctm.tm_hour = 0;
-    loctm.tm_min = 0;
-    loctm.tm_sec = 0;
-
-    char buffer[30];
-
-    float JD = calcJD(loctm.tm_year + 1900, loctm.tm_mon + 1, loctm.tm_mday);
-
-    double longitude = isp_locale.coords.Longitude;
-    if (longitude < 0)
-        longitude *= -1;
-
     char stb[BSIZE] = {0};
+    char buffer[30] = {0};
 
-    time_t seconds = mktime(&loctm);
-    struct tm *ptm = NULL;
-    ptm = gmtime(&seconds);
-    int delta = ptm->tm_hour; // TZ
+    if (AS_CALC == isp_locale.soltime) {
 
-    time_t tseconds = seconds;
-    seconds = seconds +
-              calcSunriseUTC(JD, isp_locale.coords.Latitude, longitude) * 60;
-    seconds = seconds - delta * 3600;
-    isp_locale.sunrise = seconds;
+        float JD =
+            calcJD(loctm.tm_year + 1900, loctm.tm_mon + 1, loctm.tm_mday);
 
-    if (isp_locale.brightness < 0) {
-        strftime(buffer, 30, "%m-%d-%Y %T", localtime(&seconds));
-        sprintf(stb, "%s %s\n", labelIt("Sunrise", LABEL_WIDTH, "."), buffer);
-        putMSG(stb, LL_INFO);
-    }
+        double longitude = isp_locale.coords.Longitude;
+        if (longitude < 0)
+            longitude *= -1;
 
-    seconds = tseconds;
-    seconds += calcSunsetUTC(JD, isp_locale.coords.Latitude, longitude) * 60;
-    seconds = seconds - delta * 3600;
+        // zero time to midnight
+        loctm.tm_hour = 0;
+        loctm.tm_min = 0;
+        loctm.tm_sec = 0;
 
-    isp_locale.sunset = seconds;
+        time_t seconds = mktime(&loctm);
+        time_t tseconds = seconds;
 
-    if (isp_locale.brightness < 0) {
-        strftime(buffer, 30, "%m-%d-%Y %T", localtime(&seconds));
-        sprintf(stb, "%s %s\n", labelIt("Sunset", LABEL_WIDTH, "."), buffer);
-        putMSG(stb, LL_INFO);
+        seconds =
+            seconds +
+            calcSunriseUTC(JD, isp_locale.coords.Latitude, longitude) * 60;
+        seconds = seconds + isp_locale.tzOff;
+        isp_locale.sunrise = seconds;
+
+        if (isp_locale.brightness < 0) {
+            strftime(buffer, 30, "%m-%d-%Y %T", localtime(&seconds));
+            sprintf(stb, "%s %s\n", labelIt("Sunrise", LABEL_WIDTH, "."),
+                    buffer);
+            putMSG(stb, LL_INFO);
+        }
+
+        seconds = tseconds;
+        seconds +=
+            calcSunsetUTC(JD, isp_locale.coords.Latitude, longitude) * 60;
+        seconds = seconds + isp_locale.tzOff;
+
+        isp_locale.sunset = seconds;
+
+        if (isp_locale.brightness < 0) {
+            strftime(buffer, 30, "%m-%d-%Y %T", localtime(&seconds));
+            sprintf(stb, "%s %s\n", labelIt("Sunset", LABEL_WIDTH, "."),
+                    buffer);
+            putMSG(stb, LL_INFO);
+        }
     }
 
     double rsec = difftime(testsec, isp_locale.sunrise);
@@ -602,7 +637,7 @@ bool getLocation(void) {
 }
 
 bool initAstral(void) {
-
+    initTimezone();
     if (getLocation()) {
         brightnessEvent();
         return true;
@@ -630,10 +665,6 @@ bool parseClimacell(char *jsonData, climacell_t *climacell) {
         printf("Object expected, [parseClimacell]\n");
         return false;
     }
-
-#if 0
-printf("\n%s\n",jsonData);
-#endif
 
     int done = 15;
 
@@ -822,7 +853,8 @@ printf("\n%s\n",jsonData);
                 if (copyCCDatum(&climacell->precipitation_type, &tstd)) {
                     if (getVerbose() >= LL_DEBUG)
                         printf("%s %s\n",
-                               labelIt(climacell->precipitation_type.lbl, LABEL_WIDTH, "."),
+                               labelIt(climacell->precipitation_type.lbl,
+                                       LABEL_WIDTH, "."),
                                climacell->precipitation_type.sdatum);
                 }
                 done--;
@@ -883,6 +915,10 @@ printf("\n%s\n",jsonData);
         } else {
             continue; // unknown or we need to map
         }
+    }
+
+    if ((climacell->sunrise.changed) || (climacell->sunset.changed)) {
+        weatherSetAstral(climacell);
     }
 
     return (done == 0);
