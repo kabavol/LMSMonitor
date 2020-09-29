@@ -28,6 +28,7 @@
 #include <sys/types.h>
 
 #include "oledimg.h"
+#include "fauxfont.h"
 
 // cache clock font
 uint8_t *clockF = NULL;
@@ -63,11 +64,11 @@ void downsampleFontMurated1bit(const uint8_t *font, size_t s, int16_t w,
         }
     }
 
-    int dw = (scale.xscale>0)?(int)(w * scale.xscale):w;
-    if ((0!=scale.xlimit)&&(dw > scale.xlimit))
+    int dw = (scale.xscale > 0) ? (int)(w * scale.xscale) : w;
+    if ((0 != scale.xlimit) && (dw > scale.xlimit))
         dw = (int)scale.xlimit; // pin
-    int dh = (scale.yscale>0)?(int)(h * scale.yscale):h;
-    if ((0!=scale.ylimit)&&(dh > scale.ylimit))
+    int dh = (scale.yscale > 0) ? (int)(h * scale.yscale) : h;
+    if ((0 != scale.ylimit) && (dh > scale.ylimit))
         dh = (int)scale.ylimit; // pin
 
     bpl = (dw + 7) / 8; // Bitmap scanline pad whole "bytes per line"
@@ -177,7 +178,8 @@ for(int i=0; i < 10; i++)
 */
 
 // naive downsample
-void downsampleFont(const uint8_t *font, size_t s, int16_t w, int16_t h, iscale_t scale) {
+void downsampleFont(const uint8_t *font, size_t s, int16_t w, int16_t h,
+                    iscale_t scale) {
 
     int16_t bpl = (w + 7) / 8; // Bitmap scanline pad whole "bytes per line"
     int byte = 0;
@@ -286,107 +288,72 @@ void downsampleFont(const uint8_t *font, size_t s, int16_t w, int16_t h, iscale_
 
 #define USE_DOWNSCALE_ALGO downsampleFontMurated1bit
 
+const uint8_t *fontPassthru(int font) {
+    switch (font) {
+        case MON_FONT_CLASSIC:
+        case MON_FONT_LCD2544: return lcd25x44z(); break;
+        case MON_FONT_DECOSOL: return soldeco25x44z(); break;
+        case MON_FONT_DECOHOL: return holdeco25x44z(); break;
+        case MON_FONT_FESTUS: return festus25x44z(); break;
+        case MON_FONT_HOLFESTUS: return holfestus25x44z(); break;
+        case MON_FONT_NB1999: return nb1999s25x44z(); break;
+        case MON_FONT_ROBOTO: return roboto25x44z(); break;
+        case MON_FONT_NOTO2544: return noto25x44z(); break;
+        case MON_FONT_NOTF2544: return notof25x44z(); break;
+        case MON_FONT_COLT2544: return colby25x44z(); break;
+        case MON_FONT_TTYP2544: return ttypongo25x44z(); break;
+        case MON_FONT_SHLP2544: return shleep25x44z(); break;
+        case MON_FONT_LCD1521: return lcd15x21; break;
+        case MON_FONT_LCD1217: return lcd12x17; break;
+        //case MON_FONT_LCD2348: return lcd23x48; break;
+        default: return lcd25x44z();
+    }
+    return lcd25x44z();
+}
 const uint8_t *getOledFont(int font, bool h12) {
-    if (h12) {
-        size_t n = 0;
-        uint16_t l = 13 * 44;
-        uint16_t lp = 15 * 44;
-        iscale_t scale={0.8,1.0,18,0};   
-        if (NULL == clockF) {
-            switch (font) {
-                case MON_FONT_CLASSIC:
-                case MON_FONT_LCD2544:
-                    n = sizeof(lcd25x44) / sizeof(lcd25x44[0]);
-                    USE_DOWNSCALE_ALGO(lcd25x44, n, 25,
-                                              l, scale); // all set, special AM/PM mode
-                    break;
-                case MON_FONT_DECOSOL:
-                    n = sizeof(soldeco25x44) / sizeof(soldeco25x44[0]);
-                    USE_DOWNSCALE_ALGO(soldeco25x44, n, 25,
-                                              lp, scale); // inc AM/PM
-                    break;
-                case MON_FONT_DECOHOL:
-                    n = sizeof(holdeco25x44) / sizeof(holdeco25x44[0]);
-                    USE_DOWNSCALE_ALGO(holdeco25x44, n, 25,
-                                              lp, scale); // inc AM/PM
-                    break;
-                case MON_FONT_FESTUS:
-                    n = sizeof(festus25x44) / sizeof(festus25x44[0]);
-                    USE_DOWNSCALE_ALGO(festus25x44, n, 25,
-                                              lp, scale); // inc AM/PM
-                    break;
-                case MON_FONT_HOLFESTUS:
-                    n = sizeof(holfestus25x44) / sizeof(holfestus25x44[0]);
-                    USE_DOWNSCALE_ALGO(holfestus25x44, n, 25,
-                                              lp, scale); // inc AM/PM
-                    break;
-                case MON_FONT_NB1999:
-                    n = sizeof(nb1999s25x44) / sizeof(nb1999s25x44[0]);
-                    USE_DOWNSCALE_ALGO(nb1999s25x44, n, 25,
-                                              lp, scale); // inc AM/PM
-                    break;
-                case MON_FONT_ROBOTO:
-                    n = sizeof(roboto25x44) / sizeof(roboto25x44[0]);
-                    USE_DOWNSCALE_ALGO(roboto25x44, n, 25,
-                                              lp, scale); // inc AM/PM
-                    break;
-                case MON_FONT_NOTO2544:
-                    n = sizeof(noto25x44) / sizeof(noto25x44[0]);
-                    USE_DOWNSCALE_ALGO(noto25x44, n, 25,
-                                              lp, scale); // inc AM/PM
-                    break;
-                case MON_FONT_NOTF2544:
-                    n = sizeof(notof25x44) / sizeof(notof25x44[0]);
-                    USE_DOWNSCALE_ALGO(notof25x44, n, 25,
-                                              lp, scale); // inc AM/PM
-                    break;
-                case MON_FONT_COLT2544:
-                    n = sizeof(colby25x44) / sizeof(colby25x44[0]);
-                    USE_DOWNSCALE_ALGO(colby25x44, n, 25,
-                                              lp, scale); // inc AM/PM
-                    break;
-                case MON_FONT_TTYP2544:
-                    n = sizeof(ttypongo25x44) / sizeof(ttypongo25x44[0]);
-                    USE_DOWNSCALE_ALGO(ttypongo25x44, n, 25,
-                                              lp, scale); // inc AM/PM
-                    break;
-                case MON_FONT_SHLP2544:
-                    n = sizeof(shleep25x44) / sizeof(shleep25x44[0]);
-                    USE_DOWNSCALE_ALGO(shleep25x44, n, 25,
-                                              lp, scale); // inc AM/PM
-                    break;
-                    // these will never be exercised
-                case MON_FONT_LCD1521: return lcd15x21; break;
-                case MON_FONT_LCD1217: return lcd12x17; break;
-                case MON_FONT_LCD2348: return lcd23x48; break;
-                default:
-                    n = sizeof(lcd25x44) / sizeof(lcd25x44[0]);
-                    USE_DOWNSCALE_ALGO(lcd25x44, n, 25, l, scale);
-            }
-        }
-        return clockF;
-    } else {
+
+    uint16_t w = 25;
+    uint16_t h = 44;
+    uint16_t l = 13 * h;
+    uint16_t lp = 15 * h;
+    iscale_t scale = {0.8, 1.0, 18, 0};
+    uint8_t *scratch = (uint8_t *)fontPassthru(font);
+    size_t n = sizeof(scratch) / sizeof(scratch[0]);
+
+    if (NULL == clockF) {
         switch (font) {
             case MON_FONT_CLASSIC:
-            case MON_FONT_LCD2544: return lcd25x44; break;
-            case MON_FONT_DECOSOL: return soldeco25x44; break;
-            case MON_FONT_DECOHOL: return holdeco25x44; break;
-            case MON_FONT_FESTUS: return festus25x44; break;
-            case MON_FONT_HOLFESTUS: return holfestus25x44; break;
-            case MON_FONT_NB1999: return nb1999s25x44; break;
-            case MON_FONT_ROBOTO: return roboto25x44; break;
-            case MON_FONT_NOTO2544: return noto25x44; break;
-            case MON_FONT_NOTF2544: return notof25x44; break;
-            case MON_FONT_COLT2544: return colby25x44; break;
-            case MON_FONT_TTYP2544: return ttypongo25x44; break;
-            case MON_FONT_SHLP2544: return shleep25x44; break;
+            case MON_FONT_LCD2544:
+                if (h12) {
+                    USE_DOWNSCALE_ALGO(scratch, n, w, l, scale);
+                } else {
+                    clockF = scratch;
+                }
+                break;
+            case MON_FONT_DECOSOL:
+            case MON_FONT_DECOHOL:
+            case MON_FONT_FESTUS:
+            case MON_FONT_HOLFESTUS:
+            case MON_FONT_NB1999:
+            case MON_FONT_ROBOTO:
+            case MON_FONT_NOTO2544:
+            case MON_FONT_NOTF2544:
+            case MON_FONT_COLT2544:
+            case MON_FONT_TTYP2544:
+            case MON_FONT_SHLP2544:
+                if (h12) {
+                    USE_DOWNSCALE_ALGO(scratch, n, w, lp, scale);
+                } else {
+                    clockF = scratch;
+                }
+                break;
             case MON_FONT_LCD1521: return lcd15x21; break;
             case MON_FONT_LCD1217: return lcd12x17; break;
-            case MON_FONT_LCD2348: return lcd23x48; break;
-            default: return lcd25x44;
+            //case MON_FONT_LCD2348: return lcd23x48; break;
+            default: USE_DOWNSCALE_ALGO(scratch, n, w, l, scale);
         }
     }
-    return lcd25x44;
+    return clockF;
 }
 
 void printOledFontTypes(void) {

@@ -92,16 +92,10 @@ void weatherSetAstral(climacell_t *climacell) {
     if (AS_WEATHER != isp_locale.soltime) {
         initTimezone();
     }
-    //printf("rise: %s, set: %s\n", climacell->sunrise.sdatum,
-    //       climacell->sunset.sdatum);
     isp_locale.sunrise =
         parse8601(climacell->sunrise.sdatum) + isp_locale.tzOff;
     isp_locale.sunset = parse8601(climacell->sunset.sdatum) + isp_locale.tzOff;
     isp_locale.soltime = AS_WEATHER;
-
-    //printf(" rise: %s", ctime(&isp_locale.sunrise));
-    //printf(" set: %s mode: %d\n offset: %d\n", ctime(&isp_locale.sunset),
-    //       (int)isp_locale.soltime, (int)isp_locale.tzOff);
 }
 
 void baseCCDatum(ccdatum_t *datum, bool changed, const char *key,

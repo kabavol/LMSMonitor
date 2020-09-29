@@ -208,3 +208,23 @@ for y in range(0, 5):
 
 print('</g></g>')
 print('</svg>')
+
+h = 800
+w = 800
+i = 5
+
+print(f'''<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" 
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="{w}" height="{h}" version="1.1"
+     viewBox="0 0 {w} {h}" xmlns="http://www.w3.org/2000/svg">''')
+print(f'<g>')
+
+while ( i < h ):
+    print(
+        f'<line x1="0" y1={i} x2="{w}" y2="{i}" stroke-width="5" stroke="black"/>'
+        )
+    i += 10
+
+print('</g>')
+print('</svg>')
