@@ -474,7 +474,7 @@ void putWeatherIcon(int x, int y, climacell_t *cc) {
         int w = elementLength(szh, szw);
         uint8_t dest[w];
         int start = cc->current.icon * w;
-        memcpy(dest, weather34x34 + start, sizeof dest);
+        memcpy(dest, weather34x34() + start, sizeof dest);
         display.fillRect(x, y, szw, szh, BLACK);
         display.drawBitmap(x, y, dest, szw, szh, WHITE);
     }
