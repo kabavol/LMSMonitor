@@ -1351,6 +1351,7 @@ void OvaTimePage(A1Attributes *aio) {
     setLastRemainingTime(buff, rdt);
 
     if ((pct > 99.6) && (aio->eeFXActive)) {
+        printf("clobber %03.2f\n",pct);
         aio->eeFXActive = false;
         softClockReset(false);
     }

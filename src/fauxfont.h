@@ -1,4 +1,6 @@
 /*
+ *  fauxfont.h
+ *
  *	(c) 2020 Stuart Hunter
  *
  *	TODO:

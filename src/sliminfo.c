@@ -176,6 +176,11 @@ bool parseLMSResponse(char *jsonData) {
                         printf("LMS:Title ...........: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[YEAR].name, keyStr,
                                     lmsTags[YEAR].keyLen)) {
+                if (0 == strcmp("0", valStr)) {
+                    time_t now = time(NULL);
+                    struct tm t = *localtime(&now);
+                    sprintf(valStr, "%d", t.tm_year + 1900);
+                }
                 if (storeTagData(&lmsTags[YEAR], valStr))
                     if (v > LL_DEBUG)
                         printf("LMS:Year ............: %s\n", valStr);
@@ -184,13 +189,14 @@ bool parseLMSResponse(char *jsonData) {
                 if (storeTagData(&lmsTags[REMOTETITLE], valStr))
                     if (v > LL_DEBUG)
                         printf("LMS:Remote Title ....: %s\n", valStr);
-            } else if (0 == strncmp(lmsTags[REMOTE].name, keyStr,
-                                    lmsTags[REMOTE].keyLen)) {
+                // skip remoteMeta
+                //} else if (0 == strncmp(lmsTags[REMOTE].name, keyStr, lmsTags[REMOTE].keyLen)) {
+            } else if (0 == strcmp(lmsTags[REMOTE].name, keyStr)) {
                 if (storeTagData(&lmsTags[REMOTE], valStr))
                     if (v > LL_DEBUG)
-                        printf("LMS:Remote ..........: %s %s\n",
-                               (0 == strncmp("0", valStr, 1)) ? "No" : "Yes",
-                               valStr);
+                        printf("LMS:Remote ..........: %s %s %s\n",
+                               (0 == strncmp("1", valStr, 1)) ? "Yes" : "No",
+                               keyStr, valStr);
             } else if (0 == strncmp(lmsTags[ARTIST].name, keyStr,
                                     lmsTags[ARTIST].keyLen)) {
                 if (storeTagData(&lmsTags[ARTIST], valStr))
@@ -204,7 +210,8 @@ bool parseLMSResponse(char *jsonData) {
             } else if (0 == strncmp(lmsTags[DURATION].name, keyStr,
                                     lmsTags[DURATION].keyLen)) {
                 if (storeTagData(&lmsTags[DURATION], valStr))
-                    if (v > LL_DEBUG)
+                    if ((v > LL_DEBUG) &&
+                        (!(0 == strcmp("0", lmsTags[DURATION].tagData))))
                         printf("LMS:Duration ........: %s\n", valStr);
             } else if (0 == strncmp(lmsTags[COMPOSER].name, keyStr,
                                     lmsTags[COMPOSER].keyLen)) {
@@ -677,7 +684,6 @@ tag_t *initTags(void) {
     populateTag(DISC, "disc", "i");
     populateTag(DISCCOUNT, "disccount", "q");
     populateTag(DURATION, "duration", "d");
-    populateTag(DURATION, "duration", "d");
     populateTag(MODE, "mode", "");
     populateTag(PERFORMER, "performer", "");
     populateTag(REMAINING, "remaining", "");
@@ -759,6 +765,21 @@ void *serverPolling(void *x_voidptr) {
                          (char *)jsonData)) {
                 if (!isEmptyStr(jsonData)) {
                     if (parseLMSResponse(jsonData)) {
+
+                        // patch for remote streams
+                        if (0 == strcmp("1", lmsTags[REMOTE].tagData)) {
+                            if (0 == strcmp("0", lmsTags[DURATION].tagData)) {
+                                strcpy(lmsTags[DURATION].tagData, "3600");
+                            }
+                            strncpy(lmsTags[ALBUMARTIST].tagData,
+                                    lmsTags[TITLE].tagData, MAXTAG_DATA);
+                            lmsTags[ALBUMARTIST].valid = true;
+                            lmsTags[ALBUMARTIST].changed = true;
+                            strncpy(lmsTags[ARTIST].tagData,
+                                    lmsTags[TITLE].tagData, MAXTAG_DATA);
+                            lmsTags[ARTIST].valid = true;
+                            lmsTags[ARTIST].changed = true;
+                        }
 
                         long pTime = getMinute(&lmsTags[TIME]);
                         long dTime = getMinute(&lmsTags[DURATION]);

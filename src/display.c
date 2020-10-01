@@ -401,7 +401,7 @@ void hazardSign(void) {
 
 void splashScreen(void) {
     display.clearDisplay();
-    display.drawBitmap(0, 0, splash, 128, 64, WHITE);
+    display.drawBitmap(0, 0, splash(), 128, 64, WHITE);
     display.display();
     for (int i = 0; i < MAX_BRIGHTNESS; i++) {
         display.setBrightness(i);
