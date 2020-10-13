@@ -65,7 +65,7 @@ uint16_t _char_height = 8;
 uint16_t _tt_char_width = 4; // 3x5 font
 uint16_t _tt_char_height = 6;
 bool isFlipped = false;
-int scrollMode = SCROLL_MODE_CYLON;
+enum ScrollMode scrollMode = SCROLLMODE_CYLON;
 sme scroll[MAX_LINES];
 bool smestate[MAX_LINES];
 
@@ -166,7 +166,8 @@ void printScrollerMode(void) {
 void printOledTypes(void) {
     printf("Supported OLED types:\n");
     for (int i = 0; i < OLED_LAST_OLED; i++) {
-        if (strstr(oled_type_str[i], "128x64")) {
+        if (strstr(oled_type_str[i], "128x64") ||
+            strstr(oled_type_str[i], "256x64")) {
             if (oledType == i)
                 fprintf(stdout, "    %1d* ..: %s\n", i, oled_type_str[i]);
             else
@@ -177,7 +178,9 @@ void printOledTypes(void) {
 }
 
 bool setOledType(int ot) {
-    if (ot < 0 || ot >= OLED_LAST_OLED || !strstr(oled_type_str[ot], "128x64"))
+    if (ot < 0 || ot >= OLED_LAST_OLED ||
+        !(strstr(oled_type_str[ot], "128x64") ||
+          strstr(oled_type_str[ot], "256x64")))
         return false;
     oledType = ot;
     return true;
@@ -190,8 +193,8 @@ bool setOledAddress(int8_t oa, int LR) {
     return true;
 }
 
-void setScrollMode(int sm) {
-    if ((sm >= SCROLL_MODE_CYLON) && (sm < SCROLL_MODE_MAX))
+void setScrollMode(enum ScrollMode sm) {
+    if ((sm >= SCROLLMODE_CYLON) && (sm < SCROLLMODE_MAX))
         if (sm != scrollMode)
             scrollMode = sm;
 }
@@ -290,7 +293,9 @@ Pin	Symbole	Niveau	Function
 */
 
     if ((OLED_ADAFRUIT_SPI_128x64 == oledType) ||
-        (OLED_SH1106_SPI_128x64 == oledType)) {
+        (OLED_SH1106_SPI_128x64 == oledType) ||
+        (OLED_SSD1322M_SPI_256x64 == oledType) ||
+        (OLED_SSD1322G_SPI_256x64 == oledType)) {
         sprintf(stb, "%s %s\n", labelIt("OLED Mode", LABEL_WIDTH, "."), "SPI");
         putMSG(stb, LL_DEBUG);
         if (!display.init(dopts.spiDC, dopts.oledRST, dopts.spiCS, oledType)) {
@@ -343,7 +348,7 @@ void vumeter2upl(void) {
         softClear();
         //        initRefresh = false;
     }
-    display.drawBitmap(0, 0, vu2up128x64, 128, 64, WHITE);
+    display.drawBitmap(0, 0, vu2up128x64(), 128, 64, WHITE);
 }
 
 void vumeterDownmix(bool inv) {
@@ -354,9 +359,9 @@ void vumeterDownmix(bool inv) {
         resetLastData();
     }
     if (inv)
-        display.drawBitmap(0, 0, vudm128x64, 128, 64, BLACK);
+        display.drawBitmap(0, 0, vudm128x64(), 128, 64, BLACK);
     else
-        display.drawBitmap(0, 0, vudm128x64, 128, 64, WHITE);
+        display.drawBitmap(0, 0, vudm128x64(), 128, 64, WHITE);
 }
 
 void vumeterSwoosh(bool inv, struct DrawVisualize *layout) {
@@ -372,11 +377,24 @@ void vumeterSwoosh(bool inv, struct DrawVisualize *layout) {
     drawRectangle(layout->pos.x, layout->pos.y, w, layout->iHeight + 2, BLACK);
 
     if (inv)
-        display.drawBitmap(layout->pos.x, layout->pos.y, vusw64x32,
+        display.drawBitmap(layout->pos.x, layout->pos.y, vusw64x32(),
                            layout->iWidth, layout->iHeight, BLACK);
     else
-        display.drawBitmap(layout->pos.x, layout->pos.y, vusw64x32,
+        display.drawBitmap(layout->pos.x, layout->pos.y, vusw64x32(),
                            layout->iWidth, layout->iHeight, WHITE);
+}
+
+void simplePKMeter(bool inv) {
+
+    if (initRefresh) {
+        softClear();
+        initRefresh = false;
+        resetLastData();
+    }
+    if (inv)
+        display.drawBitmap(0, 0, simplepkrms(), 128, 64, BLACK);
+    else
+        display.drawBitmap(0, 0, simplepkrms(), 128, 64, WHITE);
 }
 
 void peakMeterH(bool inv) {
@@ -387,14 +405,14 @@ void peakMeterH(bool inv) {
         resetLastData();
     }
     if (inv)
-        display.drawBitmap(0, 0, peak_rms, 128, 64, BLACK);
+        display.drawBitmap(0, 0, peakrms(), 128, 64, BLACK);
     else
-        display.drawBitmap(0, 0, peak_rms, 128, 64, WHITE);
+        display.drawBitmap(0, 0, peakrms(), 128, 64, WHITE);
 }
 
 void hazardSign(void) {
     display.clearDisplay();
-    display.drawBitmap(64, 16, hazard37x34, 37, 34, WHITE);
+    display.drawBitmap(64, 16, hazard37x34(), 37, 34, WHITE);
     display.display();
     dodelay(10);
 }
@@ -458,7 +476,7 @@ void putWeatherTemp(int x, int y, climacell_t *cc) {
             display.fillRect(x + szw + 2, y + 3 + (szh * py), 11 * _char_width,
                              _char_height, BLACK);
             putText(x + szw + 2, y + 3 + (szh * py), buf);
-            memcpy(dest, thermo12x12 + (w * icon[p]), sizeof dest);
+            memcpy(dest, thermo12x12() + (w * icon[p]), sizeof dest);
             display.fillRect(x + ((icon[p] == 3) ? 5.8 * _char_width : 0),
                              y + (szh * py), szw, szh, BLACK);
             display.drawBitmap(x + ((icon[p] == 3) ? 5.8 * _char_width : 0),
@@ -487,24 +505,240 @@ void putIFDetail(int icon, int xpos, int ypos, char *host) {
     int start = 0;
     uint8_t dest[w];
     start = icon * w;
-    memcpy(dest, netconn17x12 + start, sizeof dest);
+    memcpy(dest, netconn17x12() + start, sizeof dest);
     display.fillRect(xpos, ypos - 2, 45, szh + 2, BLACK);
     display.drawBitmap(xpos, ypos - 2, dest, szw, szh, WHITE);
     putText(xpos + 19, ypos, host);
 }
 
-void drawHorizontalCheckerBar(int x, int y, int w, int h, int percent) {
+void drawCarat(int x, bool fill) {
+    int y = maxYPixel() / 3;
+    int bty = maxYPixel() - y;
+    if (fill) {
+        display.fillTriangle(x, y + 3, x, bty - 3, x + 4, 32, WHITE);
+    } else {
+        display.fillTriangle(x, y + 3, x, bty - 3, x + 4, 32, BLACK);
+        display.drawTriangle(x, y + 3, x, bty - 3, x + 4, 32, WHITE);
+    }
+}
+
+void drawPeakDMScale(bool ticks) {
+    // 10, 4, 8
+    int w = maxXPixel();
+    int step = (w == 128) ? 2 : 1;
+
+    int x = maxXPixel() - ((w == 128) ? 120 : 240);
+    x /= 2;
+    // best as simple thirds
+    int y = maxYPixel() / 3;
+    int bty = maxYPixel() - y;
+
+    int szw = 18;
+    int szh = 8;
+    int bufw = elementLength(szh, szw);
+    uint8_t dest[bufw];
+
+    int tl = 10;
+    for (int16_t ix = -10; ix < 110; ix += step) {
+
+        // ticks
+        if ((0 == (ix % 5)) && (!(0 == (ix % 10))))
+            tl = 8;
+        else if (0 == (ix % 10))
+            tl = 10;
+        else
+            tl = 4;
+
+        int xix = x + ix + 10;
+        display.drawLine(xix, y, xix, y - tl, WHITE);
+        display.drawLine(xix, bty, xix, bty + tl, WHITE);
+
+        // labels
+        if ((ix == 0) || (0 == (ix % 50))) {
+
+            int start = (ix / 50) * bufw;
+            memcpy(dest, pkscale18x8() + start, sizeof dest);
+            display.drawBitmap(xix - (szw / 2), y - (tl + szh + 1), dest, szw,
+                               szh, WHITE);
+
+            display.drawBitmap(xix - (szw / 2), bty + (tl + 2), dest, szw, szh,
+                               WHITE);
+            if (100 == ix) {
+                drawCarat(xix, true);
+            }
+        }
+    }
+}
+
+void downmixPeakH(struct vissy_meter_t *vissy_meter,
+                  struct DrawVisualize *layout) {
+
+    // intermediate variable so we can easily switch metrics
+    meter_chan_t meter = {vissy_meter->sample_accum[0],
+                          vissy_meter->sample_accum[1]};
+
+    int divisor = 0;
+    double test = 0;
+    if (vissy_meter->is_mono) {
+        test += (double)vissy_meter->sample_accum[0];
+        divisor++;
+    } else {
+        for (int channel = 0; channel < 2; channel++) {
+            test += (double)vissy_meter->sample_accum[channel];
+            divisor++;
+        }
+    }
+
+    printf("1) test %f -> ", test);
+    test /= (double)divisor;
+    test /= 58.000;
+    //////test -= 48.000;
+    printf("%f\n", test);
+
+    // do no work if we don't need to
+    if (lastPK.metric[DOWNMIX] == (int)test)
+        return;
+
+    lastPK.metric[DOWNMIX] = (int)test;
+
+    double percent = 100 * (test / 8);
+    if (percent > 103.00)
+        percent = 103.00;
+    else if (percent < 0.00)
+        percent = 1.00;
+    printf("2) pct  %f\n", percent);
+
+    drawPeakDMScale(true); // 🎵
+
+    int w = maxXPixel();
+    int step = (w == 128) ? 2 : 1;
+
+    int x = maxXPixel() - (240 / step);
+    x /= 2;
+    int y = maxYPixel() / 3;
+
+    drawHorizontalBar(x + (20 / step), y + 3, (210 / step), y - 4, percent,
+                      BARSTYLE_SPLIT); // stripe
+    if (percent > 100)
+        drawCarat(114, true);
+    else
+        drawCarat(114, false);
+}
+
+void drawHorizontalBar(int x, int y, int w, int h, int percent,
+                       enum BarStyle style) {
     if ((w > 0) && (h > 2)) {
-        display.fillRect(x, y, w, h, BLACK);
+        display.fillRect(x, y, w + 5, h+1, BLACK); // much fudging...
         int p = (int)((double)w * (percent / 100.00));
         if (p > 0)
-            for (int16_t ix = x; ix < (x + p); ix++) {
-                for (int16_t iy = y; iy < (y + h); iy++) {
-                    // checker fill
-                    display.drawPixel(ix, iy, (((ix % 2) == (iy % 2)) ? 0 : 1));
-                }
+            switch (style) {
+                case BARSTYLE_SOLID:
+                    display.fillRect(x, y, x + p, h, WHITE);
+                    break;
+                case BARSTYLE_STRIPE:
+                    for (int16_t ix = x; ix < (x + p); ix += 2) {
+                        display.drawLine(ix, y, ix, y + h, WHITE);
+                    }
+                    break;
+                case BARSTYLE_HOLLOW:
+                    display.drawRect(x, y, x + p, h, WHITE);
+                    break;
+                case BARSTYLE_CHECK:
+                    for (int16_t ix = x; ix < (x + p); ix++) {
+                        for (int16_t iy = y; iy < (y + h); iy++) {
+                            display.drawPixel(ix, iy,
+                                              (((ix % 2) == (iy % 2)) ? 0 : 1));
+                        }
+                    }
+                    break;
+                case BARSTYLE_SPLIT:
+                    display.drawLine(x, y, x, y + h, WHITE);
+                    if (p > 2) {
+                        display.drawLine(x+p, y, x+p, y + h, WHITE);
+                        display.drawLine(x+p-2, y, x+p-2, y + h, WHITE);
+                    }
+                    break;
+                case BARSTYLE_CAPONLY:
+                    display.drawLine(x, y, x, y + h, WHITE);
+                    if (p > 1) {
+                        display.drawLine(x+p, y, x+p, y + h, WHITE);
+                        display.drawLine(x+p-1, y, x+p-1, y + h, WHITE);
+                    }
+                    break;
             }
     }
+}
+
+void drawVerticalBar(int x, int y, int w, int h, int percent,
+                     enum BarStyle style) {
+    if ((w > 0) && (h > 2)) {
+        display.fillRect(x, y, w, h, BLACK);
+        int p = (int)((double)h * (percent / 100.00));
+        if (p > 0)
+            switch (style) {
+                case BARSTYLE_SOLID:
+                    display.fillRect(x, y, x + w, y + h, WHITE);
+                    break;
+                case BARSTYLE_STRIPE:
+                    for (int16_t iy = y; iy < (y + p); iy += 2) {
+                        display.drawLine(x, iy, x + w, iy, WHITE);
+                    }
+                    break;
+                case BARSTYLE_HOLLOW:
+                    display.drawRect(x, y, x + w, y + p, WHITE);
+                    break;
+                case BARSTYLE_CHECK:
+                    for (int16_t ix = x; ix < (x + w); ix++) {
+                        for (int16_t iy = y; iy < (y + p); iy++) {
+                            display.drawPixel(ix, iy,
+                                              (((ix % 2) == (iy % 2)) ? 0 : 1));
+                        }
+                    }
+                    break;
+                case BARSTYLE_SPLIT:
+                    display.drawLine(x, y + p, x + w, y + p, WHITE);
+                    if (p > 2)
+                        display.drawLine(x, y + p - 2, x + w, y + p - 2, WHITE);
+                    break;
+                case BARSTYLE_CAPONLY:
+                    display.drawLine(x, y + p, x + w, y + p, WHITE);
+                    if (p > 1)
+                        display.drawLine(x, y + p - 2, x + w, y + p - 1, WHITE);
+                    break;
+            }
+    }
+}
+
+void drawHorizontalStripedBar(int x, int y, int w, int h, int percent) {
+    drawHorizontalBar(x, y, w, h, percent, BARSTYLE_STRIPE);
+}
+
+void drawHorizontalCheckerBar(int x, int y, int w, int h, int percent) {
+    drawHorizontalBar(x, y, w, h, percent, BARSTYLE_CHECK);
+}
+
+void drawHorizontalSplitBar(int x, int y, int w, int h, int percent) {
+    drawHorizontalBar(x, y, w, h, percent, BARSTYLE_SPLIT);
+}
+
+void drawHorizontalCappedBar(int x, int y, int w, int h, int percent) {
+    drawHorizontalBar(x, y, w, h, percent, BARSTYLE_CAPONLY);
+}
+
+void drawVerticalStripedBar(int x, int y, int w, int h, int percent) {
+    drawVerticalBar(x, y, w, h, percent, BARSTYLE_STRIPE);
+}
+
+void drawVerticalCheckerBar(int x, int y, int w, int h, int percent) {
+    drawVerticalBar(x, y, w, h, percent, BARSTYLE_CHECK);
+}
+
+void drawVerticalSplitBar(int x, int y, int w, int h, int percent) {
+    drawVerticalBar(x, y, w, h, percent, BARSTYLE_SPLIT);
+}
+
+void drawVerticalCappedBar(int x, int y, int w, int h, int percent) {
+    drawVerticalBar(x, y, w, h, percent, BARSTYLE_CAPONLY);
 }
 
 void drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color) {
@@ -1010,6 +1244,11 @@ void mirrorSpectrum(struct vissy_meter_t *vissy_meter,
 void stereoPeakH(struct vissy_meter_t *vissy_meter,
                  struct DrawVisualize *layout) {
 
+    if (strncmp(layout->downmix, "N", 1) != 0) {
+        downmixPeakH(vissy_meter, layout);
+        return;
+    }
+
     // intermediate variable so we can easily switch metrics
     meter_chan_t meter = {vissy_meter->sample_accum[0],
                           vissy_meter->sample_accum[1]};
@@ -1069,11 +1308,78 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter,
     lastPK.metric[1] = meter.metric[1];
 }
 
+void simplePeakH(struct vissy_meter_t *vissy_meter,
+                 struct DrawVisualize *layout) {
+
+    if (strncmp(layout->downmix, "N", 1) != 0) {
+        downmixPeakH(vissy_meter, layout);
+        return;
+    }
+
+    // intermediate variable so we can easily switch metrics
+    meter_chan_t meter = {vissy_meter->sample_accum[0],
+                          vissy_meter->sample_accum[1]};
+
+    // do no work if we don't need to
+    if ((lastPK.metric[0] == meter.metric[0]) &&
+        (lastPK.metric[1] == meter.metric[1]))
+        return;
+
+    //simplePKMeter(true);
+
+    int level[19] = {-36, -30, -20, -17, -13, -10, -8, -7, -6, -5,
+                     -4,  -3,  -2,  -1,  0,   2,   3,  5,  8};
+
+    uint8_t zpos = 15;
+    uint8_t hbar = 17; // 18
+    uint8_t xpos = zpos;
+    uint8_t ypos[2] = {7, 40};
+    size_t ll = sizeof(level) / sizeof(level[0]);
+    size_t p = 0;
+
+    simplePKMeter(false); // 🎵
+
+    for (int *l = level; (p < ll); l++) {
+        uint8_t nodeo = (*l < 0) ? 5 : 7;
+        uint8_t nodew = (*l < 0) ? 2 : 4;
+        for (int channel = 0; channel < 2; channel++) {
+            // meter value
+            double mv = -48.00 + ((double)lastPK.metric[channel] / 48.00);
+            if ((mv >= (double)*l) &&
+                (lastPK.metric[channel] > meter.metric[channel])) {
+                display.fillRect(xpos, ypos[channel], nodew, hbar, BLACK);
+            }
+        }
+        xpos += nodeo;
+        p++;
+    }
+
+    xpos = zpos;
+    p = 0;
+
+    for (int *l = level; (p < ll); l++) {
+        uint8_t nodeo = (*l < 0) ? 5 : 7;
+        uint8_t nodew = (*l < 0) ? 2 : 4;
+        for (int channel = 0; channel < 2; channel++) {
+            // meter value
+            double mv = -48.00 + ((double)meter.metric[channel] / 48.00);
+            if (mv >= (double)*l) {
+                display.fillRect(xpos, ypos[channel], nodew, hbar, WHITE);
+            }
+        }
+        xpos += nodeo;
+        p++;
+    }
+
+    lastPK.metric[0] = meter.metric[0];
+    lastPK.metric[1] = meter.metric[1];
+}
+
 void placeAMPM(int offset, int x, int y, uint16_t color) {
     int w = 4 * 40; // 26x40
     int start = offset * w;
     uint8_t dest[w];
-    memcpy(dest, ampmbug + start, sizeof dest);
+    memcpy(dest, ampmbug() + start, sizeof dest);
     display.drawBitmap(x, y, dest, 26, 40, color);
 }
 
@@ -1146,7 +1452,7 @@ void putVolume(bool v, char *buff) {
     int w = 8;
     int start = v * w;
     uint8_t dest[w];
-    memcpy(dest, volume8x8 + start, sizeof dest);
+    memcpy(dest, volume8x8() + start, sizeof dest);
     display.drawBitmap(0, 0, dest, w, w, WHITE);
 }
 
@@ -1168,7 +1474,7 @@ void putAudio(audio_t audio, char *buff, bool full = true) {
     int x = (maxXPixel() / 2) - (2 * (w + 1));
     if (0 != audio.shuffle) {
         start = (6 + audio.shuffle) * w;
-        memcpy(dest, volume8x8 + start, sizeof dest);
+        memcpy(dest, volume8x8() + start, sizeof dest);
         display.fillRect(x, 0, w, w, BLACK);
         display.drawBitmap(x, 0, dest, w, w, WHITE);
     } else
@@ -1178,14 +1484,14 @@ void putAudio(audio_t audio, char *buff, bool full = true) {
     x = (maxXPixel() / 2) - (3 * (w + 1));
     if (0 != audio.repeat) {
         start = (4 + audio.repeat) * w;
-        memcpy(dest, volume8x8 + start, sizeof dest);
+        memcpy(dest, volume8x8() + start, sizeof dest);
         display.fillRect(x, 0, w, w, BLACK);
         display.drawBitmap(x, 0, dest, w, w, WHITE);
     } else
         display.fillRect(x, 0, w, w, BLACK);
 
     start = audio.audioIcon * w;
-    memcpy(dest, volume8x8 + start, sizeof dest);
+    memcpy(dest, volume8x8() + start, sizeof dest);
     if (full)
         display.drawBitmap(maxXPixel() - (w + 2), 0, dest, w, w, WHITE);
     else
@@ -1209,7 +1515,7 @@ int putWarning(char *msg, bool init) {
         display.drawRect(x, y, w, h, WHITE);
     }
     if (init) {
-        display.drawBitmap(x + 3, y + 8, hazard37x34, szw, szh, WHITE);
+        display.drawBitmap(x + 3, y + 8, hazard37x34(), szw, szh, WHITE);
         char stb[BSIZE];
         strcpy(stb, msg);
         if (0 == strlen(stb)) {
@@ -1234,10 +1540,10 @@ void scrollerFinalize(void) {
 }
 
 void baselineScroller(Scroller *s) {
-    int sm = scrollMode;
-    if (SCROLL_MODE_RANDOM == scrollMode) {
+    enum ScrollMode sm = scrollMode;
+    if (SCROLLMODE_RANDOM == scrollMode) {
         srandom(time(NULL));
-        sm = random() % SCROLL_MODE_MAX;
+        sm = (ScrollMode)random() % SCROLLMODE_MAX;
     }
     s->active = false;
     s->priorstate = false;
@@ -1305,10 +1611,10 @@ bool putScrollable(int line, char *buff) {
                     strncpy(scroll[line].text, temp, MAXSCROLL_DATA - 1);
                     tlen = strlen(scroll[line].text);
                     scroll[line].textPix = tlen * _char_width;
-                    int sm = scrollMode;
-                    if (SCROLL_MODE_RANDOM == scrollMode) {
+                    enum ScrollMode sm = scrollMode;
+                    if (SCROLLMODE_RANDOM == scrollMode) {
                         srandom(time(NULL));
-                        sm = random() % SCROLL_MODE_MAX;
+                        sm = (ScrollMode)random() % SCROLLMODE_MAX;
                     }
                     scroll[line].scrollMode = sm;
                     scroll[line].active = true;
@@ -1337,13 +1643,13 @@ void *scrollLine(void *input) {
                 if ((int)strlen(s->text) > maxCharacter()) {
 
                     switch (s->scrollMode) {
-                        case SCROLL_MODE_INFSIN:
+                        case SCROLLMODE_INFSIN:
                             putTextToCenter(s->pos.y, s->text);
                             sinisterRotate(s->text);
                             timer = 3 * SCAN_TIME;
                             break;
 
-                        case SCROLL_MODE_INFDEX:
+                        case SCROLLMODE_INFDEX:
                             putTextToCenter(s->pos.y, s->text);
                             dexterRotate(s->text);
                             timer = 3 * SCAN_TIME;
@@ -1611,7 +1917,7 @@ void putTextCenterColor(int y, char *buff, uint16_t color) {
 void putTextToRight(int y, int r, char *buff) {
     int tlen = strlen(buff);
     if (r > maxXPixel()) {
-        r = maxXPixel;
+        r = maxXPixel();
     }
     int px = maxCharacter() < tlen ? 0 : (r - (tlen * _char_width));
     clearLine(y);
@@ -1805,7 +2111,7 @@ void nagSaverNotes(void) {
     int h = NAGNOTE_HEIGHT;
 
     for (uint8_t n = 0; n < NUMNOTES; n++) {
-        display.drawBitmap(icons[n][XPOS], icons[n][YPOS], nag_notes, w, h,
+        display.drawBitmap(icons[n][XPOS], icons[n][YPOS], nagnotes(), w, h,
                            WHITE);
     }
 
@@ -1813,7 +2119,7 @@ void nagSaverNotes(void) {
     usleep(200);
 
     for (uint8_t n = 0; n < NUMNOTES; n++) {
-        display.drawBitmap(icons[n][XPOS], icons[n][YPOS], nag_notes, w, h,
+        display.drawBitmap(icons[n][XPOS], icons[n][YPOS], nagnotes(), w, h,
                            BLACK);
 
         icons[n][XPOS] += icons[n][DELTAX];

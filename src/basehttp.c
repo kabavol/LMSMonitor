@@ -40,7 +40,7 @@
 
 struct Request *parse_request(const char *raw) {
     struct Request *req = NULL;
-    req = (Request*)malloc(sizeof(struct Request));
+    req = (Request *)malloc(sizeof(struct Request));
     if (!req) {
         return NULL;
     }
@@ -84,7 +84,7 @@ struct Request *parse_request(const char *raw) {
     struct Header *header = NULL, *last = NULL;
     while (raw[0] != '\r' || raw[1] != '\n') {
         last = header;
-        header = (Header*)malloc(sizeof(Header));
+        header = (Header *)malloc(sizeof(Header));
         if (!header) {
             free_request(req);
             return NULL;
@@ -253,9 +253,9 @@ bool baseHTTPRequest(enum Method method, char *host, uint16_t port, char *uri,
     }
 
     bool redone = false;
-    while ((read_size = recv(sockFD, buffer, BUFSIZ-1, 0))) {
+    while ((read_size = recv(sockFD, buffer, BUFSIZ - 1, 0))) {
         if (read_size > seed) {
-        printf("%ld > %ld?\n",read_size, seed);
+            printf("%ld > %ld?\n", (long)read_size, (long)seed);
             redone = true;
             ret = (char *)realloc(ret, read_size + total_size);
             if (response == NULL) {
@@ -298,9 +298,9 @@ bool baseHTTPRequest(enum Method method, char *host, uint16_t port, char *uri,
 }
 
 bool baseHTTPRequestNR(enum Method method, char *host, uint16_t port, char *uri,
-                     char *header, char *response) {
+                       char *header, char *response) {
 
-char buffer[BUFSIZ];
+    char buffer[BUFSIZ];
     enum CONSTEXPR { MAX_REQUEST_LEN = 1024 };
     char request[MAX_REQUEST_LEN];
 
@@ -371,7 +371,7 @@ char buffer[BUFSIZ];
     if (nbytes_total == -1) {
         fprintf(stderr, "error: bad request - %s\n", host);
         return false;
-    }else{
+    } else {
         buffer[nbytes_total] = '\0';
     }
 
@@ -388,7 +388,8 @@ char buffer[BUFSIZ];
     } else
         return false;
 
-    return true;}
+    return true;
+}
 
 bool httpGet(char *host, uint16_t port, char *uri, char *header,
              char *response) {
@@ -396,7 +397,7 @@ bool httpGet(char *host, uint16_t port, char *uri, char *header,
 }
 
 bool httpGetNR(char *host, uint16_t port, char *uri, char *header,
-             char *response) {
+               char *response) {
     return baseHTTPRequestNR(GET, host, port, uri, header, response);
 }
 

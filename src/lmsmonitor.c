@@ -283,7 +283,7 @@ bool acquireOptLock(void) {
         while (pthread_mutex_trylock(&glopt->update) != 0) {
             if (test > 30) {
                 ret = false;
-                strcpy(buff, "options mutex acquire failed\n");
+                strcpy(buff, "acquire options lock failed\n");
                 putMSG(buff, LL_DEBUG);
                 break;
             }
@@ -295,7 +295,8 @@ bool acquireOptLock(void) {
 }
 
 void onlineTests(size_t timer_id, void *user_data) {
-    if (glopt) {
+
+    if ((glopt) && (glopt->showWarnings)) {
 
         char stb[BSIZE] = {0};
         bool notruck = glopt->pauseDisplay;
@@ -714,6 +715,7 @@ int main(int argc, char *argv[]) {
         .spiDC = OLED_SPI_DC,      // SPI DC
         .spiCS = OLED_SPI_CS0,     // SPI CS - 0: CS0, 1: CS1
         .lastModes = {0, 0},
+        .showWarnings = true,
         .pauseDisplay = false,
         .pauseMessage = {0},
 #endif
@@ -955,6 +957,9 @@ int main(int argc, char *argv[]) {
         }
     }
     putMSG(stbl, LL_INFO);
+    sprintf(stbl, "%s %s\n", labelIt("Show Warnings", LABEL_WIDTH, "."),
+            ((lmsopt.showWarnings) ? "Yes" : "No"));
+    putMSG(stbl, LL_INFO);
 
     clearDisplay(); // clears the  splash if shown
     showConnect();  // connection helper
@@ -962,29 +967,12 @@ int main(int argc, char *argv[]) {
 
     printFontMetrics();
 
-    /*
-    // TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST
-    // TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST
-    // TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST
-    int demo = 80;
-    while (demo > 0) {
-        strcpy(lmsopt.pauseMessage, "The quick brown fox jumped over the lazy dog");
-        warningsPage();
-        refreshDisplay();
-        if (lmsopt.sleepTime < 1)
-            setSleepTime(SLEEP_TIME_LONG);
-        dodelay(lmsopt.sleepTime);
-        demo--;
-    }
-    clearDisplay();
-    // TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST
-    // TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST
-    // TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST
-*/
-
     // setup server/player online tests
-    size_t onlineTimer;
-    onlineTimer = timer_start(2000, onlineTests, TIMER_PERIODIC, (void *)&aio);
+    if (lmsopt.showWarnings) {
+        size_t onlineTimer;
+        onlineTimer =
+            timer_start(2000, onlineTests, TIMER_PERIODIC, (void *)&aio);
+    }
 
 #endif
 
@@ -1322,6 +1310,13 @@ void OvaTimePage(A1Attributes *aio) {
         (tags[DURATION].valid) ? strtol(tags[DURATION].tagData, NULL, 10) : 0;
     double pct = (pTime * 100.00) / (dTime == 0 ? 1 : dTime);
 
+    time_t now = time(NULL);
+    struct tm t = *localtime(&now);
+    bool skipper = false;
+    if (0 == strcmp("1", tags[REMOTE].tagData)) {
+        pct = ((t.tm_sec % 2) ? 50 : 55); // you want some candy ...
+        skipper = true;
+    }
     DrawTime rdt = {.pos = {18, 13}, .font = MON_FONT_STANDARD};
 
     switch (aio->eeMode) {
@@ -1345,9 +1340,15 @@ void OvaTimePage(A1Attributes *aio) {
     }
 
     // not hourly compliant!
-    uint16_t rTime =
-        (tags[REMAINING].valid) ? strtol(tags[REMAINING].tagData, NULL, 10) : 0;
-    sprintf(buff, "%02d:%02d", rTime / 60, rTime % 60);
+    if (!skipper) {
+        uint16_t rTime = (tags[REMAINING].valid)
+                             ? strtol(tags[REMAINING].tagData, NULL, 10)
+                             : 0;
+        sprintf(buff, "%02d:%02d", rTime / 60, rTime % 60);
+    } else {
+        strcpy(buff,
+               ((t.tm_sec % 2) ? "00:00" : "--:--")); // you want some candy ...
+    }
     setLastRemainingTime(buff, rdt);
 
     if ((pct > 99.6) && (aio->eeFXActive)) {
@@ -1397,13 +1398,6 @@ void warningsPage(void) {
 
     setLastTime(buff, dt);
 
-    /*
-    strftime(buff, sizeof(buff), "%A", &loctm);
-    putTinyTextToRight(pin, 34, 10, buff);
-
-    strftime(buff, sizeof(buff), "%02d/%m/%y", &loctm);
-    putTinyTextToRight(pin, 44, 10, buff);
-*/
     strcpy(glopt->lastTime, "XXXXX"); // date and day ride rough
     sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
     // colon (blink)
@@ -1545,6 +1539,13 @@ void cassettePage(A1Attributes *aio) {
     // as the track progresses lHub shrinks, rHub expands
     // time and duration give us the percent complete -> transpose to emulate
     double pct = (pTime * 100.00) / (dTime == 0 ? 1 : dTime);
+
+    if (0 == strcmp("1", tags[REMOTE].tagData)) {
+        time_t now = time(NULL);
+        struct tm t = *localtime(&now);
+        pct = ((t.tm_sec % 2) ? 54 : 55); // you want some candy ...
+    }
+
     // lHub
     drawHorizontalCheckerBar(xpos, ypos, barmax, 7, 100 - (int)pct);
     // rHub
@@ -1725,6 +1726,13 @@ void updStatusPage(void) {
     else
         sprintf(buff, "%02d:%02d", dTime / 60, dTime % 60);
 
+    if (0 == strcmp("1", tags[REMOTE].tagData)) {
+        time_t now = time(NULL);
+        struct tm t = *localtime(&now);
+        strcpy(buff,
+               ((t.tm_sec % 2) ? "00:00" : "--:--")); // you want some candy ...
+    }
+
     int dlen = strlen(buff);
     putText(maxXPixel() - (dlen * charWidth()) - 1, 56, buff);
 
@@ -1869,7 +1877,12 @@ void playingPage(void) {
                     : 0;
 
 #ifdef __arm__
-        sprintf(buff, "%02d:%02d", pTime / 60, pTime % 60);
+
+        if (pTime > 3600)
+            sprintf(buff, "%02d:%02d:%02d", pTime / 3600, pTime / 60,
+                    pTime % 60);
+        else
+            sprintf(buff, "%02d:%02d", pTime / 60, pTime % 60);
         int tlen = strlen(buff);
         clearLine(56);
         putText(1, 56, buff);
@@ -1880,6 +1893,15 @@ void playingPage(void) {
         else
             sprintf(buff, "%02d:%02d", dTime / 60, dTime % 60);
 
+        double pct = (pTime * 100) / (dTime == 0 ? 1 : dTime);
+        if (0 == strcmp("1", tags[REMOTE].tagData)) {
+            time_t now = time(NULL);
+            struct tm t = *localtime(&now);
+            strcpy(buff, ((t.tm_sec % 2) ? "00:00"
+                                         : "--:--")); // you want some candy ...
+            pct = 0;
+        }
+
         int dlen = strlen(buff);
         putText(maxXPixel() - (dlen * charWidth()) - 1, 56, buff);
 
@@ -1889,8 +1911,8 @@ void playingPage(void) {
                     (tlen * charWidth()),
                 56, buff);
 
-        drawHorizontalBargraph(2, 51, maxXPixel() - 4, 4,
-                               (pTime * 100) / (dTime == 0 ? 1 : dTime));
+        drawHorizontalBargraph(2, 51, maxXPixel() - 4, 4, pct);
+
 #endif
 
         sprintf(buff, "%3d:%02d  %5s  %3d:%02d", pTime / 60, pTime % 60,

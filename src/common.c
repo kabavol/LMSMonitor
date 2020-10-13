@@ -42,10 +42,10 @@ void dodelay(uint16_t d) { usleep(d * 1000); }
 char *strrep(size_t n, const char *s) {
 
     size_t slen = strlen(s);
-    char *dest = malloc(n * slen + 1);
+    char *dest = (char *)malloc(n * slen + 1);
 
     char *p = dest;
-    for (int i = 0; i < n; ++i, p += slen) {
+    for (int i = 0; i < (int)n; ++i, p += slen) {
         memcpy(p, s, slen);
     }
     *p = '\0';
@@ -58,7 +58,7 @@ char *labelIt(const char *label, const size_t len, const char *pad) {
     if (l > len) {
         return (char *)label;
     } else {
-        char *dest = malloc(len + 1);
+        char *dest = (char *)malloc(len + 1);
         sprintf(dest, "%s %s:", label, strrep((len - l) - 2, pad));
         return dest;
     }

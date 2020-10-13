@@ -37,7 +37,8 @@ bool vis_is_active = false;
 vis_type_t vis_mode = {0};
 vis_type_t vis_list[5] = {{0}, {0}, {0}, {0}, {0}};
 uint8_t num_modes = 1;
-DrawVisualize downmix = {{0, 0}, 0, 0, 0, 128, 64, true, {0}};
+DrawVisualize downmix = {{0, 0}, 0,    0,   0,    128,
+                         64,     true, {0}, true, BARSTYLE_SOLID};
 bool play_is_active = false;
 
 size_t lenVisList(void) { return (sizeof(vis_list) / sizeof(vis_type_t)); }
@@ -86,7 +87,8 @@ void setDownmix(int samplesize, float samplerate) {
 }
 
 void setDownmixAttrs(int x, int y, int width, int height, int radius,
-                     int gWidth = 128, int gHeight = 64) {
+                     int gWidth = 128, int gHeight = 64,
+                     enum BarStyle bs = BARSTYLE_SOLID) {
     downmix.pos.x = x;
     downmix.pos.y = y;
     downmix.hMeter = height;
@@ -94,6 +96,7 @@ void setDownmixAttrs(int x, int y, int width, int height, int radius,
     downmix.iWidth = gWidth;
     downmix.iHeight = gHeight;
     downmix.rMeter = radius;
+    downmix.barStyle = bs;
     // workable hack for presentation tweaks
     if (0 == (radius + x))
         downmix.finesse = true;
@@ -102,10 +105,11 @@ void setDownmixAttrs(int x, int y, int width, int height, int radius,
 // hackety-hack - don't look back...
 void setA1Downmix(int mode) {
     // need to check the A1 visualization mode
-    if (VEMODE_A1S == mode)
+    if (VEMODE_A1S == mode) {
         setDownmixAttrs(66, 2, 60, 40, 0, 60, 40);
-    else
+    } else {
         setDownmixAttrs(64, 2, 64, 32, 0, 64, 32);
+    }
     setDownmix(16, 44.1);
 }
 
