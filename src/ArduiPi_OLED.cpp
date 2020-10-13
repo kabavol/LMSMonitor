@@ -256,8 +256,8 @@ bool ArduiPi_OLED::oled_is_spi_proto(uint8_t OLED_TYPE)
     case OLED_ADAFRUIT_SPI_128x32:
     case OLED_ADAFRUIT_SPI_128x64:
     case OLED_SH1106_SPI_128x64:
-    case OLED_NHD1322_GS_SPI_256x64:
-    case OLED_NHD1322_MONO_SPI_256x64:
+    case OLED_SSD1322G_SPI_256x64:
+    case OLED_SSD1322M_SPI_256x64:
       return true;
     break;
   }
@@ -311,11 +311,12 @@ bool ArduiPi_OLED::select_oled(uint8_t OLED_TYPE, int8_t i2c_addr)
       _i2c_addr = SEEED_I2C_ADDRESS ;
     break;
 
-    case OLED_NHD1322_GS_SPI_256x64:
+    case OLED_SSD1322G_SPI_256x64:
       oled_width  = 256;
       oled_height = 64;
     break;
-    case OLED_NHD1322_MONO_SPI_256x64:
+
+    case OLED_SSD1322M_SPI_256x64:
       oled_width  = 256;
       oled_height = 64;
     break;
@@ -379,6 +380,11 @@ bool ArduiPi_OLED::init(int8_t DC, int8_t RST, int8_t CS, uint8_t OLED_TYPE)
   if (!select_oled(OLED_TYPE))
     return false;
 
+  // Set the pin that will control DC as output
+  bcm2835_gpio_fsel(dc, BCM2835_GPIO_FSEL_OUTP);
+  // Setup reset pin direction as output
+  bcm2835_gpio_fsel(rst, BCM2835_GPIO_FSEL_OUTP);
+
   // Init & Configure Raspberry PI SPI
   bcm2835_spi_begin();
   bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);      
@@ -395,13 +401,16 @@ bool ArduiPi_OLED::init(int8_t DC, int8_t RST, int8_t CS, uint8_t OLED_TYPE)
     bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_64);
   }
 
-  // Set the pin that will control DC as output
-  bcm2835_gpio_fsel(dc, BCM2835_GPIO_FSEL_OUTP);
+  bcm2835_spi_setChipSelectPolarity(cs, LOW);
 
-  // Setup reset pin direction as output
-  bcm2835_gpio_fsel(rst, BCM2835_GPIO_FSEL_OUTP);
+  bcm2835_gpio_write(rst, HIGH);
+  bcm2835_delay(10);
+  bcm2835_gpio_write(rst, LOW);
+  bcm2835_delay(10);
+  bcm2835_gpio_write(rst, HIGH);
 
-  return ( true);
+  return true;
+
 }
 
 // initializer for I2C - we only indicate the reset pin and OLED type !
@@ -466,6 +475,7 @@ void ArduiPi_OLED::close(void)
   
 void ArduiPi_OLED::begin( void ) 
 {
+
   uint8_t multiplex;
   uint8_t chargepump;
   uint8_t compins;
@@ -489,7 +499,9 @@ void ArduiPi_OLED::begin( void )
   
   // bring out of reset
   bcm2835_gpio_write(rst, HIGH);
-  
+
+    printf(">>>>> %d %s\n", oled_type, oled_type_str[oled_type]);
+
   // depends on OLED type configuration
   if (oled_height == 32)
   {
@@ -530,44 +542,108 @@ void ArduiPi_OLED::begin( void )
     precharge  = 0xF1;
   }
 
-  if (oled_type == OLED_NHD1322_GS_SPI_256x64) {
+  if ((oled_type == OLED_SSD1322G_SPI_256x64) ||
+  (oled_type == OLED_SSD1322M_SPI_256x64)) {
 
-      sendCommand(0xFD, 0x12);       // Unlock IC
-      sendCommand(0xAE);             // Display off
-      sendCommand(0xB3, 0x91);       // Display divide clockratio/freq
-      sendCommand(0xCA, 0x3F);       // Set MUX ratio
+        sendCommand(0xFD, 0x12);        // Unlock IC
+        sendCommand(0xA4);              // Display off (all pixels off)
+        sendCommand(0xB3, 0xF2);        // Display divide clockratio/freq
+        sendCommand(0xCA, 0x3F);        // Set MUX ratio
+        sendCommand(0xA2, 0x00);        // Display offset
+        sendCommand(0xA1, 0x00);        // Display start Line
+        sendCommand(0xA0, 0x14, 0x11);  // Set remap & dual COM Line
+        sendCommand(0xB5, 0x00);        // Set GPIO (disabled)
+        sendCommand(0xAB, 0x01);        // Function select (internal Vdd)
+        sendCommand(0xB4, 0xA0, 0xFD);  // Display enhancement A (External VSL)
+        sendCommand(0xC7, 0x0F);        // Master contrast (reset)
+        sendCommand(0xB9);              // Set default greyscale table
+        sendCommand(0xB1, 0xF0);        // Phase length
+        sendCommand(0xD1, 0x82, 0x20);  // Display enhancement B (reset)
+        sendCommand(0xBB, 0x0D);        // Pre-charge voltage
+        sendCommand(0xB6, 0x08);        // 2nd precharge period
+        sendCommand(0xBE, 0x00);        // Set VcomH
+        sendCommand(0xA6);              // Normal display (reset)
+        //sendCommand(0xA9);              // Exit partial display
+/*
+      sendCommand(0xFD, 0x12); // Unlock IC
+      sendCommand(0xAE);       // Display off
+      sendCommand(0xB3, 0x91); // Display divide clockratio/freq
+
+      sendCommand(0xCA, 0x3F);       // Set MUX ratio, duty 1/64
       sendCommand(0xA2, 0x00);       // Display offset
       sendCommand(0xAB, 0x01);       // Display offset
       sendCommand(0xA0, 0x16, 0x11); // Set remap & dual COM Line
-      sendCommand(0xC7, 0x0F);       // Master contrast (reset)
-      sendCommand(0xC1, 0x9F);       // Set contrast current
-      sendCommand(0xB1, 0xF2);       // Set default greyscale table
-      sendCommand(0xBB, 0x1F);       // Pre-charge voltage
+
+      // adds
+      sendCommand(0xAB, 0x01); // funtion selection, selection external vdd
+      sendCommand(0xB4, 0xA0, 0xFD);
+      sendCommand(0xC1, 0x80); // set contrast current
+
+      // adds
+
+      sendCommand(0xC7, 0x0F); // Master contrast (reset)
+      sendCommand(0xC1, 0x9F); // Set contrast current
+
+      // adds
+      sendCommand(0xB1, 0xF2); // Set default greyscale table
+      sendCommand(0xB1, 0xE2); // Set default greyscale table
+      // adds
+
+      sendCommand(0xD1, 0x82, 0x20); // adds
+
+      sendCommand(0xBB, 0x1F); // Pre-charge voltage
+      sendCommand(0xB6, 0x08); // Set 2nd pre-charge period
+
       sendCommand(0xB4, 0xA0, 0xFD); // Display enhancement A (External VSL)
-      sendCommand(0xBE, 0x04);       // Set VcomH
-      sendCommand(0xA6);             // Normal display (reset)
-      sendCommand(0xAF);             // Exit partial display
-  } else if (oled_type == OLED_NHD1322_MONO_SPI_256x64) {
-    
-      sendCommand(0xFD, 0x12);       // Unlock IC
-      sendCommand(0xA4);             // Display off (all pixels off)
-      sendCommand(0xB3, 0xF2);       // Display divide clockratio/freq
-      sendCommand(0xCA, 0x3F);       // Set MUX ratio
-      sendCommand(0xA2, 0x00);       // Display offset
-      sendCommand(0xA1, 0x00);       // Display start Line
-      sendCommand(0xA0, 0x14, 0x11); // Set remap & dual COM Line
-      sendCommand(0xB5, 0x00);       // Set GPIO (disabled)
-      sendCommand(0xAB, 0x01);       // Function select (internal Vdd)
-      sendCommand(0xB4, 0xA0, 0xFD); // Display enhancement A (External VSL)
-      sendCommand(0xC7, 0x0F);       // Master contrast (reset)
-      sendCommand(0xB9);             // Set default greyscale table
-      sendCommand(0xB1, 0xF0);       // Phase length
-      sendCommand(0xD1, 0x82, 0x20); // Display enhancement B (reset)
-      sendCommand(0xBB, 0x0D);       // Pre-charge voltage
-      sendCommand(0xB6, 0x08);       // 2nd precharge period
-      sendCommand(0xBE, 0x00);       // Set VcomH
-      sendCommand(0xA6);             // Normal display (reset)
-      sendCommand(0xA9);             // Exit partial display
+
+      // adds
+      sendCommand(0xBE, 0x04); // Set VcomH
+      sendCommand(0xBE, 0x07); // Set VcomH
+      // adds
+
+      sendCommand(0xA6); // Normal display (reset)
+      //sendCommand(0xAF); // Exit partial display
+*/
+
+if (oled_type == OLED_SSD1322G_SPI_256x64) {
+
+     // Init gray level for text. Default:Brightest White
+      grayH = 0xF0;
+      grayL = 0x0F;
+}
+
+  } else if ((1==0)&&(oled_type == OLED_SSD1322M_SPI_256x64)) {
+
+      sendCommand(SSD1322_SETCOMMANDLOCK, 0x12); // Unlock IC
+      sendCommand(SSD1322_DISPLAYOFF);           // DISPLAY OFF
+      sendCommand(SSD1322_SETCLOCKDIVIDER,
+                  0x91); // DISPLAYDIVIDER CLOCKRADIO/OSCILLATOR FREQUENCY
+      sendCommand(SSD1322_SETMUXRATIO, 0x3F); // multiplex ratio, duty = 1/64
+      sendCommand(SSD1322_SETDISPLAYOFFSET, 0x00); // set offset
+      sendCommand(SSD1322_SETSTARTLINE, 0x00);     // start line
+      sendCommand(SSD1322_SETREMAP, 0x14, 0x11);   // set remap
+
+      sendCommand(SSD1322_SETGPIO, 0x00);
+
+      sendCommand(SSD1322_FUNCTIONSEL,
+                  0x01); // funtion selection, selection external Vdd
+      sendCommand(SSD1322_DISPLAYENHANCE, 0xA0, 0xfd);
+      sendCommand(SSD1322_SETCONTRASTCURRENT, 0x80); // set contrast current */
+      sendCommand(SSD1322_MASTERCURRENTCONTROL,
+                  0x0F); // master contrast current control
+
+      // gray scale
+      sendCommand(SSD1322_SELECTDEFAULTGRAYSCALE); // 0xB9
+
+      sendCommand(SSD1322_SETPHASELENGTH, 0xE2); // SET PHASE LENGTH
+      sendCommand(SSD1322_DISPLAYENHANCEB, 0x82, 0x20);
+      sendCommand(SSD1322_SETPRECHARGEVOLTAGE, 0x1F); /*SET PRE-CHANGE VOLTAGE*/
+      sendCommand(SSD1322_SETSECONDPRECHARGEPERIOD,
+                  0x08);                   /*SET SECOND PRE-CHARGE PERIOD*/
+      sendCommand(SSD1322_SETVCOMH, 0x07); /* SET VCOMH */
+      sendCommand(SSD1322_NORMALDISPLAY);  /*normal display*/
+      //sendCommand(SSD1322_DISPLAYON);      /*display ON*/
+
   } else if (oled_type == OLED_SEEED_I2C_96x96)
       sendCommand(
           SSD1327_Set_Command_Lock,
@@ -669,7 +745,9 @@ void ArduiPi_OLED::begin( void )
     sendCommand( SSD_Set_Page_Address, 0,   7 ); 
   }
 
-  sendCommand(SSD_Set_ContrastLevel, contrast);
+  if (!((oled_type == OLED_SSD1322M_SPI_256x64) ||
+        (oled_type == OLED_SSD1322G_SPI_256x64)))
+      sendCommand(SSD_Set_ContrastLevel, contrast);
 
   stopscroll();
   
