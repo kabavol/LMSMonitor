@@ -80,6 +80,8 @@ static struct argp_option options[] = {
      "Climacell API key and required units (optional)"},
     {"apikey", 'W', 0, OPTION_ALIAS},
     {"metrics", 'k', 0, 0, "Show CPU load and temperature (clock mode)"},
+    {"warnings", 'w', "WARNING", OPTION_ARG_OPTIONAL,
+     "Show warnings on disconnect or server down"},
     {"visualize", 'v', 0, 0,
      "Enable visualization sequence when track playing (pi only)"},
     {"meter", 'm', "MODES", 0,
@@ -128,10 +130,11 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             if (arg) {
                 sscanf(arg, "%d", &test);
                 if (test < 0 || test >= OLED_LAST_OLED ||
-                    !strstr(oled_type_str[test], "128x64")) {
+                    !(strstr(oled_type_str[test], "128x64") ||
+                      strstr(oled_type_str[test], "256x64"))) {
                     sprintf(
                         err,
-                        "you specified %d, it is an invalid 128x64 OLED type\n",
+                        "you specified %d, it is an invalid 128x64 or 256x64 OLED type\n",
                         test);
                     printOledTypes();
                     argp_failure(state, 1, 0, err);
@@ -139,7 +142,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                     setOledType(test);
                 }
             } else {
-                printf("WARNING: null argument? Sspecify OLED parameter as "
+                printf("WARNING: null argument? Specify OLED parameter as "
                        "-o[number] or --oled=[number]\n");
             }
             break;
@@ -183,7 +186,11 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             break;
 
         case 'd': arguments->lmsopt->downmix = true; break;
-
+        case 'w':
+            if (arg && 0 == atoi(arg)) {
+                arguments->lmsopt->showWarnings = false;
+            }
+            break;
         case 'f':
             if (arg) {
                 test = atoi(arg); // sscanf(arg, "%d", &test);

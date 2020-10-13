@@ -31,16 +31,62 @@ All text above, and the splash screen must be included in any redistribution
 
 #include "./Adafruit_GFX.h"
 
-#define BLACK 0
-#define WHITE 1
+/// fit into the SSD1306_ naming scheme
+#define SSD1306_BLACK   0   ///< Draw 'off' pixels
+#define SSD1306_WHITE   1   ///< Draw 'on' pixels
+#define SSD1306_INVERSE 2   ///< Invert pixels
 
-// need grayscale too
+/// The following "raw" color names are kept for backwards client compatability
+/// They can be disabled by predefining this macro before including the Adafruit
+/// header client code will then need to be modified to use the scoped enum
+/// values directly
+#ifndef NO_ADAFRUIT_SSD1306_COLOR_COMPATIBILITY
+#define BLACK SSD1306_BLACK     ///< Draw 'off' pixels
+#define WHITE SSD1306_WHITE     ///< Draw 'on' pixels
+#define INVERSE SSD1306_INVERSE ///< Invert pixels
+#endif
 
 /*=========================================================================
     SSDxxxx Common Displays
     -----------------------------------------------------------------------
     Common values to all displays
 =========================================================================*/
+
+#define SSD1306_MEMORYMODE 0x20          ///< See datasheet
+#define SSD1306_COLUMNADDR 0x21          ///< See datasheet
+#define SSD1306_PAGEADDR 0x22            ///< See datasheet
+#define SSD1306_SETCONTRAST 0x81         ///< See datasheet
+#define SSD1306_CHARGEPUMP 0x8D          ///< See datasheet
+#define SSD1306_SEGREMAP 0xA0            ///< See datasheet
+#define SSD1306_DISPLAYALLON_RESUME 0xA4 ///< See datasheet
+#define SSD1306_DISPLAYALLON 0xA5        ///< Not currently used
+#define SSD1306_NORMALDISPLAY 0xA6       ///< See datasheet
+#define SSD1306_INVERTDISPLAY 0xA7       ///< See datasheet
+#define SSD1306_SETMULTIPLEX 0xA8        ///< See datasheet
+#define SSD1306_DISPLAYOFF 0xAE          ///< See datasheet
+#define SSD1306_DISPLAYON 0xAF           ///< See datasheet
+#define SSD1306_COMSCANINC 0xC0          ///< Not currently used
+#define SSD1306_COMSCANDEC 0xC8          ///< See datasheet
+#define SSD1306_SETDISPLAYOFFSET 0xD3    ///< See datasheet
+#define SSD1306_SETDISPLAYCLOCKDIV 0xD5  ///< See datasheet
+#define SSD1306_SETPRECHARGE 0xD9        ///< See datasheet
+#define SSD1306_SETCOMPINS 0xDA          ///< See datasheet
+#define SSD1306_SETVCOMDETECT 0xDB       ///< See datasheet
+
+#define SSD1306_SETLOWCOLUMN 0x00  ///< Not currently used
+#define SSD1306_SETHIGHCOLUMN 0x10 ///< Not currently used
+#define SSD1306_SETSTARTLINE 0x40  ///< See datasheet
+
+#define SSD1306_EXTERNALVCC 0x01  ///< External display voltage source
+#define SSD1306_SWITCHCAPVCC 0x02 ///< Gen. display voltage from 3.3V
+
+#define SSD1306_RIGHT_HORIZONTAL_SCROLL 0x26              ///< Init rt scroll
+#define SSD1306_LEFT_HORIZONTAL_SCROLL 0x27               ///< Init left scroll
+#define SSD1306_VERTICAL_AND_RIGHT_HORIZONTAL_SCROLL 0x29 ///< Init diag scroll
+#define SSD1306_VERTICAL_AND_LEFT_HORIZONTAL_SCROLL 0x2A  ///< Init diag scroll
+#define SSD1306_DEACTIVATE_SCROLL 0x2E                    ///< Stop scroll
+#define SSD1306_ACTIVATE_SCROLL 0x2F                      ///< Start scroll
+#define SSD1306_SET_VERTICAL_SCROLL_AREA 0xA3             ///< Set scroll range
 
 //#define SSD_Command_Mode      0x80  /* DC bit is 0 */ Seeed set C0 to 1 why ?
 #define SSD_Command_Mode      0x00  /* C0 and DC bit are 0         */
@@ -104,7 +150,7 @@ All text above, and the splash screen must be included in any redistribution
 #define SSD1306_Set_Lower_Column_Start_Address        0x00
 #define SSD1306_Set_Higher_Column_Start_Address       0x10
 #define SSD1306_Set_Start_Line      0x40
-#define SSD1306_Set_Memory_Mode     0x20
+#define SSD1306_Set_Memory_Mode SSD1306_MEMORYMODE
 #define SSD1306_Set_Com_Output_Scan_Direction_Normal  0xC0
 #define SSD1306_Set_Com_Output_Scan_Direction_Remap   0xC8
 #define SSD1306_Charge_Pump_Setting 0x8D
@@ -147,14 +193,52 @@ All text above, and the splash screen must be included in any redistribution
 #define SSD1322_Set_Column_Address  0x15
 #define SSD1322_Set_Row_Address     0x75
 
+#define SSD1322_SETCOMMANDLOCK 0xFD
+#define SSD1322_DISPLAYOFF 0xAE
+#define SSD1322_DISPLAYON 0xAF
+#define SSD1322_SETCLOCKDIVIDER 0xB3
+#define SSD1322_SETDISPLAYOFFSET 0xA2
+#define SSD1322_SETSTARTLINE 0xA1
+#define SSD1322_SETREMAP 0xA0
+#define SSD1322_FUNCTIONSEL 0xAB
+#define SSD1322_DISPLAYENHANCE 0xB4
+#define SSD1322_SETCONTRASTCURRENT 0xC1
+#define SSD1322_MASTERCURRENTCONTROL 0xC7
+#define SSD1322_SETPHASELENGTH 0xB1
+#define SSD1322_DISPLAYENHANCEB 0xD1
+#define SSD1322_SETPRECHARGEVOLTAGE 0xBB
+#define SSD1322_SETSECONDPRECHARGEPERIOD 0xB6
+#define SSD1322_SETVCOMH 0xBE
+#define SSD1322_NORMALDISPLAY 0xA6
+#define SSD1322_INVERSEDISPLAY 0xA7
+#define SSD1322_SETMUXRATIO 0xCA
+#define SSD1322_SETCOLUMNADDR 0x15
+#define SSD1322_SETROWADDR 0x75
+#define SSD1322_WRITERAM 0x5C
+#define SSD1322_ENTIREDISPLAYON 0xA5
+#define SSD1322_ENTIREDISPLAYOFF 0xA4
+#define SSD1322_SETGPIO 0xB5
+#define SSD1322_EXITPARTIALDISPLAY 0xA9
+#define SSD1322_SELECTDEFAULTGRAYSCALE 0xB9
+
+#define MIN_SEG 0x1C
+#define MAX_SEG 0x5B
+
+// Scrolling #defines
+#define SSD1322_ACTIVATE_SCROLL 0x2F
+#define SSD1322_DEACTIVATE_SCROLL 0x2E
+#define SSD1322_SET_VERTICAL_SCROLL_AREA 0xA3
+#define SSD1322_RIGHT_HORIZONTAL_SCROLL 0x26
+#define SSD1322_LEFT_HORIZONTAL_SCROLL 0x27
+#define SSD1322_VERTICAL_AND_RIGHT_HORIZONTAL_SCROLL 0x29
+#define SSD1322_VERTICAL_AND_LEFT_HORIZONTAL_SCROLL 0x2A
+
 /*=========================================================================
     SH1106 Displays
     -----------------------------------------------------------------------
     The driver is used in multiple displays (128x64, 128x32, etc.).
 =========================================================================*/
 #define SH1106_Set_Page_Address 0xB0
-
-
 
 class ArduiPi_OLED : public Adafruit_GFX 
 {

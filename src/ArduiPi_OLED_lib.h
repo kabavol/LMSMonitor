@@ -55,8 +55,8 @@
 #define OLED_SEEED_I2C_96x96 5
 #define OLED_SH1106_I2C_128x64 6
 #define OLED_SH1106_SPI_128x64 7
-#define OLED_NHD1322_GS_SPI_256x64 8
-#define OLED_NHD1322_MONO_SPI_256x64 9
+#define OLED_SSD1322G_SPI_256x64 8
+#define OLED_SSD1322M_SPI_256x64 9
 
 #define OLED_LAST_OLED 10 /* always last type, used in code to end array */
 
@@ -69,8 +69,8 @@ static const char * oled_type_str[] = {
     "Seeed I2C 96x96",
     "SH1106 I2C 128x64",
     "SH1106 SPI 128x64",
-    "NHD1322 Grayscale SPI 256x64",
-    "NHD1322 Monochrome SPI 256x64"
+    "SSD1322 Gray SPI 256x64",
+    "SSD1322 Mono SPI 256x64"
 };
 
 // Arduino Compatible type

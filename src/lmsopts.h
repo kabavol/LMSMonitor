@@ -1,4 +1,6 @@
 /*
+ *  lmsopt.h
+ * 
  *	(c) 2020 Stuart Hunter
  *
  *	TODO:
@@ -79,6 +81,7 @@ typedef struct MonitorAttrs {
     char lastTime[7];  // support 12H AM/PM
     char lastTemp[10]; // should be a double
     char lastLoad[10]; // should be a double
+    bool showWarnings;
     bool pauseDisplay;
     char pauseMessage[128];
     pthread_mutex_t update;

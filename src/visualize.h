@@ -22,6 +22,7 @@
 #define VISUALIZE_H
 
 #include "visdata.h"
+#include "display.h"
 
 void setA1VisList(void);
 void setPlaying(bool p);
@@ -32,7 +33,8 @@ const char *getVisMode(void);
 void sayVisList(void);
 void setDownmix(int samplesize, float samplerate);
 void setDownmixAttrs(int x, int y, int width, int height, int radius,
-                     int gWidth = 128, int gHeight = 64);
+                     int gWidth = 128, int gHeight = 64,
+                     enum BarStyle bs = BARSTYLE_SOLID);
 void setA1Downmix(int mode);
 
 void visualize(struct vissy_meter_t *vissy_meter);

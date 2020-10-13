@@ -35,8 +35,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "visdata.h"
 #include "eggs.h"
+#include "visdata.h"
 
 #define MAX_LINES 8
 
@@ -54,12 +54,6 @@
 #define NAGNOTE_HEIGHT 16
 #define NAGNOTE_WIDTH 16
 
-#define SCROLL_MODE_CYLON 0  // cylon sweep with pause
-#define SCROLL_MODE_INFSIN 1 // infinity scroll left (sinister)
-#define SCROLL_MODE_INFDEX 2 // infinity scroll right (dexter)
-#define SCROLL_MODE_RANDOM 3 // randomize the above
-#define SCROLL_MODE_MAX 4
-
 #define SHUFFLE_BUCKET 0
 #define REPEAT_BUCKET 1
 #define MAX_FREQUENCY_BINS 12
@@ -71,6 +65,24 @@
 
 static const char *scrollerMode[] = {"Cylon (Default)", "Infinity (Sinister)",
                                      "Infinity (Dexter)", "Randomized"};
+
+typedef enum BarStyle {
+    BARSTYLE_SOLID,   // Solid filled bars
+    BARSTYLE_HOLLOW,  // Solid outlines only
+    BARSTYLE_CHECK,   // Checker filled
+    BARSTYLE_STRIPE,  // Alternate stripes
+    BARSTYLE_SPLIT,  // Single double stripe at maxima
+    BARSTYLE_CAPONLY, // Maxima caps only
+    BARSTYLE_MAX,
+} BarStyle;
+
+typedef enum ScrollMode {
+    SCROLLMODE_CYLON,  // cylon sweep with pause
+    SCROLLMODE_INFSIN, // infinity scroll left (sinister)
+    SCROLLMODE_INFDEX, // infinity scroll right (dexter)
+    SCROLLMODE_RANDOM, // randomize the above
+    SCROLLMODE_MAX,
+} ScrollMode;
 
 typedef enum PageMode {
     DETAILS,
@@ -91,7 +103,7 @@ typedef struct Scroller {
     int lolimit;
     int hilimit;
     bool forward;
-    int scrollMode;
+    enum ScrollMode scrollMode;
     bool priorstate;
     pthread_t scrollThread;
     pthread_mutex_t scrollox;
@@ -117,6 +129,8 @@ typedef struct DrawVisualize {
     int iHeight;
     bool finesse;
     char downmix[5];
+    bool ticks;
+    enum BarStyle barStyle;
 } DrawVisualize;
 
 int elementLength(int szh, int szw);
@@ -132,18 +146,18 @@ void printOledTypes(void);
 bool setOledType(int ot);
 bool setOledAddress(int8_t oa, int LR = 0);
 
-void setScrollMode(int sm);
+void setScrollMode(enum ScrollMode sm);
 void printScrollerMode(void);
 
-void drawBitmap(int16_t x, int16_t y,
-  uint8_t *bitmap, int16_t w, int16_t h, uint16_t color);
+void drawBitmap(int16_t x, int16_t y, uint8_t *bitmap, int16_t w, int16_t h,
+                uint16_t color);
 
 double deg2Rad(double angDeg);
 double rad2Deg(double angRad);
 
 void hazardSign(void);
 void splashScreen(void);
-void displayBrightness(int bright, bool flip=false);
+void displayBrightness(int bright, bool flip = false);
 
 void putWeatherTemp(int x, int y, climacell_t *cc);
 void putWeatherIcon(int x, int y, climacell_t *cc);
@@ -155,7 +169,7 @@ void scrollerInit(void);
 void clearScrollable(int line);
 bool putScrollable(int y, char *buff);
 void scrollerFinalize(void);
-void setScrollActive(int line, bool active, bool save=false);
+void setScrollActive(int line, bool active, bool save = false);
 void setScrollPosition(int line, int ypos);
 bool activeScroller(void);
 bool isScrollerActive(int line);
@@ -164,7 +178,7 @@ bool isScrollerFrozen(int line);
 
 void resetDisplay(int fontSize);
 int restartDisplay(struct MonitorAttrs dopts);
-int initDisplay(struct MonitorAttrs dopts, bool init=true);
+int initDisplay(struct MonitorAttrs dopts, bool init = true);
 void closeDisplay(void);
 void softClear(void);
 
@@ -179,6 +193,10 @@ void reflectSpectrum(struct vissy_meter_t *vissy_meter,
                      struct DrawVisualize *layout);
 void stereoPeakH(struct vissy_meter_t *vissy_meter,
                  struct DrawVisualize *layout);
+void simplePeakH(struct vissy_meter_t *vissy_meter,
+                 struct DrawVisualize *layout);
+void downmixPeakH(struct vissy_meter_t *vissy_meter,
+                  struct DrawVisualize *layout);
 
 // audio attributes
 void putVolume(bool v, char *buff);
@@ -216,14 +234,31 @@ int maxCharacter(void);
 int maxLine(void);
 int maxXPixel(void);
 int maxYPixel(void);
+
 uint16_t charWidth(void);
 uint16_t charHeight(void);
 
-// drawing primitives
 void drawHorizontalBargraph(int x, int y, int w, int h, int percent);
+
+void drawHorizontalBar(int x, int y, int w, int h, int percent,
+                       enum BarStyle style);
+void drawVerticalBar(int x, int y, int w, int h, int percent,
+                     enum BarStyle style);
+
+void drawHorizontalStripedBar(int x, int y, int w, int h, int percent);
 void drawHorizontalCheckerBar(int x, int y, int w, int h, int percent);
+void drawHorizontalSplitBar(int x, int y, int w, int h, int percent);
+void drawHorizontalCappedBar(int x, int y, int w, int h, int percent);
+
+void drawVerticalStripedBar(int x, int y, int w, int h, int percent);
+void drawVerticalCheckerBar(int x, int y, int w, int h, int percent);
+void drawVerticalSplitBar(int x, int y, int w, int h, int percent);
+void drawVerticalCappedBar(int x, int y, int w, int h, int percent);
+
+// drawing primitives
 void drawRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
-void drawRoundRectangle(int16_t x0, int16_t y0, int16_t w, int16_t h,int16_t radius, uint16_t color);
+void drawRoundRectangle(int16_t x0, int16_t y0, int16_t w, int16_t h,
+                        int16_t radius, uint16_t color);
 void fillRectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
 void drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color);
 void putPixel(int16_t x, int16_t y, uint16_t color);
