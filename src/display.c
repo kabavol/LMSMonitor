@@ -466,7 +466,7 @@ void putWeatherTemp(int x, int y, climacell_t *cc) {
                     break;
                 case 2:
                 case 3:
-                    sprintf(buf, "%d%s   %.1f%s",
+                    sprintf(buf, "%d%s   %.1f%s  ", // minor padding for those reainy days!
                             (int)round(cc->humidity.fdatum), cc->humidity.units,
                             cc->precipitation.fdatum, // this per hour
                             cc->precipitation.units);
@@ -658,7 +658,7 @@ void drawHorizontalBar(int x, int y, int w, int h, int percent,
                         display.drawLine(x+p-2, y, x+p-2, y + h, WHITE);
                     }
                     break;
-                case BARSTYLE_CAPONLY:
+                case BARSTYLE_PKCAP_ONLY:
                     display.drawLine(x, y, x, y + h, WHITE);
                     if (p > 1) {
                         display.drawLine(x+p, y, x+p, y + h, WHITE);
@@ -700,7 +700,7 @@ void drawVerticalBar(int x, int y, int w, int h, int percent,
                     if (p > 2)
                         display.drawLine(x, y + p - 2, x + w, y + p - 2, WHITE);
                     break;
-                case BARSTYLE_CAPONLY:
+                case BARSTYLE_PKCAP_ONLY:
                     display.drawLine(x, y + p, x + w, y + p, WHITE);
                     if (p > 1)
                         display.drawLine(x, y + p - 2, x + w, y + p - 1, WHITE);
@@ -722,7 +722,7 @@ void drawHorizontalSplitBar(int x, int y, int w, int h, int percent) {
 }
 
 void drawHorizontalCappedBar(int x, int y, int w, int h, int percent) {
-    drawHorizontalBar(x, y, w, h, percent, BARSTYLE_CAPONLY);
+    drawHorizontalBar(x, y, w, h, percent, BARSTYLE_PKCAP_ONLY);
 }
 
 void drawVerticalStripedBar(int x, int y, int w, int h, int percent) {
@@ -738,7 +738,7 @@ void drawVerticalSplitBar(int x, int y, int w, int h, int percent) {
 }
 
 void drawVerticalCappedBar(int x, int y, int w, int h, int percent) {
-    drawVerticalBar(x, y, w, h, percent, BARSTYLE_CAPONLY);
+    drawVerticalBar(x, y, w, h, percent, BARSTYLE_PKCAP_ONLY);
 }
 
 void drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color) {
