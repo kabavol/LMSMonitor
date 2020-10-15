@@ -82,4 +82,6 @@ void instrument(const int line, const char *name, const char *msg);
 
 int alreadyRunning(void);
 
+void addDays(struct tm* date, int days);
+
 #endif

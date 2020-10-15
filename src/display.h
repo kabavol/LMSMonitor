@@ -67,12 +67,17 @@ static const char *scrollerMode[] = {"Cylon (Default)", "Infinity (Sinister)",
                                      "Infinity (Dexter)", "Randomized"};
 
 typedef enum BarStyle {
-    BARSTYLE_SOLID,   // Solid filled bars
-    BARSTYLE_HOLLOW,  // Solid outlines only
-    BARSTYLE_CHECK,   // Checker filled
-    BARSTYLE_STRIPE,  // Alternate stripes
-    BARSTYLE_SPLIT,  // Single double stripe at maxima
-    BARSTYLE_CAPONLY, // Maxima caps only
+    BARSTYLE_SOLID,        // Solid filled bars
+    BARSTYLE_SOLID_PKCAP,  // Solid filled bars
+    BARSTYLE_HOLLOW,       // Solid outlines only
+    BARSTYLE_HOLLOW_PKCAP, // Solid outlines only
+    BARSTYLE_CHECK,        // Checker filled
+    BARSTYLE_CHECK_PKCAP,  // Checker filled
+    BARSTYLE_STRIPE,       // Alternate stripes
+    BARSTYLE_STRIPE_PKCAP, // Alternate stripes
+    BARSTYLE_SPLIT,        // Single double stripe at maxima
+    BARSTYLE_SPLIT_PKCAP,  // Single double stripe at maxima
+    BARSTYLE_PKCAP_ONLY,   // Maxima caps only
     BARSTYLE_MAX,
 } BarStyle;
 
@@ -159,8 +164,8 @@ void hazardSign(void);
 void splashScreen(void);
 void displayBrightness(int bright, bool flip = false);
 
-void putWeatherTemp(int x, int y, climacell_t *cc);
-void putWeatherIcon(int x, int y, climacell_t *cc);
+void putWeatherTemp(int x, int y, ccdata_t *cc);
+void putWeatherIcon(int x, int y, ccdata_t *cc);
 
 void scrollerFreeze(void);
 void scrollerThaw(void);
