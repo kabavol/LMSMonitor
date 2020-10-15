@@ -588,6 +588,13 @@ void eggFX(size_t timer_id, void *user_data) {
 
 void checkAstral(size_t timer_id, void *user_data) { brightnessEvent(); }
 
+void checkWeatherForecast(size_t timer_id, void *user_data) {
+    instrument(__LINE__, __FILE__, "checkWeatherForecast");
+    climacell_t *cc;
+    cc = ((struct climacell_t *)user_data);
+    updClimacellForecast(cc);
+}
+
 void checkWeather(size_t timer_id, void *user_data) {
     instrument(__LINE__, __FILE__, "checkWeather");
     climacell_t *cc;
@@ -599,7 +606,7 @@ void checkWeather(size_t timer_id, void *user_data) {
     }
     updClimacell(cc);
     if (v >= LL_DEBUG) {
-        printf("Current Conditions ..: %s\n", cc->current.text);
+        printf("Current Conditions ..: %s\n", cc->ccnow.icon.text);
     }
 }
 
@@ -821,9 +828,10 @@ int main(int argc, char *argv[]) {
         astraltimer = timer_start(60 * 5 * 1000, checkAstral, TIMER_PERIODIC,
                                   (void *)NULL);
     }
+
     weather.refreshed = false;
     if (0 != strlen(lmsopt.weather)) {
-        weather.current.icon = 99; // set to out of bounds for change logic
+        weather.ccnow.icon.icon = 99; // set to out of bounds for change logic
         baselineClimacell(&weather, true);
         // if string contains comma split for api key and units
         if (strstr(lmsopt.weather, ",") != NULL) {
@@ -857,6 +865,14 @@ int main(int argc, char *argv[]) {
             timer_initialize();
             climacelltimer = timer_start(60 * 3 * 1000, checkWeather,
                                          TIMER_PERIODIC, (void *)&weather);
+            if (updClimacellForecast(&weather)) {
+                size_t ccforecasttimer;
+                timer_initialize();
+                ccforecasttimer =
+                    timer_start(60 * 61 * 1000, checkWeatherForecast,
+                                TIMER_PERIODIC, (void *)&weather);
+            }
+
         }
     }
 
@@ -1449,13 +1465,13 @@ void clockWeatherPage(climacell_t *cc) {
     // colon (blink)
     drawTimeBlink(((loctm.tm_sec % 2) ? ' ' : ':'), &dt);
 
-    if ((cc->current.changed) || (cc->weather_code.changed)) {
+    if ((cc->ccnow.icon.changed) || (cc->ccnow.weather_code.changed)) {
         fillRectangle(1, 20, 90, 11, BLACK); // erase what came before
-        putText(1, 20, cc->current.text);
+        putText(1, 20, cc->ccnow.icon.text);
     }
 
-    putWeatherTemp(1, 29, cc);
-    putWeatherIcon(84, 20, cc);
+    putWeatherTemp(1, 29, &cc->ccnow);
+    putWeatherIcon(84, 20, &cc->ccnow);
 
     baselineClimacell(cc, false);
 

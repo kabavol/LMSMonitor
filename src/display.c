@@ -428,7 +428,7 @@ void splashScreen(void) {
     dodelay(180);
 }
 
-void putWeatherTemp(int x, int y, climacell_t *cc) {
+void putWeatherTemp(int x, int y, ccdata_t *cc) {
     char buf[64];
     int szw = 12;
     int szh = 12;
@@ -466,7 +466,7 @@ void putWeatherTemp(int x, int y, climacell_t *cc) {
                     break;
                 case 2:
                 case 3:
-                    sprintf(buf, "%d%s   %.1f%s  ", // minor padding for those reainy days!
+                    sprintf(buf, "%d%s   %.1f%s ", // minor padding for those reainy days!
                             (int)round(cc->humidity.fdatum), cc->humidity.units,
                             cc->precipitation.fdatum, // this per hour
                             cc->precipitation.units);
@@ -485,13 +485,13 @@ void putWeatherTemp(int x, int y, climacell_t *cc) {
     }
 }
 
-void putWeatherIcon(int x, int y, climacell_t *cc) {
-    if (cc->current.changed) {
+void putWeatherIcon(int x, int y, ccdata_t *cc) {
+    if (cc->icon.changed) {
         int szw = 34;
         int szh = 34;
         int w = elementLength(szh, szw);
         uint8_t dest[w];
-        int start = cc->current.icon * w;
+        int start = cc->icon.icon * w;
         memcpy(dest, weather34x34() + start, sizeof dest);
         display.fillRect(x, y, szw, szh, BLACK);
         display.drawBitmap(x, y, dest, szw, szh, WHITE);

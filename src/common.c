@@ -287,3 +287,8 @@ int strcicmp(char const *a, char const *b) {
             return d;
     }
 }
+
+void addDays(struct tm *date, int days) {
+    time_t date_seconds = mktime(date) + (days * 24 * 60 * 60);
+    *date = *localtime(&date_seconds);
+}
