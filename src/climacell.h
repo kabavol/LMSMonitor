@@ -33,11 +33,15 @@
 #include <time.h>
 
 typedef enum ccdata_group {
-    CC_DATA_FORECAST0 = 0,
-    CC_DATA_FORECAST1 = 1,
-    CC_DATA_FORECAST2 = 2,
+    CC_DATA_FORECAST = 0,
     CC_DATA_NOW = 3,
 } ccdata_group;
+
+typedef enum ccdatum_debug {
+    DD_FDATUM_UNITS = 0,
+    DD_SDATUM = 1,
+    DD_SDATUM_FDATUM_UNITS = 2,
+} ccdatum_debug;
 
 typedef struct wiconmap_t {
     char code[30];
@@ -57,30 +61,37 @@ typedef struct ccdatum_t {
     char units[128];
     bool changed;
     const char *key;
+    const char *grp;
     const char *lbl;
+    const char *fmt;
     int lenk;
 } ccdatum_t;
 
 // climacell free tier :: 1000 calls per day
 // lookup at 10-15 minute intervals more than sufficient
+// forecast is triggered hourly
 
 typedef struct ccdata_t {
     time_t wddate;
     wiconmap_t icon;
     ccdatum_t temp;
+    ccdatum_t temp_min;
+    ccdatum_t temp_max;
     ccdatum_t feels_like;
     ccdatum_t wind_speed;
     ccdatum_t baro_pressure;
     ccdatum_t humidity;
     ccdatum_t visibility;
     ccdatum_t wind_direction;
-    ccdatum_t precipitation;
     ccdatum_t precipitation_probability;
     ccdatum_t precipitation_type;
+    ccdatum_t precipitation;
+    ccdatum_t precipitation_min;
+    ccdatum_t precipitation_max;
     ccdatum_t weather_code;
     ccdatum_t sunrise;
     ccdatum_t sunset;
-    ccdatum_t observation_time;
+    ccdatum_t observation_time; // data date or forecast period
 } ccdata_t;
 
 typedef struct climacell_t {
@@ -94,12 +105,11 @@ typedef struct climacell_t {
     char fcfields[1024];
     bool active;
     bool refreshed;
+    bool fcrefreshed;
     ccdatum_t lat;
     ccdatum_t lon;
     ccdata_t ccnow;
-    ccdata_t ccforecast[2];
+    ccdata_t ccforecast[4];
 } climacell_t;
-
-// add 3 day forecast
 
 #endif

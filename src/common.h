@@ -84,4 +84,6 @@ int alreadyRunning(void);
 
 void addDays(struct tm* date, int days);
 
+const char *strzip(const char *s1,const char *s2, const char *sep);
+
 #endif
