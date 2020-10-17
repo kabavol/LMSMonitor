@@ -292,3 +292,20 @@ void addDays(struct tm *date, int days) {
     time_t date_seconds = mktime(date) + (days * 24 * 60 * 60);
     *date = *localtime(&date_seconds);
 }
+
+const char *strzip(const char *s1, const char *s2, const char *sep) {
+
+    char *ret;
+    if (sep)
+        ret = (char *)malloc(sizeof(char) *
+                             (strlen(s1) + strlen(s2) + strlen(sep) + 1));
+    else
+        ret = (char *)malloc(sizeof(char) * (strlen(s1) + strlen(s2) + 1));
+
+    if (sep)
+        strcpy(stpcpy(stpcpy(ret, s1), sep), s2);
+    else
+        strcpy(stpcpy(ret, s1), s2);
+
+    return (const char *)ret;
+}

@@ -100,7 +100,7 @@ void weatherSetAstral(climacell_t *climacell) {
 }
 
 void baseCCDatum(ccdatum_t *datum, bool changed, const char *key,
-                 const char *lbl) {
+                 const char *group, const char *label, const char *format) {
     datum->changed = changed;
     if (!datum->key) {
         datum->key = key;
@@ -108,9 +108,13 @@ void baseCCDatum(ccdatum_t *datum, bool changed, const char *key,
         datum->fdatum = -99.876543;
         strcpy(datum->sdatum, "xxx");
         strcpy(datum->units, "xxx");
+        if (!datum->grp)
+            datum->grp = group;
+        if (!datum->lbl)
+            datum->lbl = label;
+        if (!datum->fmt)
+            datum->fmt = format;
     }
-    if (!datum->lbl)
-        datum->lbl = lbl;
 }
 
 bool copyCCDatum(ccdatum_t *datum, ccdatum_t *from) {
@@ -126,8 +130,12 @@ bool copyCCDatum(ccdatum_t *datum, ccdatum_t *from) {
 
 void baselineClimacell(climacell_t *climacell, bool changed) {
 
-    baseCCDatum(&climacell->lat, changed, "lat", "weather:Latitude");
-    baseCCDatum(&climacell->lon, changed, "lon", "weather:Longitude");
+#define DATUM_GROUP (idx < 3) ? "forecast" : "weather"
+
+    baseCCDatum(&climacell->lat, changed, "lat", "weather", "Latitude",
+                "%s %4.6f\n");
+    baseCCDatum(&climacell->lon, changed, "lon", "weather", "Longitude",
+                "%s %4.6f\n");
 
     // baseline current and forecast
     // not all data are applicable across
@@ -141,31 +149,46 @@ void baselineClimacell(climacell_t *climacell, bool changed) {
 
         ccd->icon.changed = changed;
 
-        baseCCDatum(&ccd->temp, changed, "temp", "weather:Temperature");
-        baseCCDatum(&ccd->sunrise, changed, "sunrise", "weather:Sunrise");
-        baseCCDatum(&ccd->sunset, changed, "sunset", "weather:Sunset");
-        baseCCDatum(&ccd->feels_like, changed, "feels_like",
-                    "weather:Feels Like");
-        baseCCDatum(&ccd->wind_speed, changed, "wind_speed",
-                    "weather:Wind Speed");
-        baseCCDatum(&ccd->baro_pressure, changed, "baro_pressure",
-                    "weather:Pressure");
-        baseCCDatum(&ccd->humidity, changed, "humidity", "weather:Humidity");
-        baseCCDatum(&ccd->visibility, changed, "visibility",
-                    "weather:Visibility");
+        /////"%s %5.2f %s\n"
+        baseCCDatum(&ccd->temp, changed, "temp", DATUM_GROUP, "Temperature",
+                    "%s %5.2f %s\n");
+        baseCCDatum(&ccd->temp_min, changed, "min", DATUM_GROUP, "Min Temp",
+                    "%s %5.2f %s\n");
+        baseCCDatum(&ccd->temp_max, changed, "max", DATUM_GROUP, "Max Temp",
+                    "%s %5.2f %s\n");
+        baseCCDatum(&ccd->sunrise, changed, "sunrise", DATUM_GROUP, "Sunrise",
+                    "%s %s\n");
+        baseCCDatum(&ccd->sunset, changed, "sunset", DATUM_GROUP, "Sunset",
+                    "%s %s\n");
+        baseCCDatum(&ccd->feels_like, changed, "feels_like", DATUM_GROUP,
+                    "Feels Like", "%s %5.2f %s\n");
+        baseCCDatum(&ccd->wind_speed, changed, "wind_speed", DATUM_GROUP,
+                    "Wind Speed", "%s %5.2f %s\n");
+        baseCCDatum(&ccd->baro_pressure, changed, "baro_pressure", DATUM_GROUP,
+                    "Pressure", "%s %5.2f %s\n");
+        baseCCDatum(&ccd->humidity, changed, "humidity", DATUM_GROUP,
+                    "Humidity", "%s %5.2f %s\n");
+        baseCCDatum(&ccd->visibility, changed, "visibility", DATUM_GROUP,
+                    "Visibility", "%s %5.2f %s\n");
         baseCCDatum(&ccd->wind_direction, changed, "wind_direction",
-                    "weather:Wind Dir");
-        baseCCDatum(&ccd->precipitation, changed, "precipitation",
-                    "weather:Precip");
+                    DATUM_GROUP, "Wind Dir", "%s %3s : %5.2f %s\n");
+        baseCCDatum(&ccd->precipitation, changed, "precipitation", DATUM_GROUP,
+                    "Precip", "%s %5.2f %s\n");
+
+        baseCCDatum(&ccd->precipitation_min, changed, "min", DATUM_GROUP,
+                    "Min Precip", "%s %5.2f %s\n");
+        baseCCDatum(&ccd->precipitation_max, changed, "max", DATUM_GROUP,
+                    "Max Precip", "%s %5.2f %s\n");
+
         baseCCDatum(&ccd->precipitation_probability, changed,
-                    "precipitation_probability", "weather:Precip Prob");
+                    "precipitation_probability", DATUM_GROUP, "Precip Prob",
+                    "%s %s%%\n");
         baseCCDatum(&ccd->precipitation_type, changed, "precipitation_type",
-                    "weather:Precip Type");
-        baseCCDatum(&ccd->weather_code, changed, "weather_code",
-                    "weather:Conditions");
-        // don't need change functionality but key/label are useful
+                    DATUM_GROUP, "Precip Type", "%s %s\n");
+        baseCCDatum(&ccd->weather_code, changed, "weather_code", DATUM_GROUP,
+                    "Conditions", "%s %s : %s (%d)\n");
         baseCCDatum(&ccd->observation_time, changed, "observation_time",
-                    "weather:Time");
+                    DATUM_GROUP, "Time", "%s %s\n");
     }
 }
 
@@ -203,14 +226,14 @@ void decodeKV(char *jsonData, ccdatum_t *datum, int i, int j, jsmntok_t jt[]) {
 
         if (strncmp("value", keyStr, 5) == 0) {
             if (strcmp(testdatum.sdatum, valStr) != 0) {
-                strcpy(datum->sdatum, valStr);
+                strncpy(datum->sdatum, valStr, 127);
                 datum->fdatum = atof(valStr);
                 datum->changed = true;
             }
             z++;
         } else if (strncmp("units", keyStr, 5) == 0) {
             if (strcmp(testdatum.units, valStr) != 0) {
-                strcpy(datum->units, valStr);
+                strncpy(datum->units, valStr, 127);
                 datum->changed = true;
             }
             z++;
@@ -653,12 +676,37 @@ bool initAstral(void) {
     return false;
 }
 
+void debug_datum(ccdatum_t *d, enum ccdatum_debug mode) {
+    const char *t = strzip(d->grp, d->lbl, ":");
+    switch (mode) {
+        case DD_FDATUM_UNITS:
+            printf(d->fmt, labelIt(t, LABEL_WIDTH, "."), d->fdatum, d->units);
+            break;
+        case DD_SDATUM:
+            printf(d->fmt, labelIt(t, LABEL_WIDTH, "."), d->sdatum);
+            break;
+        case DD_SDATUM_FDATUM_UNITS:
+            printf(d->fmt, labelIt(t, LABEL_WIDTH, "."), d->sdatum, d->fdatum,
+                   d->units);
+            break;
+    }
+    if (t)
+        free(t);
+}
+
 // quick and dirty weather impl.
-bool parseClimacell(char *jsonData, climacell_t *climacell, ccdata_t *data,
+bool parseClimacell(char *jsonData, climacell_t *climacell,
                     enum ccdata_group group) {
 
+    uint16_t txc = 100;
+    ccdata_t *data = &climacell->ccnow;
+    if (CC_DATA_FORECAST == group) {
+        txc = 700;
+        data = &climacell->ccforecast[0];
+    }
+
     jsmn_parser p;
-    jsmntok_t jt[100];
+    jsmntok_t jt[txc];
 
     jsmn_init(&p);
     int r = jsmn_parse(&p, jsonData, strlen(jsonData), jt,
@@ -671,261 +719,378 @@ bool parseClimacell(char *jsonData, climacell_t *climacell, ccdata_t *data,
         return false;
     }
 
-    if (r < 1 || jt[0].type != JSMN_OBJECT) {
-        printf("Object expected, [%s]\n", __FUNCTION__);
+    if (r < 1 || ((CC_DATA_NOW == group) && (jt[0].type != JSMN_OBJECT)) ||
+        ((CC_DATA_FORECAST == group) && (jt[0].type != JSMN_ARRAY))) {
+        printf("Object/Array expected, r=%d [%s]\n", r, __FUNCTION__);
         return false;
     }
 
     int done = 15;
-    if (group != CC_DATA_NOW)
-        done = 8;
+    int brk = 1;
+    if (CC_DATA_FORECAST == group) {
+        brk = 4;
+    }
 
-    // Loop over all keys of the root object
-    for (int i = 1; ((done > 0) && (i < r)); i++) {
+    int tki = 1; // init index following
+    int vv = getVerbose();
 
-        jsmntok_t tok = jt[i];
-        uint16_t lenk = tok.end - tok.start;
-        char keyStr[lenk + 1];
-        memcpy(keyStr, &jsonData[tok.start], lenk);
-        keyStr[lenk] = '\0';
+    for (int idx = 0; idx < brk; idx++) {
 
-        tok = jt[i + 1];
-        uint16_t lenv = tok.end - tok.start;
-        char valStr[lenv + 1];
-        memcpy(valStr, &jsonData[tok.start], lenv);
-        valStr[lenv] = '\0';
+        if (CC_DATA_FORECAST == group) {
+            done = 5;
+            data = &climacell->ccforecast[idx];
+        }
 
-        ccdatum_t tstd;
+        // Loop over all keys of the root object
+        for (int i = tki; ((done > 0) && (i < r)); i++) {
 
-        if (strncmp(climacell->lat.key, keyStr, climacell->lat.lenk) == 0) {
-            climacell->coords.Latitude = strtod(valStr, NULL);
-            if (getVerbose() >= LL_DEBUG)
-                printf("%s %8.4f\n",
-                       labelIt(climacell->lat.lbl, LABEL_WIDTH, "."),
-                       climacell->coords.Latitude);
-            done--;
-            i++;
-        } else if (strncmp(climacell->lon.key, keyStr, climacell->lon.lenk) ==
-                   0) {
-            climacell->coords.Longitude = strtod(valStr, NULL);
-            if (getVerbose() >= LL_DEBUG)
-                printf("%s %8.4f\n",
-                       labelIt(climacell->lon.lbl, LABEL_WIDTH, "."),
-                       climacell->coords.Longitude);
-            done--;
-            i++;
-        } else if (strncmp(data->temp.key, keyStr, data->temp.lenk) == 0) {
-            i++;
-            if (jt[i].type == JSMN_OBJECT) {
-                decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
-                if (copyCCDatum(&data->temp, &tstd)) {
-                    if (getVerbose() >= LL_DEBUG)
-                        printf("%s %5.2f %s\n",
-                               labelIt(data->temp.lbl, LABEL_WIDTH, "."),
-                               data->temp.fdatum, data->temp.units);
+            if (CC_DATA_FORECAST == group) {
+                tki = i + 1; // track forforecast mode
+            }
+            jsmntok_t tok = jt[i];
+            uint16_t lenk = tok.end - tok.start;
+            char keyStr[lenk + 1];
+            memcpy(keyStr, &jsonData[tok.start], lenk);
+            keyStr[lenk] = '\0';
+
+            tok = jt[i + 1];
+            uint16_t lenv = tok.end - tok.start;
+            char valStr[lenv + 1];
+            memcpy(valStr, &jsonData[tok.start], lenv);
+            valStr[lenv] = '\0';
+
+            ccdatum_t tstd;
+
+            if ((CC_DATA_NOW == group) && (strncmp(climacell->lat.key, keyStr,
+                                                   climacell->lat.lenk) == 0)) {
+                // only trigger for current, reduce noise potential
+                climacell->coords.Latitude = strtod(valStr, NULL);
+                if (vv >= LL_DEBUG) {
+                    const char *t =
+                        strzip(climacell->lat.grp, climacell->lat.lbl, ":");
+                    printf(climacell->lat.fmt, labelIt(t, LABEL_WIDTH, "."),
+                           climacell->coords.Latitude);
+                    if (t)
+                        free(t);
                 }
                 done--;
-                i += 4; // close the group
-            }
-        } else if (strncmp(data->sunrise.key, keyStr, data->sunrise.lenk) ==
-                   0) {
-            i++;
-            if (jt[i].type == JSMN_OBJECT) {
-                decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
-                if (copyCCDatum(&data->sunrise, &tstd)) {
-                    if (getVerbose() >= LL_DEBUG)
-                        printf("%s %s\n",
-                               labelIt(data->sunrise.lbl, LABEL_WIDTH, "."),
-                               data->sunrise.sdatum);
+                i++;
+            } else if ((CC_DATA_NOW == group) &&
+                       (strncmp(climacell->lon.key, keyStr,
+                                climacell->lon.lenk) == 0)) {
+                climacell->coords.Longitude = strtod(valStr, NULL);
+                if (vv >= LL_DEBUG) {
+                    const char *t =
+                        strzip(climacell->lon.grp, climacell->lon.lbl, ":");
+                    printf(climacell->lon.fmt, labelIt(t, LABEL_WIDTH, "."),
+                           climacell->coords.Longitude);
+                    if (t)
+                        free(t);
                 }
                 done--;
-                i += 2; // close the group
-            }
-        } else if (strncmp(data->sunset.key, keyStr, data->sunset.lenk) == 0) {
-            i++;
-            if (jt[i].type == JSMN_OBJECT) {
-                decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
-                if (copyCCDatum(&data->sunset, &tstd)) {
-                    if (getVerbose() >= LL_DEBUG)
-                        printf("%s %s\n",
-                               labelIt(data->sunset.lbl, LABEL_WIDTH, "."),
-                               data->sunset.sdatum);
+                i++;
+            } else if (strncmp(data->temp.key, keyStr, data->temp.lenk) == 0) {
+                i++; // advance token
+                int idxfix[2] = {0, 0};
+                if ((CC_DATA_FORECAST == group) && (jt[i].type == JSMN_ARRAY)) {
+
+                    // we want forecast max/min block attributes
+                    //printf("min/max %s processing...\n",data->temp.lbl);
+                    for (int dg = i + 1; dg < i + 16; dg++) {
+
+                        jsmntok_t dgtok = jt[dg];
+                        uint16_t dglenk = dgtok.end - dgtok.start;
+                        char dgkeyStr[dglenk + 1];
+                        memcpy(dgkeyStr, &jsonData[dgtok.start], dglenk);
+                        dgkeyStr[dglenk] = 0;
+
+                        dgtok = jt[dg + 1];
+                        uint16_t dglenv = dgtok.end - dgtok.start;
+                        char dgvalStr[dglenv + 1];
+                        memcpy(dgvalStr, &jsonData[dgtok.start], dglenv);
+                        dgvalStr[dglenv] = 0;
+
+                        if (strncmp(data->observation_time.key, dgkeyStr,
+                                    data->observation_time.lenk) == 0) {
+                            continue; // skip forward
+                        } else if (strncmp(data->temp_min.key, dgkeyStr,
+                                           data->temp_min.lenk) == 0) {
+                            ccdatum_t *d = &data->temp_min;
+                            decodeKV(jsonData, &tstd, dg + 1, dg + 5, jt);
+                            if (copyCCDatum(d, &tstd)) {
+                                if (vv >= LL_DEBUG)
+                                    debug_datum(d, DD_FDATUM_UNITS);
+                                idxfix[0] = dg - i;
+                            }
+                        } else if (strncmp(data->temp_max.key, dgkeyStr,
+                                           data->temp_max.lenk) == 0) {
+                            ccdatum_t *d = &data->temp_max;
+                            decodeKV(jsonData, &tstd, dg + 1, dg + 5, jt);
+                            if (copyCCDatum(d, &tstd)) {
+                                if (vv >= LL_DEBUG)
+                                    debug_datum(d, DD_FDATUM_UNITS);
+                                idxfix[1] = dg - i;
+                            }
+                        }
+                    }
+                    for (int fix = 0; fix < 2; fix++) {
+                        if (idxfix[fix] > 0) {
+                            done--;
+                            i += idxfix[fix] + 4;
+                        }
+                    }
+                } else if (jt[i].type == JSMN_OBJECT) {
+                    ccdatum_t *d = &data->temp;
+                    decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
+                    if (copyCCDatum(d, &tstd)) {
+                        if (vv >= LL_DEBUG)
+                            debug_datum(d, DD_FDATUM_UNITS);
+                    }
+                    done--;
+                    i += 4; // close the group
                 }
-                done--;
-                i += 2; // close the group
-            }
-        } else if (strncmp(data->feels_like.key, keyStr,
-                           data->feels_like.lenk) == 0) {
-            i++;
-            if (jt[i].type == JSMN_OBJECT) {
-                decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
-                if (copyCCDatum(&data->feels_like, &tstd)) {
-                    if (getVerbose() >= LL_DEBUG)
-                        printf("%s %5.2f %s\n",
-                               labelIt(data->feels_like.lbl, LABEL_WIDTH, "."),
-                               data->feels_like.fdatum, data->feels_like.units);
+            } else if ((CC_DATA_NOW == group) &&
+                       (strncmp(data->sunrise.key, keyStr,
+                                data->sunrise.lenk) == 0)) {
+                i++;
+                if (jt[i].type == JSMN_OBJECT) {
+                    ccdatum_t *d = &data->sunrise;
+                    decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
+                    if (copyCCDatum(d, &tstd)) {
+                        if (vv >= LL_DEBUG)
+                            debug_datum(d, DD_SDATUM);
+                    }
+                    done--;
+                    i += 2; // close the group
                 }
-                done--;
-                i += 4; // close the group
-            }
-        } else if (strncmp(data->humidity.key, keyStr, data->humidity.lenk) ==
-                   0) {
-            i++;
-            if (jt[i].type == JSMN_OBJECT) {
-                decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
-                if (copyCCDatum(&data->humidity, &tstd)) {
-                    if (getVerbose() >= LL_DEBUG)
-                        printf("%s %5.2f %s\n",
-                               labelIt(data->humidity.lbl, LABEL_WIDTH, "."),
-                               data->humidity.fdatum, data->humidity.units);
+            } else if ((CC_DATA_NOW == group) &&
+                       (strncmp(data->sunset.key, keyStr, data->sunset.lenk) ==
+                        0)) {
+                i++;
+                if (jt[i].type == JSMN_OBJECT) {
+                    ccdatum_t *d = &data->sunset;
+                    decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
+                    if (copyCCDatum(d, &tstd)) {
+                        if (vv >= LL_DEBUG)
+                            debug_datum(d, DD_SDATUM);
+                    }
+                    done--;
+                    i += 2; // close the group
                 }
-                done--;
-                i += 4; // close the group
-            }
-        } else if (strncmp(data->wind_speed.key, keyStr,
-                           data->wind_speed.lenk) == 0) {
-            i++;
-            if (jt[i].type == JSMN_OBJECT) {
-                decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
-                if (copyCCDatum(&data->wind_speed, &tstd)) {
-                    if (getVerbose() >= LL_DEBUG)
-                        printf("%s %5.2f %s\n",
-                               labelIt(data->wind_speed.lbl, LABEL_WIDTH, "."),
-                               data->wind_speed.fdatum, data->wind_speed.units);
+            } else if ((CC_DATA_NOW == group) &&
+                       (strncmp(data->feels_like.key, keyStr,
+                                data->feels_like.lenk) == 0)) {
+                i++;
+                if (jt[i].type == JSMN_OBJECT) {
+                    ccdatum_t *d = &data->feels_like;
+                    decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
+                    if (copyCCDatum(d, &tstd)) {
+                        if (vv >= LL_DEBUG)
+                            debug_datum(d, DD_FDATUM_UNITS);
+                    }
+                    done--;
+                    i += 4; // close the group
                 }
-                done--;
-                i += 4; // close the group
-            }
-        } else if (strncmp(data->baro_pressure.key, keyStr,
-                           data->baro_pressure.lenk) == 0) {
-            i++;
-            if (jt[i].type == JSMN_OBJECT) {
-                decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
-                if (copyCCDatum(&data->baro_pressure, &tstd)) {
-                    if (getVerbose() >= LL_DEBUG)
-                        printf(
-                            "%s %5.2f %s\n",
-                            labelIt(data->baro_pressure.lbl, LABEL_WIDTH, "."),
-                            data->baro_pressure.fdatum,
-                            data->baro_pressure.units);
+            } else if ((CC_DATA_NOW == group) &&
+                       (strncmp(data->humidity.key, keyStr,
+                                data->humidity.lenk) == 0)) {
+                i++;
+                if (jt[i].type == JSMN_OBJECT) {
+                    ccdatum_t *d = &data->humidity;
+                    decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
+                    if (copyCCDatum(d, &tstd)) {
+                        if (vv >= LL_DEBUG)
+                            debug_datum(d, DD_FDATUM_UNITS);
+                    }
+                    done--;
+                    i += 4; // close the group
                 }
-                done--;
-                i += 4; // close the group
-            }
-        } else if (strncmp(data->visibility.key, keyStr,
-                           data->visibility.lenk) == 0) {
-            i++;
-            if (jt[i].type == JSMN_OBJECT) {
-                decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
-                if (copyCCDatum(&data->visibility, &tstd)) {
-                    if (getVerbose() >= LL_DEBUG)
-                        printf("%s %5.2f %s\n",
-                               labelIt(data->visibility.lbl, LABEL_WIDTH, "."),
-                               data->visibility.fdatum, data->visibility.units);
+            } else if ((CC_DATA_NOW == group) &&
+                       (strncmp(data->wind_speed.key, keyStr,
+                                data->wind_speed.lenk) == 0)) {
+                i++;
+                if (jt[i].type == JSMN_OBJECT) {
+                    ccdatum_t *d = &data->wind_speed;
+                    decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
+                    if (copyCCDatum(d, &tstd)) {
+                        if (vv >= LL_DEBUG)
+                            debug_datum(d, DD_FDATUM_UNITS);
+                    }
+                    done--;
+                    i += 4; // close the group
                 }
-                done--;
-                i += 4; // close the group
-            }
-        } else if (strncmp(data->wind_direction.key, keyStr,
-                           data->wind_direction.lenk) == 0) {
-            i++;
-            if (jt[i].type == JSMN_OBJECT) {
-                decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
-                strcpy(tstd.sdatum, degToCompass(tstd.fdatum));
-                if (0 != strcmp(tstd.sdatum, data->wind_direction.sdatum)) {
-                    if (copyCCDatum(&data->wind_direction, &tstd))
-                        if (getVerbose() >= LL_DEBUG)
-                            printf("%s %3s : %5.2f %s\n",
-                                   labelIt(data->wind_direction.lbl,
-                                           LABEL_WIDTH, "."),
-                                   data->wind_direction.sdatum,
-                                   data->wind_direction.fdatum,
-                                   data->wind_direction.units);
+            } else if ((CC_DATA_NOW == group) &&
+                       (strncmp(data->baro_pressure.key, keyStr,
+                                data->baro_pressure.lenk) == 0)) {
+                i++;
+                if (jt[i].type == JSMN_OBJECT) {
+                    ccdatum_t *d = &data->baro_pressure;
+                    decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
+                    if (copyCCDatum(d, &tstd)) {
+                        if (vv >= LL_DEBUG)
+                            debug_datum(d, DD_FDATUM_UNITS);
+                    }
+                    done--;
+                    i += 4; // close the group
                 }
-                done--;
-                i += 4; // close the group
-            }
-        } else if (strncmp(data->precipitation_probability.key, keyStr,
-                           data->precipitation_probability.lenk) == 0) {
-            i++;
-            if (jt[i].type == JSMN_OBJECT) {
-                decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
-                if (copyCCDatum(&data->precipitation_probability, &tstd)) {
-                    if (getVerbose() >= LL_DEBUG)
-                        printf("%s %s\n",
-                               labelIt(data->precipitation_probability.lbl,
-                                       LABEL_WIDTH, "."),
-                               data->precipitation_probability.sdatum);
+            } else if ((CC_DATA_NOW == group) &&
+                       (strncmp(data->visibility.key, keyStr,
+                                data->visibility.lenk) == 0)) {
+                i++;
+                if (jt[i].type == JSMN_OBJECT) {
+                    ccdatum_t *d = &data->visibility;
+                    decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
+                    if (copyCCDatum(d, &tstd)) {
+                        if (vv >= LL_DEBUG)
+                            debug_datum(d, DD_FDATUM_UNITS);
+                    }
+                    done--;
+                    i += 4; // close the group
                 }
-                done--;
-                i += 2; // close the group
-            }
-        } else if (strncmp(data->precipitation_type.key, keyStr,
-                           data->precipitation_type.lenk) == 0) {
-            i++;
-            if (jt[i].type == JSMN_OBJECT) {
-                decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
-                if (copyCCDatum(&data->precipitation_type, &tstd)) {
-                    if (getVerbose() >= LL_DEBUG)
-                        printf("%s %s\n",
-                               labelIt(data->precipitation_type.lbl,
-                                       LABEL_WIDTH, "."),
-                               data->precipitation_type.sdatum);
+            } else if (strncmp(data->wind_direction.key, keyStr,
+                               data->wind_direction.lenk) == 0) {
+                i++;
+                if (jt[i].type == JSMN_OBJECT) {
+                    ccdatum_t *d = &data->wind_direction;
+                    decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
+                    strcpy(tstd.sdatum, degToCompass(tstd.fdatum));
+                    if (0 != strcmp(tstd.sdatum, d->sdatum)) {
+                        if (copyCCDatum(d, &tstd)) {
+                            if (vv >= LL_DEBUG)
+                                debug_datum(d, DD_SDATUM_FDATUM_UNITS);
+                        }
+                    }
+                    done--;
+                    i += 4; // close the group
                 }
-                done--;
-                i += 2; // close the group
-            }
-        } else if (strncmp(data->precipitation.key, keyStr,
-                           data->precipitation.lenk) == 0) {
-            i++;
-            if (jt[i].type == JSMN_OBJECT) {
-                decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
-                if (copyCCDatum(&data->precipitation, &tstd)) {
-                    if (getVerbose() >= LL_DEBUG)
-                        printf(
-                            "%s %5.2f %s\n",
-                            labelIt(data->precipitation.lbl, LABEL_WIDTH, "."),
-                            data->precipitation.fdatum,
-                            data->precipitation.units);
+            } else if (strncmp(data->precipitation_probability.key, keyStr,
+                               data->precipitation_probability.lenk) == 0) {
+                i++;
+                if (jt[i].type == JSMN_OBJECT) {
+                    ccdatum_t *d = &data->precipitation_probability;
+                    decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
+                    if (copyCCDatum(d, &tstd)) {
+                        if (vv >= LL_DEBUG)
+                            debug_datum(d, DD_SDATUM);
+                    }
+                    done--;
+                    i += 2; // close the group
                 }
-                done--;
-                i += 4; // close the group
-            }
-        } else if (strncmp(data->weather_code.key, keyStr,
-                           data->weather_code.lenk) == 0) {
-            i++;
-            if (jt[i].type == JSMN_OBJECT) {
-                decodeKV(jsonData, &data->weather_code, i + 1, i + 3, jt);
-                wiconmap_t tsti = weatherIconXlate(data->weather_code.sdatum);
-                if ((data->icon.icon != tsti.icon) ||
-                    (0 != strcmp(data->icon.text, tsti.text)) ||
-                    (data->weather_code.changed)) {
-                    data->icon = tsti; // sets changed flag too
-                    if (getVerbose() >= LL_DEBUG)
-                        printf(
-                            "%s %s : %s (%d)\n",
-                            labelIt(data->weather_code.lbl, LABEL_WIDTH, "."),
-                            data->weather_code.sdatum, data->icon.text,
-                            data->icon.icon);
+            } else if (strncmp(data->precipitation_type.key, keyStr,
+                               data->precipitation_type.lenk) == 0) {
+                i++;
+                if (jt[i].type == JSMN_OBJECT) {
+                    ccdatum_t *d = &data->precipitation_type;
+                    decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
+                    if (copyCCDatum(d, &tstd)) {
+                        if (vv >= LL_DEBUG)
+                            debug_datum(d, DD_SDATUM);
+                    }
+                    done--;
+                    i += 2; // close the group
                 }
-                done--;
-                i += 1; // close the group
+            } else if (strncmp(data->precipitation.key, keyStr,
+                               data->precipitation.lenk) == 0) {
+                i++;
+                int idxfix[2] = {0, 0};
+                if ((CC_DATA_FORECAST == group) && (jt[i].type == JSMN_ARRAY)) {
+
+                    // want forecast max/min block attributes
+                    printf("min/max %s processing...\n",
+                           data->precipitation.lbl);
+                    for (int dg = i + 1; dg < i + 16; dg++) {
+
+                        jsmntok_t dgtok = jt[dg];
+                        uint16_t dglenk = dgtok.end - dgtok.start;
+                        char dgkeyStr[dglenk + 1];
+                        memcpy(dgkeyStr, &jsonData[dgtok.start], dglenk);
+                        dgkeyStr[dglenk] = '\0';
+
+                        dgtok = jt[dg + 1];
+                        uint16_t dglenv = dgtok.end - dgtok.start;
+                        char dgvalStr[dglenv + 1];
+                        memcpy(dgvalStr, &jsonData[dgtok.start], dglenv);
+                        dgvalStr[dglenv] = '\0';
+
+                        if (strncmp(data->observation_time.key, dgkeyStr,
+                                    data->observation_time.lenk) == 0) {
+                            continue; // skip forward
+                        } else if (strncmp(data->precipitation_min.key,
+                                           dgkeyStr,
+                                           data->precipitation_min.lenk) == 0) {
+                            ccdatum_t *d = &data->precipitation_min;
+                            decodeKV(jsonData, &tstd, dg + 1, dg + 5, jt);
+                            if (copyCCDatum(d, &tstd)) {
+                                if (vv >= LL_DEBUG)
+                                    debug_datum(d, DD_FDATUM_UNITS);
+                                idxfix[0] = dg - i;
+                            }
+                        } else if (strncmp(data->precipitation_max.key,
+                                           dgkeyStr,
+                                           data->precipitation_max.lenk) == 0) {
+                            ccdatum_t *d = &data->precipitation_max;
+                            decodeKV(jsonData, &tstd, dg + 1, dg + 5, jt);
+                            if (copyCCDatum(d, &tstd)) {
+                                if (vv >= LL_DEBUG)
+                                    debug_datum(d, DD_FDATUM_UNITS);
+                                idxfix[1] = dg - i;
+                            }
+                        }
+                    }
+                    for (int fix = 0; fix < 2; fix++) {
+                        if (idxfix[fix] > 0) {
+                            done--;
+                            i += idxfix[fix] + 4;
+                        }
+                    }
+                } else if (jt[i].type == JSMN_OBJECT) {
+                    ccdatum_t *d = &data->precipitation;
+                    decodeKV(jsonData, &tstd, i + 1, i + 5, jt);
+                    if (copyCCDatum(d, &tstd)) {
+                        if (vv >= LL_DEBUG)
+                            debug_datum(d, DD_FDATUM_UNITS);
+                    }
+                    done--;
+                    i += 4; // close the group
+                }
+            } else if (strncmp(data->weather_code.key, keyStr,
+                               data->weather_code.lenk) == 0) {
+                i++;
+                if (jt[i].type == JSMN_OBJECT) {
+                    ccdatum_t *d = &data->weather_code;
+                    decodeKV(jsonData, d, i + 1, i + 3, jt);
+                    wiconmap_t tsti = weatherIconXlate(d->sdatum);
+                    if ((data->icon.icon != tsti.icon) ||
+                        (0 != strcmp(data->icon.text, tsti.text)) ||
+                        (d->changed)) {
+                        data->icon = tsti; // sets changed flag too
+                        if (getVerbose() >= LL_DEBUG) {
+                            const char *t = strzip(d->grp, d->lbl, ":");
+                            printf(d->fmt, labelIt(t, LABEL_WIDTH, "."),
+                                   d->sdatum, data->icon.text, data->icon.icon);
+                            if (t)
+                                free(t);
+                        }
+                    }
+                    done--;
+                    i += 1; // close the group
+                }
+            } else if (strncmp(data->observation_time.key, keyStr,
+                               data->observation_time.lenk) == 0) {
+                i++;
+                if (jt[i].type == JSMN_OBJECT) {
+                    ccdatum_t *d = &data->observation_time;
+                    decodeKV(jsonData, d, i + 1, i + 3, jt);
+                    if (vv >= LL_DEBUG)
+                        debug_datum(d, DD_SDATUM);
+                    done--;
+                    break; // always final kv (multiple on forecast, ensure consumed)
+                }
+            } else {
+                continue; // unknown or we need to map
             }
-        } else if (strncmp(data->observation_time.key, keyStr,
-                           data->observation_time.lenk) == 0) {
-            i++;
-            if (jt[i].type == JSMN_OBJECT) {
-                decodeKV(jsonData, &data->observation_time, i + 1, i + 3, jt);
-                if (getVerbose() >= LL_DEBUG)
-                    printf(
-                        "%s %s\n",
-                        labelIt(data->observation_time.lbl, LABEL_WIDTH, "."),
-                        data->observation_time.sdatum);
-                done--;
-                break; // always final kv
-            }
-        } else {
-            continue; // unknown or we need to map
+            //if (CC_DATA_FORECAST == group) printf("%d %d done:%d\n", r, i, done);
+        
         }
     }
 
@@ -933,11 +1098,14 @@ bool parseClimacell(char *jsonData, climacell_t *climacell, ccdata_t *data,
         weatherSetAstral(climacell);
     }
 
+    //printf("exitting) %d should be zero...\n", done);
+
     return (done == 0);
 }
 
 void weatherEvent(struct climacell_t *climacell) { updClimacell(climacell); }
 
+// buffered, realloc algo a little whack but functional
 char *httpsFetch(char host[], int port, char uri[], char *body) {
 
     BIO *bio;
@@ -997,56 +1165,56 @@ char *httpsFetch(char host[], int port, char uri[], char *body) {
     if (write_buf)
         free(write_buf);
 
-    int size;
-    char buf[4096];
-
+    int size = 0;
+    char *resp = (char *)malloc(4096);
     size_t body_len = 0;
-    char *raw;
 
-    for (;;) {
-        size = BIO_read(bio, buf, 4095);
-        if (size <= 0)
-            break;
-        buf[size] = 0;
+    do {
 
-        if (strstr(buf, "HTTP/1.1 200 OK") == NULL) {
-            if (bio)
-                BIO_free_all(bio);
-            if (ctx)
-                SSL_CTX_free(ctx);
-            return NULL;
+        size = BIO_read(bio, resp + body_len, 4095);
+        if (size > 0) {
+            body_len += size;
+            if (body_len + 1 > strlen(resp)) {
+                //printf("%ld > %ld -> %ld\n", body_len, strlen(resp), strlen(resp) + (body_len + 1));
+                resp = realloc(resp, strlen(resp) + (body_len + 1));
+            }
         }
 
-        const char *p1 = strstr(buf, "Content-Length: ") + 16;
-        const char *p2 = strstr(p1, "\r\n");
-        size_t len = p2 - p1;
-        char *ptr;
-        char *res = (char *)malloc(sizeof(char) * (len + 1));
-        strncpy(res, p1, len);
-        res[len] = '\0';
-        raw = strstr(buf, "\r\n\r\n") + 4; // body
+    } while (size > 0);
 
-        body_len = strlen(raw);
-        size_t zt = strtol(res, &ptr, 10);
-        if (body_len == zt) {
-            if (res)
-                free(res);
-            break;
-        }
-        if (res)
-            free(res);
+    //printf("total ............: %ld\n", body_len);
+    //printf("tested total .....: %ld\n", strlen(resp));
+    //printf("\n\n%s\n\n", resp);
+
+    if (strstr(resp, "HTTP/1.1 200 OK") == NULL) {
+        printf("\nerror?\n%s\n", resp);
+        if (bio)
+            BIO_free_all(bio);
+        if (ctx)
+            SSL_CTX_free(ctx);
+        return NULL;
     }
-
     if (bio)
         BIO_free_all(bio);
     if (ctx)
         SSL_CTX_free(ctx);
 
-    if (raw) {
-        body = (char *)malloc(sizeof(char) * (body_len + 1));
-        memcpy(body, raw, body_len);
-        body[body_len] = '\0';
+    resp[body_len] = 0;
+    resp = strstr(resp, "200 OK") + 8;
+    resp = strstr(resp, "\r\n\r\n");
+    if (resp != NULL) {
+        resp += 4;
+        body_len = strlen(resp);
+        //printf("body:%ld\n", body_len);
+        body = (char *)malloc(sizeof(char) * body_len + 1);
+        memcpy(body, resp, body_len);
+        body[body_len] = 0;
+    } else {
+        if (resp)
+            free(resp);
+        return NULL;
     }
+
     return body;
 }
 
@@ -1066,7 +1234,7 @@ bool updClimacell(climacell_t *climacell) {
     if (isEmptyStr(climacell->fields)) {
         strcpy(climacell->fields,
                "temp,feels_like,baro_pressure,visibility,humidity,"
-               "precipitation,precipitation_type,"
+               "precipitation_type,precipitation,"
                "wind_speed,wind_direction,wind_gust,"
                "sunrise,sunset,weather_code");
     }
@@ -1108,8 +1276,8 @@ bool updClimacell(climacell_t *climacell) {
     bool ret = false;
     char *body = httpsFetch(climacell->host, port, uri, body);
     if (body) {
-        climacell->refreshed =
-            parseClimacell(body, climacell, &climacell->ccnow, CC_DATA_NOW);
+        climacell->refreshed = parseClimacell(body, climacell, CC_DATA_NOW);
+        free(body);
         ret = true;
     }
     return ret;
@@ -1128,11 +1296,13 @@ bool updClimacellForecast(climacell_t *climacell) {
     if (isEmptyStr(climacell->fcuri)) {
         strcpy(climacell->fcuri, "/v3/weather/forecast/daily");
     }
-    // include sunrise so we tie out date - UTC date, adjust!
+
+    // observation date contains the forecast day/date
+    // date only (no time/tz), data developed in day order
     if (isEmptyStr(climacell->fcfields)) {
         strcpy(climacell->fcfields,
                "temp,precipitation,wind_speed,wind_direction,"
-               "precipitation_probability,weather_code,sunrise");
+               "precipitation_probability,weather_code");
     }
     if (isEmptyStr(climacell->units)) {
         strcpy(climacell->units, "us");
@@ -1155,17 +1325,23 @@ bool updClimacellForecast(climacell_t *climacell) {
     ltm.tm_sec = 59;
     char startdt[30] = {0};
     strftime(startdt, 30, "%FT%T%z", &ltm);
-    addDays(&ltm, 3);
+    addDays(&ltm, 5);
     char enddt[30] = {0};
     strftime(enddt, 30, "%FT%T%z", &ltm);
-    printf("%s -> %s\n", startdt, enddt);
 
-    sprintf(
-        uri,
-        "%s?apikey=%s&lat=%f&lon=%f&unit_system=%s&start_time=%s&end_time=%s",
-        climacell->fcuri, climacell->Apikey, climacell->coords.Latitude,
-        climacell->coords.Longitude, climacell->units, startdt, enddt);
-printf("\n%s\n",uri);
+    sprintf(stb, "%s %s\n", labelIt("Forecast Start", LABEL_WIDTH, "."),
+            startdt);
+    putMSG(stb, LL_INFO);
+    sprintf(stb, "%s %s\n", labelIt("Forecast End", LABEL_WIDTH, "."), enddt);
+    putMSG(stb, LL_INFO);
+
+    sprintf(uri,
+            "%s?apikey=%s&lat=%f&lon=%f&unit_system=%s&start_time=%"
+            "s&end_"
+            "time=%s",
+            climacell->fcuri, climacell->Apikey, climacell->coords.Latitude,
+            climacell->coords.Longitude, climacell->units, startdt, enddt);
+
     // strtok is destructive, make a scratch copy
     char *ccf =
         (char *)malloc(sizeof(char) * (strlen(climacell->fcfields) + 1));
@@ -1187,8 +1363,9 @@ printf("\n%s\n",uri);
     char *body = httpsFetch(climacell->host, port, uri, body);
     bool ret = false;
     if (body) {
-        climacell->refreshed =
-            parseClimacell(body, climacell, &climacell->ccnow, CC_DATA_NOW);
+        climacell->fcrefreshed =
+            parseClimacell(body, climacell, CC_DATA_FORECAST);
+        free(body);
         ret = true;
     }
     return ret;
