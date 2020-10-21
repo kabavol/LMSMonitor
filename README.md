@@ -304,6 +304,9 @@ This also specifies random visualization, further customization to your liking c
 - DONE! All-In-One display, clock, track details and downmix visualizer in one 
 - DONE! Reconnect to player/server, after reboot or offlined
 - DONE! Weather: climacell incorporation
+- DONE! Weather: current and forecast support
+- DONE! "PROGMEM" type resources removed, replaced with on demand loads
+- DONE! Downmix PK Meter - scratch draw and animation
 - Green field IP change on server bounce: TBD
 - Audiophonics EVO-SABRE Balanced DAC 2x ES9038Q2M support: TBD
 - Dual OLED visualizer mode: TBD
