@@ -34,7 +34,7 @@
 
 typedef enum ccdata_group {
     CC_DATA_FORECAST = 0,
-    CC_DATA_NOW = 3,
+    CC_DATA_NOW = 4,
 } ccdata_group;
 
 typedef enum ccdatum_debug {
@@ -106,10 +106,11 @@ typedef struct climacell_t {
     bool active;
     bool refreshed;
     bool fcrefreshed;
+    bool brighttest;
     ccdatum_t lat;
     ccdatum_t lon;
     ccdata_t ccnow;
-    ccdata_t ccforecast[4];
+    ccdata_t ccforecast[CC_DATA_NOW];
 } climacell_t;
 
 #endif

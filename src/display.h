@@ -166,6 +166,7 @@ void displayBrightness(int bright, bool flip = false);
 
 void putWeatherTemp(int x, int y, ccdata_t *cc);
 void putWeatherIcon(int x, int y, ccdata_t *cc);
+void putWeatherForecast(bool clear, int x, int y, ccdata_t *cc);
 
 void scrollerFreeze(void);
 void scrollerThaw(void);
@@ -215,6 +216,7 @@ void putText(int x, int y, char *buff);
 void putTextCenterColor(int y, char *buff, uint16_t color);
 void putTextToCenter(int y, char *buff);
 void putTextToRight(int y, int r, char *buff);
+void putTextMaxWidthCentered(int x, int y, int w, char *buff);
 
 // using tom thumb font to squeeze a little more real-estate
 void putTinyTextMaxWidth(int x, int y, int w, char *buff);
@@ -224,6 +226,7 @@ void putTinyText(int x, int y, char *buff);
 void putTinyTextCenterColor(int y, char *buff, uint16_t color);
 void putTinyTextToCenter(int y, char *buff);
 void putTinyTextToRight(int y, int r, int w, char *buff);
+void putTinyTextMaxWidthCentered(int x, int y, int w, char *buff);
 
 void clearLine(int y);
 void clearDisplay(void);

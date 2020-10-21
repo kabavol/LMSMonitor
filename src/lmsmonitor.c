@@ -872,7 +872,6 @@ int main(int argc, char *argv[]) {
                     timer_start(60 * 61 * 1000, checkWeatherForecast,
                                 TIMER_PERIODIC, (void *)&weather);
             }
-
         }
     }
 
@@ -1425,7 +1424,6 @@ void warningsPage(void) {
 void clockWeatherPage(climacell_t *cc) {
 
     char buff[255];
-
     DrawTime dt = {.charWidth = 12,
                    .charHeight = 17,
                    .bufferLen = LCD12X17_LEN,
@@ -1452,29 +1450,47 @@ void clockWeatherPage(climacell_t *cc) {
     time_t now = tv.tv_sec;
     struct tm loctm = *localtime(&now);
 
-    //strftime(buff, sizeof(buff), "%a %02d/%m/%y", &loctm);
-    strftime(buff, sizeof(buff), "%A", &loctm);
-    putTextToRight(1, 126, buff);
+    if (0 == (loctm.tm_min % 30)) {
+        int x = 0;
+        int divx = (int)(maxXPixel() / 3);
+        activateForecast(cc);
+        // paint forecast, skip 0 - current day
+        int idxi = 1;
+        for (int idx = idxi; idx < CC_DATA_NOW; idx++) {
+            putWeatherForecast(((loctm.tm_sec < 2) && (idxi == idx)), x, 2,
+                               &cc->ccforecast[idx]);
+            x += divx;
+        }
 
-    strftime(buff, sizeof(buff), "%02d/%m/%y", &loctm);
-    putTextToRight(11, 126, buff);
+        // wind it up...
+        uint pc = 57;
+        baselineClimacell(cc, (loctm.tm_sec > pc));
+        glopt->refreshClock = (loctm.tm_sec > pc);
 
-    strcpy(glopt->lastTime, "XXXXX"); // date and day ride rough
-    sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
-    setLastTime(buff, dt);
-    // colon (blink)
-    drawTimeBlink(((loctm.tm_sec % 2) ? ' ' : ':'), &dt);
+    } else {
 
-    if ((cc->ccnow.icon.changed) || (cc->ccnow.weather_code.changed)) {
-        fillRectangle(1, 20, 90, 11, BLACK); // erase what came before
-        putText(1, 20, cc->ccnow.icon.text);
+        strftime(buff, sizeof(buff), "%A", &loctm);
+        putTextToRight(1, 126, buff);
+
+        strftime(buff, sizeof(buff), "%02d/%m/%y", &loctm);
+        putTextToRight(11, 126, buff);
+
+        strcpy(glopt->lastTime, "XXXXX"); // date and day ride rough
+        sprintf(buff, "%02d:%02d", loctm.tm_hour, loctm.tm_min);
+        setLastTime(buff, dt);
+        // colon (blink)
+        drawTimeBlink(((loctm.tm_sec % 2) ? ' ' : ':'), &dt);
+
+        if ((cc->ccnow.icon.changed) || (cc->ccnow.weather_code.changed)) {
+            fillRectangle(1, 20, 90, 11, BLACK); // erase what came before
+            putText(1, 20, cc->ccnow.icon.text);
+        }
+
+        putWeatherTemp(1, 29, &cc->ccnow);
+        putWeatherIcon(84, 20, &cc->ccnow);
+
+        baselineClimacell(cc, false);
     }
-
-    putWeatherTemp(1, 29, &cc->ccnow);
-    putWeatherIcon(84, 20, &cc->ccnow);
-
-    baselineClimacell(cc, false);
-
     // set changed so we'll repaint on play
     setupPlayMode();
     setSleepTime(SLEEP_TIME_LONG);

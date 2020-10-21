@@ -34,7 +34,7 @@
 
 #include "climacell.h"
 
-typedef enum solarTime { AS_CALC=0, AS_WEATHER=1 } solarTime;
+typedef enum solarTime { AS_CALC = 0, AS_WEATHER = 1 } solarTime;
 
 typedef struct isp_locale_t {
     time_t sunrise;
@@ -51,11 +51,12 @@ typedef struct isp_locale_t {
 bool initAstral(void);
 void brightnessEvent(void);
 
+void activateForecast(climacell_t *climacell);
 void baselineClimacell(climacell_t *climacell, bool changed);
 void weatherEvent(struct climacell_t *climacell);
 bool updClimacellForecast(climacell_t *climacell);
 bool updClimacell(climacell_t *climacell);
 
-bool testJRPC(char* playerMAC, char *host, uint16_t port);
+bool testJRPC(char *playerMAC, char *host, uint16_t port);
 
 #endif

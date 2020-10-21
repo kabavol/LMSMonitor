@@ -429,7 +429,7 @@ void splashScreen(void) {
 }
 
 void putWeatherTemp(int x, int y, ccdata_t *cc) {
-    char buf[64];
+    char buf[128];
     int szw = 12;
     int szh = 12;
     int w = elementLength(szh, szw);
@@ -438,6 +438,8 @@ void putWeatherTemp(int x, int y, ccdata_t *cc) {
     int16_t icon[4] = {0, 2, 3, 1};
     size_t l = sizeof(icon) / sizeof(icon[0]);
     bool update = false;
+        int aix = 1;
+        int wipe = 11 * _char_width;
     // paint "icon" and metric
     for (int16_t p = 0; p < l; p++) {
         int16_t py = (((icon[p] == 3) || (icon[p] == 1)) ? p - 1 : p);
@@ -456,26 +458,41 @@ void putWeatherTemp(int x, int y, ccdata_t *cc) {
         if (update) {
             switch (icon[p]) {
                 case 0:
+                    aix = 1;
+                    wipe = 11 * _char_width;
                     sprintf(buf, "%d%s [%d%s]", (int)round(cc->temp.fdatum),
                             cc->temp.units, (int)round(cc->feels_like.fdatum),
                             cc->feels_like.units);
                     break;
                 case 1:
+                    aix = 1;
+                    wipe = 11 * _char_width;
                     sprintf(buf, "%d%s %s", (int)round(cc->wind_speed.fdatum),
                             cc->wind_speed.units, cc->wind_direction.sdatum);
                     break;
                 case 2:
+                    aix = 1;
+                    wipe = 4 * _char_width;
+                    sprintf(
+                        buf,
+                        "%d%s",
+                        (int)round(cc->humidity.fdatum), cc->humidity.units);
+                    break;
                 case 3:
-                    sprintf(buf, "%d%s   %.1f%s ", // minor padding for those reainy days!
-                            (int)round(cc->humidity.fdatum), cc->humidity.units,
-                            cc->precipitation.fdatum, // this per hour
-                            cc->precipitation.units);
+                    aix = 1 + (5.8 * _char_width);
+                    wipe = 4.8 * _char_width;
+                    sprintf(
+                        buf,
+                        "%.1f%s",
+                        cc->precipitation.fdatum, // this per hour
+                        cc->precipitation.units);
                     break;
             }
-            // skip on 3 - we addressed on 2
-            display.fillRect(x + szw + 2, y + 3 + (szh * py), 11 * _char_width,
+            int xx = x + szw + aix;
+            int yy = y + 3 + (szh * py);
+            display.fillRect(xx, yy, wipe,
                              _char_height, BLACK);
-            putText(x + szw + 2, y + 3 + (szh * py), buf);
+            putText(xx, yy, buf);
             memcpy(dest, thermo12x12() + (w * icon[p]), sizeof dest);
             display.fillRect(x + ((icon[p] == 3) ? 5.8 * _char_width : 0),
                              y + (szh * py), szw, szh, BLACK);
@@ -496,6 +513,32 @@ void putWeatherIcon(int x, int y, ccdata_t *cc) {
         display.fillRect(x, y, szw, szh, BLACK);
         display.drawBitmap(x, y, dest, szw, szh, WHITE);
     }
+}
+
+void putWeatherForecast(bool clear, int x, int y, ccdata_t *cc) {
+
+    if (clear)
+        display.clearDisplay();
+    int w = maxXPixel() / 3;
+    int h = maxYPixel();
+    const uint8_t wc = 12;
+
+    display.fillRect(x, y, w, h, BLACK);
+
+    int wix = (w-34)/2;
+    putWeatherIcon(x+wix-1, y+1, cc);
+
+    char buf[128];
+    putTinyTextMaxWidthCentered(x, y+43, wc, cc->observation_time.sdatum);
+    display.drawRect(x,y+35,w-2,11,WHITE);
+    sprintf(buf, "%d%s | %d%s", (int)round(cc->temp_max.fdatum),
+            cc->temp_max.units, (int)round(cc->temp_min.fdatum),
+            cc->temp_min.units);
+    putTinyTextMaxWidthCentered(x, y + 53, wc, buf);
+    sprintf(buf, "%d %%", (int)round(cc->precipitation_probability.fdatum));
+    putTinyTextMaxWidthCentered(x, y + 60, wc, buf);
+    display.drawRect(x,y+45,w-2,17,WHITE);
+
 }
 
 void putIFDetail(int icon, int xpos, int ypos, char *host) {
@@ -628,7 +671,7 @@ void downmixPeakH(struct vissy_meter_t *vissy_meter,
 void drawHorizontalBar(int x, int y, int w, int h, int percent,
                        enum BarStyle style) {
     if ((w > 0) && (h > 2)) {
-        display.fillRect(x, y, w + 5, h+1, BLACK); // much fudging...
+        display.fillRect(x, y, w + 5, h + 1, BLACK); // much fudging...
         int p = (int)((double)w * (percent / 100.00));
         if (p > 0)
             switch (style) {
@@ -654,15 +697,15 @@ void drawHorizontalBar(int x, int y, int w, int h, int percent,
                 case BARSTYLE_SPLIT:
                     display.drawLine(x, y, x, y + h, WHITE);
                     if (p > 2) {
-                        display.drawLine(x+p, y, x+p, y + h, WHITE);
-                        display.drawLine(x+p-2, y, x+p-2, y + h, WHITE);
+                        display.drawLine(x + p, y, x + p, y + h, WHITE);
+                        display.drawLine(x + p - 2, y, x + p - 2, y + h, WHITE);
                     }
                     break;
                 case BARSTYLE_PKCAP_ONLY:
                     display.drawLine(x, y, x, y + h, WHITE);
                     if (p > 1) {
-                        display.drawLine(x+p, y, x+p, y + h, WHITE);
-                        display.drawLine(x+p-1, y, x+p-1, y + h, WHITE);
+                        display.drawLine(x + p, y, x + p, y + h, WHITE);
+                        display.drawLine(x + p - 1, y, x + p - 1, y + h, WHITE);
                     }
                     break;
             }
@@ -1949,6 +1992,46 @@ void putTinyTextMaxWidth(int x, int y, int w, char *buff) {
     display.setCursor(px, y);
     display.print(buff);
     display.setFont();
+}
+
+// using tom thumb font to squeeze a little more real-estate
+void putTinyTextMaxWidthCentered(int x, int y, int w, char *buff) {
+
+    display.setFont(&TomThumb);
+    int tlen = strlen(buff);
+    display.setTextSize(1);
+    int16_t x1, y1, w1, h1;
+    display.fillRect(x - 2, y - _tt_char_height, w * _tt_char_width,
+                     2 + _tt_char_height, BLACK);
+    int px = x;
+    if (tlen < w) { // assumes monospaced - we're not!
+        px = (int)(((w - tlen) * _tt_char_width) / 2);
+    } else {
+        buff[w] = {0}; // simple chop - safe!
+    }
+
+    display.setCursor(x+px, y);
+    display.print(buff);
+    display.setFont();
+}
+
+void putTextMaxWidthCentered(int x, int y, int w, char *buff) {
+
+    display.setFont();
+    int tlen = strlen(buff);
+    display.setTextSize(1);
+    int16_t x1, y1, w1, h1;
+    display.fillRect(x - 2, y - _char_height, w * _char_width,
+                     2 + _char_height, BLACK);
+    int px = x;
+    if (tlen < w) { // assumes monospaced - we're not!
+        px = (int)(((w - tlen) * _char_width) / 2);
+    } else {
+        buff[w] = {0}; // simple chop - safe!
+    }
+    display.setCursor(x+px, y);
+    display.print(buff);
+
 }
 
 void putTinyTextMultiMaxWidth(int x, int y, int w, int lines, char *buff) {

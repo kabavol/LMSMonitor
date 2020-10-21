@@ -74,18 +74,16 @@ void initTimezone(void) {
     isp_locale.tzOff = (double)loctm.tm_gmtoff;
 }
 
+struct tm parseSimpleDate(char *dstr) {
+    struct tm ltm = {0};
+    strptime(dstr, "%Y-%m-%d", &ltm);
+    return ltm;
+}
+
 time_t parse8601(char *dstr) {
-    int y, M, d, h, m;
-    float s;
-    sscanf(dstr, "%d-%d-%dT%d:%d:%fZ", &y, &M, &d, &h, &m, &s);
-    struct tm time;
-    time.tm_year = y - 1900;
-    time.tm_mon = M - 1;
-    time.tm_mday = d;
-    time.tm_hour = h;
-    time.tm_min = m;
-    time.tm_sec = (int)s;
-    return mktime(&time);
+    struct tm ltm = {0};
+    strptime(dstr, "%FT%TZ", &ltm);
+    return mktime(&ltm);
 }
 
 void weatherSetAstral(climacell_t *climacell) {
@@ -128,9 +126,15 @@ bool copyCCDatum(ccdatum_t *datum, ccdatum_t *from) {
     return false;
 }
 
+void activateForecast(climacell_t *climacell) {
+    for (int idx = 0; idx < CC_DATA_NOW; idx++) {
+        climacell->ccforecast[idx].icon.changed = true;
+    }
+}
+
 void baselineClimacell(climacell_t *climacell, bool changed) {
 
-#define DATUM_GROUP (idx < 3) ? "forecast" : "weather"
+#define DATUM_GROUP (idx < CC_DATA_NOW) ? "forecast" : "current"
 
     baseCCDatum(&climacell->lat, changed, "lat", "weather", "Latitude",
                 "%s %4.6f\n");
@@ -141,10 +145,10 @@ void baselineClimacell(climacell_t *climacell, bool changed) {
     // not all data are applicable across
     // each structure but for simplicity
     // treat everything as equivalent
-    for (int idx = 0; idx < 4; idx++) {
+    for (int idx = 0; idx < CC_DATA_NOW+1; idx++) {
 
         ccdata_t *ccd = &climacell->ccnow;
-        if (idx < 3)
+        if (idx < CC_DATA_NOW)
             ccd = &climacell->ccforecast[idx];
 
         ccd->icon.changed = changed;
@@ -250,13 +254,13 @@ static const char *degToCompass(double deg) {
     return (const char *)windd[d16];
 }
 
-wiconmap_t weatherIconXlate(char *key) {
+wiconmap_t weatherIconXlate(char *key, bool trigday) {
 
     // add day night logic for specifics
     char wspecific[128] = {0};
-    sprintf(wspecific, "%s%s", key, (daymode) ? "_day" : "_night");
+    sprintf(wspecific, "%s%s", key, ((daymode)||(trigday)) ? "_day" : "_night");
 
-    const static struct wiconmap_t wmap[] = {
+    const struct wiconmap_t wmap[] = {
         (wiconmap_t){"clear_day", "Clear", 0, true},
         (wiconmap_t){"clear_night", "Clear", 1, true},
         (wiconmap_t){"clear", "Clear", 0, true},
@@ -728,7 +732,7 @@ bool parseClimacell(char *jsonData, climacell_t *climacell,
     int done = 15;
     int brk = 1;
     if (CC_DATA_FORECAST == group) {
-        brk = 4;
+        brk = CC_DATA_NOW;
     }
 
     int tki = 1; // init index following
@@ -1059,7 +1063,7 @@ bool parseClimacell(char *jsonData, climacell_t *climacell,
                 if (jt[i].type == JSMN_OBJECT) {
                     ccdatum_t *d = &data->weather_code;
                     decodeKV(jsonData, d, i + 1, i + 3, jt);
-                    wiconmap_t tsti = weatherIconXlate(d->sdatum);
+                    wiconmap_t tsti = weatherIconXlate(d->sdatum,(group==CC_DATA_FORECAST));
                     if ((data->icon.icon != tsti.icon) ||
                         (0 != strcmp(data->icon.text, tsti.text)) ||
                         (d->changed)) {
@@ -1081,6 +1085,11 @@ bool parseClimacell(char *jsonData, climacell_t *climacell,
                 if (jt[i].type == JSMN_OBJECT) {
                     ccdatum_t *d = &data->observation_time;
                     decodeKV(jsonData, d, i + 1, i + 3, jt);
+
+                    if (CC_DATA_FORECAST == group) {
+                        const struct tm ot = parseSimpleDate(d->sdatum);
+                        strftime(d->sdatum, sizeof(d->sdatum), "- %a -", &ot);
+                    }
                     if (vv >= LL_DEBUG)
                         debug_datum(d, DD_SDATUM);
                     done--;
@@ -1090,7 +1099,6 @@ bool parseClimacell(char *jsonData, climacell_t *climacell,
                 continue; // unknown or we need to map
             }
             //if (CC_DATA_FORECAST == group) printf("%d %d done:%d\n", r, i, done);
-        
         }
     }
 
@@ -1320,14 +1328,16 @@ bool updClimacellForecast(climacell_t *climacell) {
 
     time_t now = time(NULL);
     struct tm ltm = *localtime(&now);
-    ltm.tm_hour = 23;
+    
+    char startdt[30] = {0};
+    ltm.tm_hour = 11;
     ltm.tm_min = 59;
     ltm.tm_sec = 59;
-    char startdt[30] = {0};
-    strftime(startdt, 30, "%FT%T%z", &ltm);
-    addDays(&ltm, 5);
+    addDays(&ltm, 1);
+    strftime(startdt, sizeof(startdt), "%FT%T%z", &ltm);
+    addDays(&ltm, 4);
     char enddt[30] = {0};
-    strftime(enddt, 30, "%FT%T%z", &ltm);
+    strftime(enddt, sizeof(enddt), "%FT%T%z", &ltm);
 
     sprintf(stb, "%s %s\n", labelIt("Forecast Start", LABEL_WIDTH, "."),
             startdt);

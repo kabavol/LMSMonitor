@@ -14,7 +14,7 @@ OLED information display control program for [piCorePlayer](https://www.picorepl
 - Alternatively you can display current weatherr and time.
 - Automatically sets the brightness of the display at dawn and dusk.
 - Multiple audio visualization modes are supported
-- If monitoring from a separate device animations can be displated as the track plays
+- If monitoring from a separate device animations can be displayed as the track plays
 
 ### Options
 ```bash
@@ -56,6 +56,7 @@ and LMS based audio device.
                                (pi only)
   -V, --verbose                Maximum log level
   -w, --weather[=APIKEY,UNITS] Climacell API key and required units (optional)
+  -W,                          Warnings display or silent connection detection
   -x, --addr                   OLED address if default does not work - use
                                i2cdetect to find address (pi only)
   -z, --nosplash               No (Team Badger) Splash Screen
@@ -113,6 +114,7 @@ Several visualizer modes are supported
 - Stereo 12-band "tornado" Spectrum Analysis
 - Stereo 12-band "mirror" Spectrum Analysis
 - Stereo Peak Meter - dBfs metered
+- Downmix (visual data only) Peak Meter
 - Large Downmix (visual data only) VU meter
 - Large Downmix (visual data only) Spectrum
 - All-In-One - track details and spectrum/VU "swoosh" (use -a1 or simply -a)
@@ -232,6 +234,8 @@ If a track were playing LMS automatically restarts the track.
 
 If we bounced the server we get a green field session, starting afresh.  If a track had been playing one would have to manually requeue the track.
 
+If you specify -W0 warnings will not be displayed, connection resolution will be performed but you'll not be informed
+
 TODO: bounce with IP change on return.
 
 </p>
@@ -248,7 +252,7 @@ Follow the instructions here [developer.climacell.co](https://developer.climacel
 
 This is a free developer account that facilitates upto 100 requests per hour.
 
-LMSmonitor is metered to only make 10 calls per hour.
+LMSmonitor is metered to only make 11 calls per hour. 10 calls are made for current conditions and a single call hourly for 3 day forecast changes.
 
 Once you have an key you'll simply pass it to LMSMonitor, thus
 
@@ -263,7 +267,7 @@ As with the brightness control the monitor will automatically determin your loca
 /mnt/mmcblk0p2/tce/gomonitor rn --latlon "latitude,longitude"
 ```
 
-You can find yourlatitude and longitude via Google maps or alternatively via [latlon.net](https://www.latlong.net/)
+You can find your latitude and longitude via Google maps or alternatively via [latlon.net](https://www.latlong.net/)
 
 Hopefully climacell won't see this as a commercial app and allow LMSmonitor usage.
 
