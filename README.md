@@ -308,7 +308,8 @@ This also specifies random visualization, further customization to your liking c
 - DONE! "PROGMEM" type resources removed, replaced with on demand loads
 - DONE! Downmix PK Meter - scratch draw and animation
 - Green field IP change on server bounce: TBD
-- Audiophonics EVO-SABRE Balanced DAC 2x ES9038Q2M support: TBD
+- Audiophonics EVO-SABRE Balanced DAC 2x ES9038Q2M support: WIP
+- SSD1322 128x64 OLED support - WIP
 - Dual OLED visualizer mode: TBD
 - 128 x 128 OLED support: TBD
 - 16 x 2 OLED support - RASPI-MINI V1: TBD
