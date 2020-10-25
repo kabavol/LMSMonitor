@@ -212,7 +212,7 @@ There are currently 7 easter egg modes:
 - <b>[4]</b> VCR with flashing 12:00 AM clock! No additional animation - the clock is annoying enough.
 - <b>[5]</b> An old bakelite radio. Minor animation, radio changes station as track progresses.
 - <b>[6]</b> An old analog TV in all its 5x4 glory... VHF or UHF... no it's worms?!?
-- <b>[7]</b> A crusty oldIBM PS/2 clone... playing pong! Equally matched "AI" players make for an uneventful game!
+- <b>[7]</b> A crusty old IBM PS/2 clone... playing pong! Equally matched "AI" players make for an uneventful game!
 
 Specify -E[1-7] to display eggs on track playback
 </p>

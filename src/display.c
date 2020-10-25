@@ -438,8 +438,8 @@ void putWeatherTemp(int x, int y, ccdata_t *cc) {
     int16_t icon[4] = {0, 2, 3, 1};
     size_t l = sizeof(icon) / sizeof(icon[0]);
     bool update = false;
-        int aix = 1;
-        int wipe = 11 * _char_width;
+    int aix = 1;
+    int wipe = 11 * _char_width;
     // paint "icon" and metric
     for (int16_t p = 0; p < l; p++) {
         int16_t py = (((icon[p] == 3) || (icon[p] == 1)) ? p - 1 : p);
@@ -473,25 +473,20 @@ void putWeatherTemp(int x, int y, ccdata_t *cc) {
                 case 2:
                     aix = 1;
                     wipe = 4 * _char_width;
-                    sprintf(
-                        buf,
-                        "%d%s",
-                        (int)round(cc->humidity.fdatum), cc->humidity.units);
+                    sprintf(buf, "%d%s", (int)round(cc->humidity.fdatum),
+                            cc->humidity.units);
                     break;
                 case 3:
                     aix = 1 + (5.8 * _char_width);
                     wipe = 4.8 * _char_width;
-                    sprintf(
-                        buf,
-                        "%.1f%s",
-                        cc->precipitation.fdatum, // this per hour
-                        cc->precipitation.units);
+                    sprintf(buf, "%.1f%s",
+                            cc->precipitation.fdatum, // this per hour
+                            cc->precipitation.units);
                     break;
             }
             int xx = x + szw + aix;
             int yy = y + 3 + (szh * py);
-            display.fillRect(xx, yy, wipe,
-                             _char_height, BLACK);
+            display.fillRect(xx, yy, wipe, _char_height, BLACK);
             putText(xx, yy, buf);
             memcpy(dest, thermo12x12() + (w * icon[p]), sizeof dest);
             display.fillRect(x + ((icon[p] == 3) ? 5.8 * _char_width : 0),
@@ -525,20 +520,19 @@ void putWeatherForecast(bool clear, int x, int y, ccdata_t *cc) {
 
     display.fillRect(x, y, w, h, BLACK);
 
-    int wix = (w-34)/2;
-    putWeatherIcon(x+wix-1, y+1, cc);
+    int wix = (w - 34) / 2;
+    putWeatherIcon(x + wix - 1, y + 1, cc);
 
     char buf[128];
-    putTinyTextMaxWidthCentered(x, y+43, wc, cc->observation_time.sdatum);
-    display.drawRect(x,y+35,w-2,11,WHITE);
+    putTinyTextMaxWidthCentered(x, y + 43, wc, cc->observation_time.sdatum);
+    display.drawRect(x, y + 35, w - 2, 11, WHITE);
     sprintf(buf, "%d%s | %d%s", (int)round(cc->temp_max.fdatum),
             cc->temp_max.units, (int)round(cc->temp_min.fdatum),
             cc->temp_min.units);
     putTinyTextMaxWidthCentered(x, y + 53, wc, buf);
     sprintf(buf, "%d %%", (int)round(cc->precipitation_probability.fdatum));
     putTinyTextMaxWidthCentered(x, y + 60, wc, buf);
-    display.drawRect(x,y+45,w-2,17,WHITE);
-
+    display.drawRect(x, y + 45, w - 2, 17, WHITE);
 }
 
 void putIFDetail(int icon, int xpos, int ypos, char *host) {
@@ -617,39 +611,42 @@ void downmixPeakH(struct vissy_meter_t *vissy_meter,
                   struct DrawVisualize *layout) {
 
     // intermediate variable so we can easily switch metrics
-    meter_chan_t meter = {vissy_meter->sample_accum[0],
-                          vissy_meter->sample_accum[1]};
+    meter_chan_t meter = {vissy_meter->sample_accum[0], 0.00,
+                          vissy_meter->sample_accum[1], 0.00};
 
     int divisor = 0;
     double test = 0;
     if (vissy_meter->is_mono) {
-        test += (double)vissy_meter->sample_accum[0];
+        test += (double)meter.metric[0];
         divisor++;
     } else {
         for (int channel = 0; channel < 2; channel++) {
-            test += (double)vissy_meter->sample_accum[channel];
+            test += (double)meter.metric[channel];
             divisor++;
         }
     }
 
-    printf("1) test %f -> ", test);
     test /= (double)divisor;
     test /= 58.000;
-    //////test -= 48.000;
-    printf("%f\n", test);
 
-    // do no work if we don't need to
-    if (lastPK.metric[DOWNMIX] == (int)test)
-        return;
+    clock_t decay = clock();
 
-    lastPK.metric[DOWNMIX] = (int)test;
+    meter.percent[DOWNMIX] = 100.00 * (test / 8.00);
+    if (meter.percent[DOWNMIX] > 103.00)
+        meter.percent[DOWNMIX] = 103.00;
+    else if (meter.percent[DOWNMIX] < 0.00)
+        meter.percent[DOWNMIX] = 1.00;
 
-    double percent = 100 * (test / 8);
-    if (percent > 103.00)
-        percent = 103.00;
-    else if (percent < 0.00)
-        percent = 1.00;
-    printf("2) pct  %f\n", percent);
+    if (meter.percent[DOWNMIX] >= lastPK.percent[DOWNMIX]) {
+        lastPK.percent[DOWNMIX] = meter.percent[DOWNMIX];
+        lastPK.metric[DOWNMIX] = decay;
+    } else if (lastPK.percent[DOWNMIX] > 0) {
+        lastPK.percent[DOWNMIX] -= ((decay - lastPK.metric[DOWNMIX]) / 60000) *
+                                   CAPS_DECAY; // bump long run decay
+        if (lastPK.percent[DOWNMIX] < 0) {
+            lastPK.percent[DOWNMIX] = 0;
+        }
+    }
 
     drawPeakDMScale(true); // 🎵
 
@@ -660,18 +657,90 @@ void downmixPeakH(struct vissy_meter_t *vissy_meter,
     x /= 2;
     int y = maxYPixel() / 3;
 
-    drawHorizontalBar(x + (20 / step), y + 3, (210 / step), y - 4, percent,
-                      BARSTYLE_SPLIT); // stripe
-    if (percent > 100)
-        drawCarat(114, true);
-    else
-        drawCarat(114, false);
+    drawHorizontalBar(x + (20 / step), y + 3, (210 / step), y - 4,
+                      meter.percent[DOWNMIX],
+                      BARSTYLE_STRIPE); // stripe
+    drawHorizontalBar(x + (20 / step), y + 3, (210 / step), y - 4,
+                      lastPK.percent[DOWNMIX], BARSTYLE_PKCAP_ONLY,
+                      false); // stripe
+    drawCarat(114, (meter.percent[DOWNMIX] > 100.00));
+}
+
+void simplePeakH(struct vissy_meter_t *vissy_meter,
+                 struct DrawVisualize *layout) {
+
+    if (strncmp(layout->downmix, "N", 1) != 0) {
+        downmixPeakH(vissy_meter, layout);
+        return;
+    }
+
+    // intermediate variable so we can easily switch metrics
+    meter_chan_t meter = {vissy_meter->sample_accum[0], 0.00,
+                          vissy_meter->sample_accum[1], 0.00};
+
+    if (vissy_meter->is_mono) {
+        meter.percent[0] = 100.0 * (((double)meter.metric[0] / 58.00) / 8.00);
+        meter.percent[1] = meter.percent[0];
+    } else {
+        for (int channel = 0; channel < 2; channel++) {
+            meter.percent[channel] =
+                100.0 * (((double)meter.metric[channel] / 58.00) / 8.00);
+        }
+    }
+
+    bool carat = false;
+    clock_t decay = clock();
+
+    for (int channel = 0; channel < 2; channel++) {
+        if (meter.percent[channel] > 103.00)
+            meter.percent[channel] = 103.00;
+        else if (meter.percent[channel] < 0.00)
+            meter.percent[channel] = 1.00;
+        if (meter.percent[channel] > 100.00)
+            carat = true;
+        if (meter.percent[channel] >= lastPK.percent[channel]) {
+            lastPK.percent[channel] = meter.percent[channel];
+            lastPK.metric[channel] = decay;
+        } else if (lastPK.percent[channel] > 0) {
+            lastPK.percent[channel] -=
+                ((decay - lastPK.metric[channel]) / 60000) *
+                CAPS_DECAY; // bump long run decay
+            if (lastPK.percent[channel] < 0) {
+                lastPK.percent[channel] = 0;
+            }
+        }
+    }
+
+    drawPeakDMScale(true); // 🎵
+
+    int w = maxXPixel();
+    int step = (w == 128) ? 2 : 1;
+
+    int x = maxXPixel() - (240 / step);
+    x /= 2;
+    int y = maxYPixel() / 3;
+
+    int by = (y / 2) - 4;
+
+    drawHorizontalBar(x + (20 / step), y + 3, (210 / step), by,
+                      meter.percent[0],
+                      BARSTYLE_STRIPE); // stripe
+    drawHorizontalBar(x + (20 / step), y + 7 + by, (210 / step), by,
+                      meter.percent[1],
+                      BARSTYLE_STRIPE); // stripe
+    drawHorizontalBar(x + (20 / step), y + 3, (210 / step), by,
+                      lastPK.percent[0], BARSTYLE_PKCAP_ONLY, false); // stripe
+    drawHorizontalBar(x + (20 / step), y + 7 + by, (210 / step), by,
+                      lastPK.percent[1], BARSTYLE_PKCAP_ONLY, false); // stripe
+    drawCarat(114, carat);
 }
 
 void drawHorizontalBar(int x, int y, int w, int h, int percent,
-                       enum BarStyle style) {
+                       enum BarStyle style, bool clear = true) {
     if ((w > 0) && (h > 2)) {
-        display.fillRect(x, y, w + 5, h + 1, BLACK); // much fudging...
+        if (clear) {
+            display.fillRect(x, y, w + 5, h + 1, BLACK); // much fudging...
+        }
         int p = (int)((double)w * (percent / 100.00));
         if (p > 0)
             switch (style) {
@@ -702,6 +771,7 @@ void drawHorizontalBar(int x, int y, int w, int h, int percent,
                     }
                     break;
                 case BARSTYLE_PKCAP_ONLY:
+                    printf("pkcap %d\n", p);
                     display.drawLine(x, y, x, y + h, WHITE);
                     if (p > 1) {
                         display.drawLine(x + p, y, x + p, y + h, WHITE);
@@ -713,9 +783,11 @@ void drawHorizontalBar(int x, int y, int w, int h, int percent,
 }
 
 void drawVerticalBar(int x, int y, int w, int h, int percent,
-                     enum BarStyle style) {
+                     enum BarStyle style, bool clear = true) {
     if ((w > 0) && (h > 2)) {
-        display.fillRect(x, y, w, h, BLACK);
+        if (clear) {
+            display.fillRect(x, y, w, h, BLACK);
+        }
         int p = (int)((double)h * (percent / 100.00));
         if (p > 0)
             switch (style) {
@@ -1351,8 +1423,8 @@ void stereoPeakH(struct vissy_meter_t *vissy_meter,
     lastPK.metric[1] = meter.metric[1];
 }
 
-void simplePeakH(struct vissy_meter_t *vissy_meter,
-                 struct DrawVisualize *layout) {
+void simplePeakHZZZ(struct vissy_meter_t *vissy_meter,
+                    struct DrawVisualize *layout) {
 
     if (strncmp(layout->downmix, "N", 1) != 0) {
         downmixPeakH(vissy_meter, layout);
@@ -2010,7 +2082,7 @@ void putTinyTextMaxWidthCentered(int x, int y, int w, char *buff) {
         buff[w] = {0}; // simple chop - safe!
     }
 
-    display.setCursor(x+px, y);
+    display.setCursor(x + px, y);
     display.print(buff);
     display.setFont();
 }
@@ -2021,17 +2093,16 @@ void putTextMaxWidthCentered(int x, int y, int w, char *buff) {
     int tlen = strlen(buff);
     display.setTextSize(1);
     int16_t x1, y1, w1, h1;
-    display.fillRect(x - 2, y - _char_height, w * _char_width,
-                     2 + _char_height, BLACK);
+    display.fillRect(x - 2, y - _char_height, w * _char_width, 2 + _char_height,
+                     BLACK);
     int px = x;
     if (tlen < w) { // assumes monospaced - we're not!
         px = (int)(((w - tlen) * _char_width) / 2);
     } else {
         buff[w] = {0}; // simple chop - safe!
     }
-    display.setCursor(x+px, y);
+    display.setCursor(x + px, y);
     display.print(buff);
-
 }
 
 void putTinyTextMultiMaxWidth(int x, int y, int w, int lines, char *buff) {

@@ -249,9 +249,9 @@ uint16_t charHeight(void);
 void drawHorizontalBargraph(int x, int y, int w, int h, int percent);
 
 void drawHorizontalBar(int x, int y, int w, int h, int percent,
-                       enum BarStyle style);
+                       enum BarStyle style,bool clear=true);
 void drawVerticalBar(int x, int y, int w, int h, int percent,
-                     enum BarStyle style);
+                     enum BarStyle style,bool clear=true);
 
 void drawHorizontalStripedBar(int x, int y, int w, int h, int percent);
 void drawHorizontalCheckerBar(int x, int y, int w, int h, int percent);
