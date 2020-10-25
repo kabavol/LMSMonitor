@@ -611,8 +611,8 @@ void downmixPeakH(struct vissy_meter_t *vissy_meter,
                   struct DrawVisualize *layout) {
 
     // intermediate variable so we can easily switch metrics
-    meter_chan_t meter = {vissy_meter->sample_accum[0], 0.00,
-                          vissy_meter->sample_accum[1], 0.00};
+    meter_chan_t meter = {vissy_meter->sample_accum[0],
+                          vissy_meter->sample_accum[1], 0.00,0.00};
 
     int divisor = 0;
     double test = 0;
@@ -675,8 +675,8 @@ void simplePeakH(struct vissy_meter_t *vissy_meter,
     }
 
     // intermediate variable so we can easily switch metrics
-    meter_chan_t meter = {vissy_meter->sample_accum[0], 0.00,
-                          vissy_meter->sample_accum[1], 0.00};
+    meter_chan_t meter = {vissy_meter->sample_accum[0],
+                          vissy_meter->sample_accum[1], 0.00,0.00};
 
     if (vissy_meter->is_mono) {
         meter.percent[0] = 100.0 * (((double)meter.metric[0] / 58.00) / 8.00);
