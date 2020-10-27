@@ -145,7 +145,7 @@ void baselineClimacell(climacell_t *climacell, bool changed) {
     // not all data are applicable across
     // each structure but for simplicity
     // treat everything as equivalent
-    for (int idx = 0; idx < CC_DATA_NOW+1; idx++) {
+    for (int idx = 0; idx < CC_DATA_NOW + 1; idx++) {
 
         ccdata_t *ccd = &climacell->ccnow;
         if (idx < CC_DATA_NOW)
@@ -258,7 +258,8 @@ wiconmap_t weatherIconXlate(char *key, bool trigday) {
 
     // add day night logic for specifics
     char wspecific[128] = {0};
-    sprintf(wspecific, "%s%s", key, ((daymode)||(trigday)) ? "_day" : "_night");
+    sprintf(wspecific, "%s%s", key,
+            ((daymode) || (trigday)) ? "_day" : "_night");
 
     const struct wiconmap_t wmap[] = {
         (wiconmap_t){"clear_day", "Clear", 0, true},
@@ -1063,7 +1064,8 @@ bool parseClimacell(char *jsonData, climacell_t *climacell,
                 if (jt[i].type == JSMN_OBJECT) {
                     ccdatum_t *d = &data->weather_code;
                     decodeKV(jsonData, d, i + 1, i + 3, jt);
-                    wiconmap_t tsti = weatherIconXlate(d->sdatum,(group==CC_DATA_FORECAST));
+                    wiconmap_t tsti = weatherIconXlate(
+                        d->sdatum, (group == CC_DATA_FORECAST));
                     if ((data->icon.icon != tsti.icon) ||
                         (0 != strcmp(data->icon.text, tsti.text)) ||
                         (d->changed)) {
@@ -1104,10 +1106,22 @@ bool parseClimacell(char *jsonData, climacell_t *climacell,
 
     if ((data->sunrise.changed) || (data->sunset.changed)) {
         weatherSetAstral(climacell);
+        if (CC_DATA_NOW == group) {
+            time_t secnow = time(NULL);
+            bool btest = ((secnow >= isp_locale.sunrise) &&
+                          (secnow <= isp_locale.sunset));
+            if (btest != daymode) {
+                daymode = btest;
+                wiconmap_t tsti =
+                    weatherIconXlate(data->weather_code.sdatum, false);
+                if ((data->icon.icon != tsti.icon) ||
+                    (0 != strcmp(data->icon.text, tsti.text)) ||
+                    (data->weather_code.changed)) {
+                    data->icon = tsti; // sets changed flag too
+                }
+            }
+        }
     }
-
-    //printf("exitting) %d should be zero...\n", done);
-
     return (done == 0);
 }
 
@@ -1328,7 +1342,7 @@ bool updClimacellForecast(climacell_t *climacell) {
 
     time_t now = time(NULL);
     struct tm ltm = *localtime(&now);
-    
+
     char startdt[30] = {0};
     ltm.tm_hour = 11;
     ltm.tm_min = 59;
