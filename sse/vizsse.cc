@@ -3,9 +3,9 @@
 #include <chrono>
 #include <pthread.h>
 
-#include "../source/jsmn.h"
-#include "../source/visualize.h"
-#include "../source/common.h"
+#include "../src/jsmn.h"
+#include "../src/visualize.h"
+#include "../src/common.h"
 
 #include "vizsse.h"
 

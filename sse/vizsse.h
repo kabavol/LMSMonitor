@@ -30,8 +30,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../source/visdata.h"
-#include "../source/vissy.h"
+#include "../src/visdata.h"
+#include "../src/vissy.h"
 
 #define MAX_HEADERS 100
 #define RESPONSE_LIMIT 128 * 1024
