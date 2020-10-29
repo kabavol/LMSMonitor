@@ -521,18 +521,18 @@ void putWeatherForecast(bool clear, int x, int y, ccdata_t *cc) {
     display.fillRect(x, y, w, h, BLACK);
 
     int wix = (w - 34) / 2;
-    putWeatherIcon(x + wix - 1, y + 1, cc);
+    putWeatherIcon(x + wix - 1, y, cc); // replaced y+1 w. y
 
     char buf[128];
-    putTinyTextMaxWidthCentered(x, y + 43, wc, cc->observation_time.sdatum);
-    display.drawRect(x, y + 35, w - 2, 11, WHITE);
+    putTinyTextMaxWidthCentered(x, y + 45, wc, cc->observation_time.sdatum);  // bump 2
+    display.drawRect(x, y + 38, w - 2, 9, WHITE); //bump 3 -3
     sprintf(buf, "%d%s | %d%s", (int)round(cc->temp_max.fdatum),
             cc->temp_max.units, (int)round(cc->temp_min.fdatum),
             cc->temp_min.units);
-    putTinyTextMaxWidthCentered(x, y + 53, wc, buf);
+    putTinyTextMaxWidthCentered(x, y + 54, wc, buf); // bump 1
     sprintf(buf, "%d %%", (int)round(cc->precipitation_probability.fdatum));
     putTinyTextMaxWidthCentered(x, y + 60, wc, buf);
-    display.drawRect(x, y + 45, w - 2, 17, WHITE);
+    display.drawRect(x, y + 47, w - 2, 15, WHITE); // bump 2 -2
 }
 
 void putIFDetail(int icon, int xpos, int ypos, char *host) {

@@ -1104,21 +1104,20 @@ bool parseClimacell(char *jsonData, climacell_t *climacell,
         }
     }
 
-    if ((data->sunrise.changed) || (data->sunset.changed)) {
+    if ((CC_DATA_NOW == group) &&
+        ((data->sunrise.changed) || (data->sunset.changed))) {
         weatherSetAstral(climacell);
-        if (CC_DATA_NOW == group) {
-            time_t secnow = time(NULL);
-            bool btest = ((secnow >= isp_locale.sunrise) &&
-                          (secnow <= isp_locale.sunset));
-            if (btest != daymode) {
-                daymode = btest;
-                wiconmap_t tsti =
-                    weatherIconXlate(data->weather_code.sdatum, false);
-                if ((data->icon.icon != tsti.icon) ||
-                    (0 != strcmp(data->icon.text, tsti.text)) ||
-                    (data->weather_code.changed)) {
-                    data->icon = tsti; // sets changed flag too
-                }
+        time_t secnow = time(NULL);
+        bool btest =
+            ((secnow >= isp_locale.sunrise) && (secnow <= isp_locale.sunset));
+        if (btest != daymode) {
+            daymode = btest;
+            wiconmap_t tsti =
+                weatherIconXlate(data->weather_code.sdatum, false);
+            if ((data->icon.icon != tsti.icon) ||
+                (0 != strcmp(data->icon.text, tsti.text)) ||
+                (data->weather_code.changed)) {
+                data->icon = tsti; // sets changed flag too
             }
         }
     }
