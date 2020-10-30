@@ -74,6 +74,20 @@ void initTimezone(void) {
     isp_locale.tzOff = (double)loctm.tm_gmtoff;
 }
 
+void paddem(char *s) {
+    char s2[10] = {0};
+    for (uint8_t i = 0; i < strlen(s); i++) {
+        char z[3];
+        if ('-' != s[i])
+            sprintf(z, "%c ", toupper(s[i]));
+        else
+            strcpy(z, "- ");
+        strcat(s2, z);
+    }
+    s2[strlen(s2) - 1] = 0;
+    strcpy(s, s2);
+}
+
 struct tm parseSimpleDate(char *dstr) {
     struct tm ltm = {0};
     strptime(dstr, "%Y-%m-%d", &ltm);
@@ -1090,7 +1104,8 @@ bool parseClimacell(char *jsonData, climacell_t *climacell,
 
                     if (CC_DATA_FORECAST == group) {
                         const struct tm ot = parseSimpleDate(d->sdatum);
-                        strftime(d->sdatum, sizeof(d->sdatum), "- %a -", &ot);
+                        strftime(d->sdatum, sizeof(d->sdatum), "-%a-", &ot);
+                        paddem(d->sdatum);
                     }
                     if (vv >= LL_DEBUG)
                         debug_datum(d, DD_SDATUM);
@@ -1100,7 +1115,6 @@ bool parseClimacell(char *jsonData, climacell_t *climacell,
             } else {
                 continue; // unknown or we need to map
             }
-            //if (CC_DATA_FORECAST == group) printf("%d %d done:%d\n", r, i, done);
         }
     }
 
